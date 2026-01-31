@@ -1,0 +1,12 @@
+name: ComprehensiveTemplateDemo
+version: 1.0.0
+description: Examples demonstrating the DiglyAI TemplateDefinition system
+
+# Import required modules for the examples
+imports:
+  - '../../modules/http'
+  - '../../modules/logic'
+
+# Load example resources
+resources:
+  - 'comprehensive-template-demo.yaml'

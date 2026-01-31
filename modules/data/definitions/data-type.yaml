@@ -1,0 +1,16 @@
+kind: 'ResourceDefinition'
+metadata:
+  name: 'DataTypeDefinition'
+  resourceKind: 'Type'
+schema:
+  type: 'object'
+  properties:
+    metadata:
+      type: 'object'
+      properties:
+        name:
+          type: 'string'
+      required: ['name']
+    schema:
+      type: 'object'
+  required: ['metadata']

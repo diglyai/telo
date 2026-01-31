@@ -1,0 +1,6 @@
+name: 'DiglyStudio'
+version: '1.0.0'
+imports:
+  - '../http'
+  - '../logic'
+  - '../data'

@@ -1,0 +1,40 @@
+# Common
+.DS_Store
+Thumbs.db
+
+
+# NodeJS
+node_modules/
+**/nodejs/node_modules
+**/nodejs/dist/
+
+# Python
+python/__pycache__/
+python/*.py[cod]
+python/*.pyo
+python/*.pyd
+python/env/
+python/venv/
+python/ENV/
+python/.venv/
+
+# Go
+go/bin/
+go/*/*.exe
+go/*/*.exe~
+go/*/*.dll
+go/*/*.so
+go/*/*.dylib
+go/*/vendor/
+
+# Rust
+rust/target/
+rust/*/target/
+rust/*.rs.bk
+rust/*.rlib
+rust/*.rmeta
+rust/*.d
+rust/*.lock
+rust/*.so
+rust/*.dll
+rust/*.dylib

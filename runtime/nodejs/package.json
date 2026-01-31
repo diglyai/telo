@@ -1,0 +1,33 @@
+{
+  "name": "@diglyai/runtime",
+  "version": "1.0.0",
+  "description": "Digly Runtime - Read-Only Execution Host for Resolved Distribution Directories",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "digly": "./bin/digly.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "digly",
+    "runtime",
+    "execution",
+    "manifest"
+  ],
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "cel-js": "^0.8.2",
+    "@sinclair/typebox": "^0.34.48",
+    "ajv": "^8.17.1",
+    "@diglyai/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.5",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

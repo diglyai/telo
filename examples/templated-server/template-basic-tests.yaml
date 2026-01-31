@@ -1,0 +1,98 @@
+---
+# Simple template test - single variable expansion
+kind: TemplateDefinition
+metadata:
+  name: SimpleTest
+schema:
+  type: object
+  properties:
+    message:
+      type: string
+      default: 'Hello World'
+  required: []
+resources:
+  - kind: Logic.InlineFunction
+    metadata:
+      name: 'test-message'
+    code: |
+      function main() {
+        return { message: "${{ message }}" };
+      }
+
+---
+# Instantiate simple template
+kind: Template.SimpleTest
+metadata:
+  name: SimpleInstance
+message: 'Hello from Template!'
+
+---
+# Loop test template
+kind: TemplateDefinition
+metadata:
+  name: LoopTest
+schema:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        type: string
+      default: ['alpha', 'beta', 'gamma']
+resources:
+  - for: 'item in items'
+    kind: Logic.InlineFunction
+    metadata:
+      name: 'item-${{ item }}'
+    code: |
+      function main() {
+        return { value: "${{ item }}" };
+      }
+
+---
+# Instantiate loop template
+kind: Template.LoopTest
+metadata:
+  name: LoopInstance
+items: ['one', 'two', 'three', 'four']
+
+---
+# Conditional test template
+kind: TemplateDefinition
+metadata:
+  name: ConditionalTest
+schema:
+  type: object
+  properties:
+    enableFeatureA:
+      type: boolean
+      default: true
+    enableFeatureB:
+      type: boolean
+      default: false
+resources:
+  - if: 'enableFeatureA'
+    kind: Logic.InlineFunction
+    metadata:
+      name: 'feature-a'
+    code: |
+      function main() {
+        return { enabled: true, feature: "A" };
+      }
+
+  - if: 'enableFeatureB'
+    kind: Logic.InlineFunction
+    metadata:
+      name: 'feature-b'
+    code: |
+      function main() {
+        return { enabled: true, feature: "B" };
+      }
+
+---
+# Instantiate conditional template
+kind: Template.ConditionalTest
+metadata:
+  name: ConditionalInstance
+enableFeatureA: false
+enableFeatureB: true

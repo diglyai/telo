@@ -1,0 +1,4 @@
+name: "Data"
+version: "1.0.0"
+definitions:
+  - "resources.yaml"

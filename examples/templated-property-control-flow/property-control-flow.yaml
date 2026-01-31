@@ -1,0 +1,67 @@
+---
+# Template demonstrating property-level control flow
+kind: TemplateDefinition
+metadata:
+  name: RestApiServer
+schema:
+  type: object
+  properties:
+    name:
+      type: string
+      default: 'api'
+    endpoints:
+      type: array
+      items:
+        type: object
+        properties:
+          resource:
+            type: string
+          methods:
+            type: array
+            items:
+              type: string
+      default:
+        - resource: 'users'
+          methods: ['GET', 'POST']
+        - resource: 'products'
+          methods: ['GET', 'POST', 'PUT', 'DELETE']
+    enableCors:
+      type: boolean
+      default: false
+  required: [name, endpoints]
+resources:
+  - kind: Http.Server
+    metadata:
+      name: '${{ name }}-server'
+    port: 8080
+    mounts:
+      - name: 'Http.Api.${{ name }}'
+  - kind: Http.Api
+    metadata:
+      name: '${{ name }}'
+    routes:
+      # Generate routes for each endpoint and method combination
+      - for: ['endpoint in endpoints', 'method in endpoint.methods']
+        path: '/api/${{ endpoint.resource }}'
+        method: '${{ method }}'
+        handler: 'Logic.JavaScript.${{ method }}${{ endpoint.resource }}'
+    middleware:
+      # Conditionally add CORS middleware
+      - if: 'enableCors'
+        kind: 'Http.Middleware.Cors'
+        allowOrigin: '*'
+
+---
+# Example: Instantiate the REST API template
+kind: Self.RestApiServer
+metadata:
+  name: MyApi
+name: 'my-api'
+endpoints:
+  - resource: 'users'
+    methods: ['GET', 'POST', 'PUT', 'DELETE']
+  - resource: 'posts'
+    methods: ['GET', 'POST']
+  - resource: 'comments'
+    methods: ['GET', 'POST', 'DELETE']
+enableCors: true

@@ -1,0 +1,81 @@
+---
+# Template: Multi-Region HTTP Server
+# Demonstrates loop-based resource generation
+kind: TemplateDefinition
+metadata:
+  name: RegionalServer
+schema:
+  type: object
+  properties:
+    serviceName:
+      type: string
+      description: 'Name of the service'
+    basePort:
+      type: integer
+      default: 8080
+      description: 'Starting port number'
+    baseUrl:
+      type: string
+      default: 'http://localhost:8080'
+      description: 'Base URL for the service'
+    regions:
+      type: array
+      items:
+        type: string
+      default: ['us-east', 'eu-west']
+      description: 'List of regions to deploy to'
+  required: [serviceName]
+resources:
+  # Generate a server for each region
+  - for: 'index, region in regions'
+    kind: Http.Server
+    metadata:
+      name: '${{ serviceName }}-${{ region }}'
+    port: ${{ basePort + index }}
+    baseUrl: '${{ baseUrl }}'
+    routes:
+      - path: '/health'
+        method: GET
+        handler: 'Logic.InlineFunction.HealthCheck-${{ region }}'
+      - path: '/info'
+        method: GET
+        handler: 'Logic.InlineFunction.Info-${{ region }}'
+
+  # Generate health check handler for each region
+  - for: 'region in regions'
+    kind: Logic.InlineFunction
+    metadata:
+      name: 'HealthCheck-${{ region }}'
+    code: |
+      function main() {
+        return {
+          status: "healthy",
+          region: "${{ region }}",
+          service: "${{ serviceName }}"
+        };
+      }
+
+  # Generate info handler for each region
+  - for: 'index, region in regions'
+    kind: Logic.InlineFunction
+    metadata:
+      name: 'Info-${{ region }}'
+    code: |
+      function main() {
+        return {
+          serviceName: "${{ serviceName }}",
+          region: "${{ region }}",
+          port: ${{ basePort + index }},
+          message: "Server running in ${{ region }}"
+        };
+      }
+
+---
+# Instantiate the template
+kind: RegionalServer
+metadata:
+  name: ApiGateway
+serviceName: 'api-gateway'
+basePort: 9000
+regions: ['us-east-1', 'us-west-2', 'eu-central-1']
+baseUrl: http://localhost:${{ basePort }}

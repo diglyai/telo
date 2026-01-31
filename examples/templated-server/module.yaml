@@ -1,0 +1,27 @@
+name: TemplatedSimpleServer
+version: 1.0.0
+description: Examples demonstrating the DiglyAI TemplateDefinition system
+
+# Import required modules for the examples
+imports:
+  - '../../modules/http'
+  - '../../modules/logic'
+
+# Load example resources
+# Uncomment the examples you want to run
+resources:
+  # Simple HTTP server demo (RECOMMENDED START HERE)
+  # Generates 3 HTTP servers (ports 9000-9002) with health check endpoints
+  - 'simple-server-demo.yaml'
+
+  # Basic template functionality tests
+  # - 'template-basic-tests.yaml'
+
+  # Property-level control flow demonstration
+  # - 'property-control-flow.yaml'
+
+  # Recursive template composition
+  # - 'recursive-templates.yaml'
+
+  # Comprehensive feature demonstration
+  # - 'comprehensive-template-demo.yaml'

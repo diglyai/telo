@@ -1,0 +1,47 @@
+kind: ResourceDefinition
+metadata:
+  name: TemplateDefinition
+  resourceKind: Template
+controllers:
+  - runtime: 'node@>=20'
+    entrypoint: './nodejs/index.ts'
+  - runtime: 'bun@>=1.1'
+    entrypoint: './nodejs/index.ts'
+schema:
+  type: object
+  properties:
+    metadata:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+    parameters:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+          type:
+            type: string
+          default:
+            type: any
+          required:
+            type: boolean
+        required: [name, type]
+    resources:
+      type: array
+      items:
+        type: object
+        properties:
+          kind:
+            type: string
+          metadata:
+            type: object
+            properties:
+              name:
+                type: string
+            required: [name]
+        required: [kind, metadata]
+  required: [metadata, resources]
