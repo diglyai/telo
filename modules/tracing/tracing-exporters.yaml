@@ -1,0 +1,36 @@
+kind: 'ResourceDefinition'
+metadata:
+  name: 'FileExporterDefinition'
+  resourceKind: 'FileExporter'
+controllers:
+  - runtime: 'node@>=20 <23'
+    entrypoint: './nodejs/index.ts'
+  - runtime: 'bun@>=1.1'
+    entrypoint: './nodejs/index.ts'
+schema:
+  type: 'object'
+  properties:
+    metadata:
+      type: 'object'
+      properties:
+        name:
+          type: 'string'
+      required: ['name']
+    path:
+      type: 'string'
+      description: 'Output file path for trace events'
+    format:
+      type: 'string'
+      description: 'Output format for trace events'
+      enum: ['json', 'ndjson', 'text']
+      default: 'ndjson'
+    mode:
+      type: 'string'
+      description: 'File write mode'
+      enum: ['append', 'overwrite']
+      default: 'append'
+    pretty:
+      type: 'boolean'
+      description: 'Pretty-print JSON output (only applies to json format)'
+      default: false
+  required: ['metadata', 'path']

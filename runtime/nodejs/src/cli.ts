@@ -60,15 +60,20 @@ async function main() {
     } else {
       log.info('  (none)');
     }
-    log.info(`\nResources: ${countResources(kernel)}`);
 
-    log.info('\nStarting modules...');
-    const startErrors = await startModules(kernel, log);
-    if (startErrors.length > 0) {
-      throw new Error('One or more modules failed to start');
+    const count = countResources(kernel);
+    if (count === 0) {
+      log.info(log.warn('\nNo resources defined.'));
+    } else {
+      log.info(`\nResources: ${count}`);
+      log.info('\nStarting modules...');
+      const startErrors = await startModules(kernel, log);
+      if (startErrors.length > 0) {
+        throw new Error('One or more modules failed to start');
+      }
+
+      log.info(`\n${log.ok('Application initialized successfully.')}`);
     }
-
-    log.info(`\n${log.ok('Application initialized successfully.')}`);
   } catch (error) {
     console.error(
       'Error loading runtime:',
@@ -137,9 +142,9 @@ async function startModules(
 
   try {
     await kernel.start();
-    for (const module of modules) {
-      log.info(`${log.ok('✓')} ${module.name}`);
-    }
+    // for (const module of modules) {
+    //   log.info(`${log.ok('✓')} ${module.name}`);
+    // }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log.info(`${log.error('✗')} ${message}`);

@@ -1,0 +1,55 @@
+kind: Http.Server
+metadata:
+  name: TracingExample
+port: 8845
+mounts:
+  - path: /v1
+    type: Http.Api.ExampleApi
+---
+kind: Tracing.FileExporter
+metadata:
+  name: Traces
+path: ./traces.ndjson
+format: ndjson
+mode: overwrite
+---
+kind: Tracing.Provider
+metadata:
+  name: main
+exporters:
+  - Tracing.FileExporter.Traces
+events:
+  - Runtime.*
+  - Http.Server.*
+filters:
+  minLevel: debug
+buffer:
+  maxSize: 1000
+  retryAttempts: 3
+  retryDelay: 1000
+---
+kind: Http.Api
+metadata:
+  name: ExampleApi
+routes:
+  - request:
+      path: /hello
+      method: GET
+    handler:
+      name: Logic.Inline.HelloHandler
+    response:
+      status: 200
+      headers:
+        Content-Type: application/json
+---
+kind: Logic.Inline
+metadata:
+  name: HelloHandler
+language: javascript
+code: |
+  export default async function handler(input, ctx) {
+    return {
+      greeting: "Hello from Tracing Example!",
+      timestamp: new Date().toISOString()
+    };
+  }

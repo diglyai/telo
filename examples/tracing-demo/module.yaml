@@ -1,0 +1,9 @@
+version: 1.0.0
+name: TracingDemo
+description: Example demonstrating the Tracing module with file exporter
+modules:
+  - ../../modules/tracing
+  - ../../modules/http
+  - ../../modules/logic
+resources:
+  - demo.yaml
