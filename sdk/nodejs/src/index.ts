@@ -17,6 +17,11 @@ export interface RuntimeResource {
   [key: string]: any;
 }
 
+export interface ResourceContext extends ModuleContext {
+  acquireHold(reason?: string): () => void;
+  emitEvent(event: string, payload?: any): Promise<void>;
+}
+
 export interface ModuleCreateContext extends ModuleContext {
   kernel: {
     registry: Map<string, Map<string, RuntimeResource>>;
@@ -47,6 +52,7 @@ export interface ModuleCreateContext extends ModuleContext {
     event: string,
     payload?: any,
   ): Promise<void>;
+  createResourceContext(kind: string, name: string): ResourceContext;
 }
 
 export interface ResourceInstance {

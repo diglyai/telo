@@ -1,6 +1,7 @@
 import type {
   ModuleContext,
   ModuleCreateContext,
+  ResourceContext,
   ResourceInstance,
   RuntimeResource,
 } from '@diglyai/sdk';
@@ -73,116 +74,151 @@ const requestValidators = new Map<string, ValidateFunction>();
 
 type SchemaResolver = (ref: string) => Record<string, any> | null;
 
-export function create(
-  resource: HttpServerResource,
-  ctx: ModuleCreateContext,
-): ResourceInstance | null {
-  if (resource.kind !== 'Http.Server') {
-    return null;
-  }
+class HttpServer implements ResourceInstance {
+  private releaseHold: (() => void) | null = null;
+  private readonly app: FastifyInstance;
+  private readonly host: string;
+  private readonly port: number;
+  private readonly baseUrl: string;
+  private readonly resource: HttpServerResource;
+  private readonly ctx: ModuleCreateContext;
+  private readonly resourceCtx: ResourceContext;
 
-  const server = resource;
-  const host = server.host || '0.0.0.0';
-  const port = Number(server.port || 0);
-  const baseUrl = resource.baseUrl ?? `http://${host}:${port}`;
-  if (!port) {
-    throw new Error('Http.Server port is required');
-  }
+  constructor(
+    resource: HttpServerResource,
+    ctx: ModuleCreateContext,
+    resourceCtx: ResourceContext,
+  ) {
+    this.resource = resource;
+    this.ctx = ctx;
+    this.resourceCtx = resourceCtx;
+    this.host = resource.host || '0.0.0.0';
+    this.port = Number(resource.port || 0);
+    this.baseUrl = resource.baseUrl ?? `http://${this.host}:${this.port}`;
 
-  const app: FastifyInstance = Fastify();
-
-  const routes = ctx.getResources('Http.Route') as HttpRouteResource[];
-  const apis = ctx.getResources('Http.Api') as HttpApiResource[];
-  const routesByName = new Map<string, HttpRouteResource>();
-  const apisByName = new Map<string, HttpApiResource>();
-  for (const route of routes) {
-    if (route.metadata?.name) {
-      routesByName.set(route.metadata.name, route);
+    if (!this.port) {
+      throw new Error('Http.Server port is required');
     }
-  }
-  for (const api of apis) {
-    if (api.metadata?.name) {
-      apisByName.set(api.metadata.name, api);
-    }
+
+    this.app = Fastify();
+    this.setupRoutes();
   }
 
-  const mounts = server.mounts || [];
-  const resolveSchema = createSchemaResolver(ctx);
-  if (mounts.length === 0) {
+  private setupRoutes(): void {
+    const routes = this.ctx.getResources('Http.Route') as HttpRouteResource[];
+    const apis = this.ctx.getResources('Http.Api') as HttpApiResource[];
+    const routesByName = new Map<string, HttpRouteResource>();
+    const apisByName = new Map<string, HttpApiResource>();
+
     for (const route of routes) {
-      registerHttpRoute(app, route, ctx, '', resolveSchema);
+      if (route.metadata?.name) {
+        routesByName.set(route.metadata.name, route);
+      }
     }
-  } else {
-    for (const mount of mounts) {
-      const type = mount.type || '';
-      const { kind, name } = parseType(type);
-      const prefix = mount.path || '';
-      if (kind === 'Http.Route') {
-        const route = routesByName.get(name) || apisByName.get(name);
-        if (!route) {
-          throw new Error(`Http.Route not found: ${type}`);
-        }
-        if (route.kind === 'Http.Api') {
+    for (const api of apis) {
+      if (api.metadata?.name) {
+        apisByName.set(api.metadata.name, api);
+      }
+    }
+
+    const mounts = this.resource.mounts || [];
+    const resolveSchema = createSchemaResolver(this.ctx);
+
+    if (mounts.length === 0) {
+      for (const route of routes) {
+        registerHttpRoute(this.app, route, this.ctx, '', resolveSchema);
+      }
+    } else {
+      for (const mount of mounts) {
+        const type = mount.type || '';
+        const { kind, name } = parseType(type);
+        const prefix = mount.path || '';
+
+        if (kind === 'Http.Route') {
+          const route = routesByName.get(name) || apisByName.get(name);
+          if (!route) {
+            throw new Error(`Http.Route not found: ${type}`);
+          }
+          if (route.kind === 'Http.Api') {
+            registerHttpApi(
+              this.app,
+              route as HttpApiResource,
+              routesByName,
+              this.ctx,
+              prefix,
+              resolveSchema,
+            );
+          } else {
+            registerHttpRoute(
+              this.app,
+              route as HttpRouteResource,
+              this.ctx,
+              prefix,
+              resolveSchema,
+            );
+          }
+        } else if (kind === 'Http.Api') {
+          const api = apisByName.get(name);
+          if (!api) {
+            throw new Error(`Http.Api not found: ${type}`);
+          }
           registerHttpApi(
-            app,
-            route as HttpApiResource,
+            this.app,
+            api,
             routesByName,
-            ctx,
+            this.ctx,
             prefix,
             resolveSchema,
           );
         } else {
-          registerHttpRoute(
-            app,
-            route as HttpRouteResource,
-            ctx,
-            prefix,
-            resolveSchema,
-          );
+          throw new Error(`Unsupported mount type: ${type}`);
         }
-      } else if (kind === 'Http.Api') {
-        const api = apisByName.get(name);
-        if (!api) {
-          throw new Error(`Http.Api not found: ${type}`);
-        }
-        registerHttpApi(app, api, routesByName, ctx, prefix, resolveSchema);
-      } else {
-        throw new Error(`Unsupported mount type: ${type}`);
       }
     }
   }
 
-  let releaseHold: (() => void) | null = null;
+  async init(): Promise<void> {
+    this.releaseHold = this.resourceCtx.acquireHold();
+    try {
+      await this.resourceCtx.emitEvent('Ready', {
+        resource: this.resource,
+        app: this.app,
+      });
+      await this.app.listen({ host: this.host, port: this.port });
+      console.log(`Http.Server listening on ${this.baseUrl}`);
+    } catch (error) {
+      if (this.releaseHold) {
+        this.releaseHold();
+        this.releaseHold = null;
+      }
+      throw error;
+    }
+  }
 
-  return {
-    init: async () => {
-      releaseHold = ctx.acquireHold(`Http.Server:${resource.metadata.name}`);
-      try {
-        await ctx.emitResourceEvent(
-          'Http.Server',
-          resource.metadata.name,
-          'Ready',
-          {
-            resource: server,
-            app,
-          },
-        );
-        await app.listen({ host, port });
-        console.log(`Http.Server listening on ${baseUrl}`);
-      } catch (error) {
-        releaseHold();
-        releaseHold = null;
-        throw error;
-      }
-    },
-    teardown: async () => {
-      if (releaseHold) {
-        releaseHold();
-        releaseHold = null;
-      }
-      await app.close();
-    },
-  };
+  async teardown(): Promise<void> {
+    if (this.releaseHold) {
+      this.releaseHold();
+      this.releaseHold = null;
+    }
+    await this.app.close();
+  }
+}
+
+export function create(
+  resource: HttpServerResource,
+  ctx: ModuleCreateContext,
+  resourceCtx?: ResourceContext,
+): ResourceInstance | null {
+  if (resource.kind !== 'Http.Server') {
+    return null;
+  }
+  if (!resourceCtx) {
+    resourceCtx = ctx.createResourceContext(
+      resource.kind,
+      resource.metadata.name,
+    );
+  }
+  return new HttpServer(resource, ctx, resourceCtx);
 }
 
 function parseType(type: string): { kind: string; name: string } {

@@ -18,6 +18,7 @@ import {
   ModuleContext,
   ModuleCreateContext,
   ModuleManifest,
+  ResourceContext,
   ResourceInstance,
   RuntimeError,
   RuntimeResource,
@@ -378,6 +379,27 @@ export class Kernel implements IKernel {
         event: string,
         payload?: any,
       ) => this.emitResourceEvent(kind, name, event, payload),
+      createResourceContext: (kind: string, name: string) =>
+        this.createResourceContext(moduleName, kind, name),
+    };
+  }
+
+  private createResourceContext(
+    moduleName: string,
+    kind: string,
+    name: string,
+  ): ResourceContext {
+    const baseContext = this.createModuleContext(moduleName);
+    return {
+      ...baseContext,
+      acquireHold: (reason?: string) => {
+        const fullReason = reason
+          ? `${kind}:${name} - ${reason}`
+          : `${kind}:${name}`;
+        return this.acquireHold(fullReason);
+      },
+      emitEvent: (event: string, payload?: any) =>
+        this.emitResourceEvent(kind, name, event, payload),
     };
   }
 
@@ -395,9 +417,15 @@ export class Kernel implements IKernel {
             continue;
           }
           this.ensureResourceEventBus(kind, resource.metadata.name);
+          const resourceCtx = this.createResourceContext(
+            module.name,
+            kind,
+            resource.metadata.name,
+          );
           const instance = await module.create(
             resource,
             this.createModuleCreateContext(module.name),
+            resourceCtx,
           );
           if (!instance) {
             this.resourceEventBuses.delete(key);

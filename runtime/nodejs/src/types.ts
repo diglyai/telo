@@ -1,11 +1,13 @@
 import type {
   ModuleContext,
   ModuleCreateContext,
+  ResourceContext,
   ResourceInstance,
 } from '@diglyai/sdk';
 export type {
   ModuleContext,
   ModuleCreateContext,
+  ResourceContext,
   ResourceInstance
 } from '@diglyai/sdk';
 
@@ -93,6 +95,7 @@ export interface DiglyModule {
   create?(
     resource: RuntimeResource,
     ctx: ModuleCreateContext,
+    resourceCtx?: ResourceContext,
   ): ResourceInstance | null | Promise<ResourceInstance | null>;
 }
 
