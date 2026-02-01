@@ -3,3 +3,4 @@ packages:
   - modules/*/*/*
   - runtime/*
   - sdk/*
+  - yaml-cel-templating/*

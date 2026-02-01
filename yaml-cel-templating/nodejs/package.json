@@ -1,0 +1,39 @@
+{
+  "name": "@diglyai/yaml-cel-templating",
+  "version": "1.0.0",
+  "description": "Digly YAML-CEL Templating engine implementation",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "digly": "./bin/digly.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
+  },
+  "keywords": [
+    "digly",
+    "CEL",
+    "yaml",
+    "templating",
+    "manifest"
+  ],
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "cel-js": "^0.8.2",
+    "chevrotain": "^11.1.1",
+    "@sinclair/typebox": "^0.34.48",
+    "ajv": "^8.17.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/js-yaml": "^4.0.5",
+    "@types/node": "^20.0.0",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3"
+  }
+}
