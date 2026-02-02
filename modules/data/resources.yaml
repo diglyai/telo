@@ -2,6 +2,7 @@ kind: ResourceDefinition
 metadata:
   name: DataTypeDefinition
   resourceKind: Type
+  module: Data
 schema:
   type: object
   properties:

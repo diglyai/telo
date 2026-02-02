@@ -1,3 +1,4 @@
+kind: ModuleDefinition
 name: 'OpenApi'
 version: '1.0.0'
 definitions:

@@ -1,14 +1,14 @@
 import type {
-  ModuleContext,
-  ModuleCreateContext,
-  ResourceContext,
-  ResourceInstance,
+    ModuleContext,
+    ModuleCreateContext,
+    ResourceContext,
+    ResourceInstance,
 } from '@diglyai/sdk';
 export type {
-  ModuleContext,
-  ModuleCreateContext,
-  ResourceContext,
-  ResourceInstance
+    ModuleContext,
+    ModuleCreateContext,
+    ResourceContext,
+    ResourceInstance
 } from '@diglyai/sdk';
 
 /**
@@ -38,6 +38,7 @@ export interface ResourceDefinition {
   metadata: {
     name: string;
     resourceKind: string;
+    module?: string;
   };
   schema: Record<string, any>; // JSON Schema
   events?: string[];

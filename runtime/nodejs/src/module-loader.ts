@@ -1,13 +1,13 @@
 import * as path from 'path';
 import { ModuleManifestLoader } from './module-manifest-loader';
 import {
-  DiglyModule,
-  DiglyRuntimeError,
-  ModuleConfig,
-  ModuleManifest,
-  ResourceDefinition,
-  RuntimeError,
-  RuntimeResource,
+    DiglyModule,
+    DiglyRuntimeError,
+    ModuleConfig,
+    ModuleManifest,
+    ResourceDefinition,
+    RuntimeError,
+    RuntimeResource,
 } from './types';
 
 /**
@@ -30,7 +30,7 @@ export class ModuleLoader {
    */
   async loadModule(config: ModuleConfig): Promise<DiglyModule[]> {
     const moduleDir = this.resolveModuleDir(config.source);
-    const manifest = await this.manifestLoader.loadModuleManifest(moduleDir, config.manifest);
+    const { manifest } = await this.manifestLoader.loadModuleManifest(moduleDir, config.manifest);
     if (!config.name) {
       config.name = manifest.name;
     }
@@ -70,9 +70,9 @@ export class ModuleLoader {
         let moduleDir = this.resolveModuleDir(config.source);
 
         console.log(`DEBUG: Discovering modules from "${moduleDir}"`);
-        const manifest = await this.manifestLoader.loadModuleManifest(moduleDir, config.manifest);
+        const { manifest, embeddedResources } = await this.manifestLoader.loadModuleManifest(moduleDir, config.manifest);
         console.log(`DEBUG: Main module manifest loaded:`, manifest);
-        const discovery = await this.manifestLoader.discoverModules(moduleDir, manifest);
+        const discovery = await this.manifestLoader.discoverModules(moduleDir, manifest, embeddedResources);
         console.log(
           `DEBUG: Discovery result - imported modules count:`,
           discovery.importedModules.length,
@@ -214,10 +214,11 @@ export class ModuleLoader {
 
       // Load module manifest first
       console.log(`DEBUG: Loading manifest from "${moduleDir}"`);
-      const manifest = await this.manifestLoader.loadModuleManifest(moduleDir, config.manifest);
+      const { manifest, embeddedResources } = await this.manifestLoader.loadModuleManifest(moduleDir, config.manifest);
       const resourceDefinitions = await this.manifestLoader.loadResourceDefinitions(
         moduleDir,
         manifest,
+        embeddedResources,
       );
 
       const { controllerModules, fallbackDefinitions } = this.createControllerModules(

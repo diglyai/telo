@@ -2,6 +2,7 @@ kind: ResourceDefinition
 metadata:
   name: TemplateDefinition
   resourceKind: Template
+  module: Template
 controllers:
   - runtime: 'node@>=20'
     entrypoint: './nodejs/index.ts'

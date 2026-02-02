@@ -2,6 +2,7 @@ kind: 'ResourceDefinition'
 metadata:
   name: 'OpenApiSpecDefinition'
   resourceKind: 'Spec'
+  module: 'OpenApi'
 controllers:
   - runtime: 'node@>=20 <23'
     entrypoint: './nodejs/index.ts'

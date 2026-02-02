@@ -2,16 +2,16 @@ import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
 import {
-  formatAjvErrors,
-  validateModuleManifest,
-  validateResourceDefinition,
+    formatAjvErrors,
+    validateModuleManifest,
+    validateResourceDefinition,
 } from './manifest-schemas';
 import {
-  DiglyRuntimeError,
-  ModuleDiscoveryResult,
-  ModuleManifest,
-  ResourceDefinition,
-  RuntimeError,
+    DiglyRuntimeError,
+    ModuleDiscoveryResult,
+    ModuleManifest,
+    ResourceDefinition,
+    RuntimeError,
 } from './types';
 
 /**
@@ -19,14 +19,47 @@ import {
  */
 export class ModuleManifestLoader {
   /**
-   * Load module manifest from module.yaml
+   * Load module manifest from module.yaml, supporting multi-document files
    */
-  async loadModuleManifest(moduleDir: string, manifestPath?: string): Promise<ModuleManifest> {
+  async loadModuleManifest(
+    moduleDir: string,
+    manifestPath?: string,
+  ): Promise<{ manifest: ModuleManifest; embeddedResources: ResourceDefinition[] }> {
     const manifestFile = manifestPath || path.join(moduleDir, 'module.yaml');
 
     try {
       const content = await fs.readFile(manifestFile, 'utf-8');
-      const manifest = yaml.load(content) as ModuleManifest;
+      const documents = yaml.loadAll(content);
+
+      let manifest: ModuleManifest | null = null;
+      const embeddedResources: ResourceDefinition[] = [];
+
+      for (const doc of documents) {
+        if (!doc || typeof doc !== 'object') {
+          continue;
+        }
+
+        const anyDoc = doc as any;
+
+        // Check for ModuleManifest
+        if (anyDoc.kind === 'ModuleDefinition') {
+          if (manifest) {
+            throw new Error('Multiple ModuleDefinition documents found in the same file');
+          }
+          manifest = anyDoc as ModuleManifest;
+          continue;
+        }
+
+        // Check for ResourceDefinition
+        if (anyDoc.kind === 'ResourceDefinition') {
+          embeddedResources.push(anyDoc as ResourceDefinition);
+          continue;
+        }
+      }
+
+      if (!manifest) {
+        throw new Error('No document with kind: ModuleDefinition found');
+      }
 
       if (!validateModuleManifest(manifest)) {
         throw new Error(
@@ -34,7 +67,7 @@ export class ModuleManifestLoader {
         );
       }
 
-      return manifest;
+      return { manifest, embeddedResources };
     } catch (error) {
       throw new DiglyRuntimeError(
         RuntimeError.ERR_MODULE_MISSING,
@@ -44,13 +77,14 @@ export class ModuleManifestLoader {
   }
 
   /**
-   * Load resource definitions from module manifest (direct resources only, no imports)
+   * Load resource definitions from module manifest and external files
    */
   async loadResourceDefinitions(
     moduleDir: string,
     manifest: ModuleManifest,
+    embeddedResources: ResourceDefinition[] = [],
   ): Promise<ResourceDefinition[]> {
-    return this.loadDirectResourceDefinitions(moduleDir, manifest);
+    return this.loadDirectResourceDefinitions(moduleDir, manifest, embeddedResources);
   }
 
   /**
@@ -59,6 +93,7 @@ export class ModuleManifestLoader {
   async discoverModules(
     moduleDir: string,
     manifest: ModuleManifest,
+    embeddedResources: ResourceDefinition[] = [],
   ): Promise<ModuleDiscoveryResult> {
     const processedModules = new Set<string>(); // Prevent circular imports
     const importedModules: Array<{
@@ -86,7 +121,11 @@ export class ModuleManifestLoader {
     }
 
     // Load main module definitions
-    const mainResourceDefinitions = await this.loadDirectResourceDefinitions(moduleDir, manifest);
+    const mainResourceDefinitions = await this.loadDirectResourceDefinitions(
+      moduleDir,
+      manifest,
+      embeddedResources,
+    );
 
     return {
       mainModule: {
@@ -111,7 +150,7 @@ export class ModuleManifestLoader {
     entrypointsOverride?: Array<{ runtime: string; entrypoint: string }>,
   ): Promise<void> {
     console.log(`DEBUG: Loading imported module manifest from:`, moduleDir);
-    const manifest = await this.loadModuleManifest(moduleDir);
+    const { manifest, embeddedResources } = await this.loadModuleManifest(moduleDir);
 
     if (entrypointsOverride) {
       manifest.entrypoints = entrypointsOverride;
@@ -140,7 +179,11 @@ export class ModuleManifestLoader {
 
     // Load this module's definitions
     console.log(`DEBUG: Loading resource definitions for imported module ${manifest.name}`);
-    const resourceDefinitions = await this.loadDirectResourceDefinitions(moduleDir, manifest);
+    const resourceDefinitions = await this.loadDirectResourceDefinitions(
+      moduleDir,
+      manifest,
+      embeddedResources,
+    );
     console.log(
       `DEBUG: Loaded ${resourceDefinitions.length} resource definitions:`,
       resourceDefinitions.map((def) => def.metadata.resourceKind),
@@ -160,17 +203,26 @@ export class ModuleManifestLoader {
   private async loadDirectResourceDefinitions(
     moduleDir: string,
     manifest: ModuleManifest,
+    embeddedResources: ResourceDefinition[] = [],
   ): Promise<ResourceDefinition[]> {
-    const definitions: ResourceDefinition[] = [];
+    const definitions: ResourceDefinition[] = [...embeddedResources];
 
-    if (!manifest.definitions || manifest.definitions.length === 0) {
-      return definitions;
+    // Load external definitions if present
+    if (manifest.definitions && manifest.definitions.length > 0) {
+      for (const defPath of manifest.definitions) {
+        const fullPath = path.resolve(moduleDir, defPath);
+        const loadedDefinitions = await this.loadResourceDefinition(fullPath);
+        definitions.push(...loadedDefinitions);
+      }
     }
 
-    for (const defPath of manifest.definitions) {
-      const fullPath = path.resolve(moduleDir, defPath);
-      const loadedDefinitions = await this.loadResourceDefinition(fullPath);
-      definitions.push(...loadedDefinitions);
+    // Validate module reference for ALL definitions
+    for (const def of definitions) {
+      if (def.metadata.module !== manifest.name) {
+        throw new Error(
+          `ResourceDefinition ${def.metadata.name} (kind: ${def.metadata.resourceKind}) belongs to module "${def.metadata.module}", but was loaded by module "${manifest.name}".`,
+        );
+      }
     }
 
     return definitions;

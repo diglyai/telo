@@ -2,6 +2,7 @@ kind: 'ResourceDefinition'
 metadata:
   name: 'HttpServerDefinition'
   resourceKind: 'Server'
+  module: 'Http'
 controllers:
   - runtime: 'node@>=20 <23'
     entrypoint: './nodejs/index.ts'

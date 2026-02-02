@@ -1,3 +1,4 @@
+kind: ModuleDefinition
 name: TemplatedSimpleServer
 version: 1.0.0
 description: Examples demonstrating the DiglyAI TemplateDefinition system

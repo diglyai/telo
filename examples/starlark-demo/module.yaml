@@ -1,3 +1,4 @@
+kind: ModuleDefinition
 name: StarlarkDemo
 description: A demo module showcasing Starlark scripts
 version: 1.0.0

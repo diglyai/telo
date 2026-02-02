@@ -11,6 +11,7 @@ const EntrypointSchema = Type.Object(
 
 export const ModuleManifestSchema = Type.Object(
   {
+    kind: Type.Optional(Type.String()),
     name: Type.String(),
     version: Type.String(),
     imports: Type.Optional(Type.Array(Type.String())),
@@ -37,6 +38,7 @@ export const ResourceDefinitionSchema = Type.Object(
       {
         name: Type.String(),
         resourceKind: Type.String(),
+        module: Type.String(),
       },
       { additionalProperties: true },
     ),

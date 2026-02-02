@@ -2,6 +2,7 @@ kind: 'ResourceDefinition'
 metadata:
   name: 'JavaScriptDefinition'
   resourceKind: 'JavaScript'
+  module: 'Logic'
 controllers:
   - runtime: 'node@>=20 <23'
     entrypoint: './nodejs/javascript.ts'
