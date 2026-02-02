@@ -1,0 +1,19 @@
+kind: Starlark.Script
+metadata:
+  name: example-starlark-script
+code: |
+  def process(input):
+      result = input["value"] * 2
+      return {"result": result}
+inputSchema:
+  type: object
+  properties:
+    value:
+      type: number
+  required: [value]
+outputSchema:
+  type: object
+  properties:
+    result:
+      type: number
+  required: [result]

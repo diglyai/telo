@@ -1,0 +1,7 @@
+name: StarlarkDemo
+description: A demo module showcasing Starlark scripts
+version: 1.0.0
+imports:
+  - ../../modules/starlark
+resources:
+  - ./demo.yaml

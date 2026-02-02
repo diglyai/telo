@@ -1,0 +1,5 @@
+version: 1.0.0
+name: Starlark
+description: Execute Starlark code within workflows
+definitions:
+  - ./script.yaml

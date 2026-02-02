@@ -80,6 +80,32 @@ importers:
         specifier: ^5.7.2
         version: 5.7.2
 
+  modules/starlark/nodejs:
+    dependencies:
+      '@diglyai/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
+      ajv:
+        specifier: ^8.12.0
+        version: 8.17.1
+      starlark-webasm:
+        specifier: ^1.0.3
+        version: 1.0.3
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.30
+
+  modules/tracing/nodejs:
+    dependencies:
+      '@diglyai/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.30
+
   runtime/nodejs:
     dependencies:
       '@diglyai/sdk':
@@ -1634,6 +1660,9 @@ packages:
   stack-utils@2.0.6:
     resolution: {integrity: sha512-XlkWvfIm6RmsWtNJx+uqtKLS8eqFbxUg0ZzLXqY0caEy9l7hruX8IpiDnjsLavoBgqCCR71TqWO8MaXYheJ3RQ==}
     engines: {node: '>=10'}
+
+  starlark-webasm@1.0.3:
+    resolution: {integrity: sha512-+vYe+Q/9xoWraV0eIfgmQviQeokMXQOu1ZZ202i6g1RJO6Nr3ZYM0tIY+rf1bsPLbfFNtXW4xQHEfDs9vVoHug==}
 
   string-length@4.0.2:
     resolution: {integrity: sha512-+l6rNN5fYHNhZZy41RXsYptCjA2Igmq4EG7kZAYFQI1E1VTXarr6ZPXBg6eq7Y6eK4FEhY6AJlyuFIb/v/S0VQ==}
@@ -3609,6 +3638,8 @@ snapshots:
   stack-utils@2.0.6:
     dependencies:
       escape-string-regexp: 2.0.0
+
+  starlark-webasm@1.0.3: {}
 
   string-length@4.0.2:
     dependencies:

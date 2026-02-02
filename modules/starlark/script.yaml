@@ -1,0 +1,25 @@
+kind: ResourceDefinition
+metadata:
+  name: StarlarkScriptDefinition
+  resourceKind: Script
+controllers:
+  - runtime: 'node@>=20 <23'
+    entrypoint: './nodejs/script.ts'
+  - runtime: 'bun@>=1.1'
+    entrypoint: './nodejs/script.ts'
+schema:
+  type: object
+  properties:
+    metadata:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+    code:
+      type: string
+    inputSchema:
+      type: object
+    outputSchema:
+      type: object
+  required: [metadata, code]
