@@ -1,0 +1,69 @@
+kind: Pipeline.Job
+metadata:
+  name: TestHTTPClient
+  description: Test HTTP client requests
+
+steps:
+  - name: Fetch data
+    kind: Logic.JavaScript
+    code: |
+      function main({ userId }) {
+        return { 
+          id: userId,
+          name: 'Alice',
+          email: 'alice@example.com'
+        }
+      }
+    input:
+      userId: 42
+    outputs:
+      user: 'payload'
+
+  - name: Extract user details
+    kind: Assert.Value
+    value: '${{ user }}'
+    assertions:
+      - 'value.id == 42'
+      - "value.name == 'Alice'"
+      - "value.email contains '@'"
+
+---
+kind: Pipeline.Job
+metadata:
+  name: TestMultiStep
+  description: Test multi-step pipeline with data flow
+
+steps:
+  - name: Generate random number
+    kind: Logic.JavaScript
+    code: |
+      function main({}) {
+        return { value: Math.floor(Math.random() * 100) }
+      }
+    input: {}
+    outputs:
+      randomNum: 'payload.value'
+
+  - name: Verify random is valid
+    kind: Assert.Value
+    value: '${{ randomNum }}'
+    assertions:
+      - 'value >= 0'
+      - 'value < 100'
+
+  - name: Double the number
+    kind: Logic.JavaScript
+    code: |
+      function main({ num }) {
+        return { doubled: num * 2 }
+      }
+    input:
+      num: '${{ randomNum }}'
+    outputs:
+      doubled: 'payload.doubled'
+
+  - name: Verify doubled value
+    kind: Assert.Value
+    value: '${{ doubled }}'
+    assertions:
+      - 'value == randomNum * 2'

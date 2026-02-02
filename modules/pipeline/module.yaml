@@ -1,0 +1,6 @@
+kind: ModuleDefinition
+name: Pipeline
+version: 1.0.0
+description: Orchestration and testing framework using inline resource execution
+definitions:
+  - pipeline.yaml

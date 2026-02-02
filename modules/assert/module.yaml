@@ -1,0 +1,6 @@
+kind: ModuleDefinition
+name: Assert
+version: 1.0.0
+description: Assertion and value verification for testing
+definitions:
+  - value.yaml

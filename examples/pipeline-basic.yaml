@@ -1,0 +1,57 @@
+kind: Pipeline.Job
+metadata:
+  name: TestBasicAddition
+  description: Test basic JavaScript addition
+
+steps:
+  - name: Add two numbers
+    kind: Logic.JavaScript
+    code: |
+      function main({ a, b }) {
+        return { result: a + b }
+      }
+    input:
+      a: 5
+      b: 3
+    outputs:
+      sum: 'payload.result'
+
+  - name: Verify result is 8
+    kind: Assert.Value
+    value: '${{ sum }}'
+    assertions:
+      - 'value == 8'
+      - "typeof(value) == 'number'"
+
+---
+kind: Pipeline.Job
+metadata:
+  name: TestMultipliedNumbers
+  description: Test multiplication with multiple assertions
+
+steps:
+  - name: Calculate product
+    kind: Logic.JavaScript
+    code: |
+      function main({ x, y }) {
+        return { product: x * y, message: 'Calculation complete' }
+      }
+    input:
+      x: 4
+      y: 7
+    outputs:
+      product: 'payload.product'
+      message: 'payload.message'
+
+  - name: Verify product
+    kind: Assert.Value
+    value: '${{ product }}'
+    assertions:
+      - 'value == 28'
+      - 'value > 0'
+
+  - name: Verify message
+    kind: Assert.Value
+    value: '${{ message }}'
+    assertions:
+      - "value contains 'complete'"

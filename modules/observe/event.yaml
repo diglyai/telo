@@ -1,0 +1,32 @@
+kind: ResourceDefinition
+metadata:
+  name: EventDefinition
+  resourceKind: Event
+  module: Observe
+controllers:
+  - runtime: 'node@>=20 <23'
+    entrypoint: './nodejs/event.ts'
+  - runtime: 'bun@>=1.1'
+    entrypoint: './nodejs/event.ts'
+schema:
+  type: object
+  properties:
+    metadata:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+    event:
+      type: string
+      description: Event name to wait for
+    timeout:
+      type: integer
+      description: Timeout in milliseconds
+    filter:
+      type: string
+      description: CEL expression to filter events
+  required:
+    - metadata
+    - event
