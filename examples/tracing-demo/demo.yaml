@@ -9,7 +9,7 @@ mounts:
 kind: Tracing.FileExporter
 metadata:
   name: Traces
-path: ./traces.ndjson
+path: ./.digly-debug/traces.ndjson
 format: ndjson
 mode: overwrite
 ---

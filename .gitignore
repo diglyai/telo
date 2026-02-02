@@ -1,6 +1,7 @@
 # Common
 .DS_Store
 Thumbs.db
+.digly-debug/
 
 
 # NodeJS

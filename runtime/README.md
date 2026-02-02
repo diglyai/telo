@@ -168,22 +168,77 @@ interface Kernel {
 
 ### 4.2 Boot Sequence (Strict Order)
 
-1. **load(path):**
-   - Recursively walk the directory.
-   - Parse YAML documents.
-   - Order resources so that any resource whose `metadata.name` defines a Kind used by another resource is loaded first.
-   - Cyclic Kind dependencies must cause startup failure.
-   - **CRITICAL:** If `registry[Kind][Name]` already exists, the Kernel must panic and exit (Duplicate Resource Error).
+The runtime follows a three-phase boot sequence with strict ordering to ensure proper initialization dependencies:
 
-2. **register(module):**
-   - Maps the module to its claimed `resourceKinds`.
-   - Filters the registry for all resources matching those Kinds.
-   - Calls `module.onLoad(resources)`.
+#### Phase 1: Load Configuration
 
-3. **start():**
-   - Calls `module.onStart(ctx)` for all modules.
-   - Modules initialize I/O (e.g., HttpModule starts listening on a port).
-   - Startup fails if any resource Kind has no registered module.
+**loadFromConfig(runtimeYamlPath):**
+
+1. Load runtime configuration manifest (runtime.yaml)
+2. **Load and register all modules** (containers must be available before resources)
+   - Discover modules from imports and entrypoints
+   - Register each module and emit `Module.Registered` event
+3. **Load and register all resources**
+   - Parse YAML documents from resources list
+   - Recursively register resources and emit `Resource.Registered` event
+   - Order resources so that any resource whose `metadata.name` defines a Kind used by another resource is loaded first
+   - **CRITICAL:** If `registry[Kind][Name]` already exists, the Kernel must panic and exit (Duplicate Resource Error)
+   - Cyclic Kind dependencies must cause startup failure
+4. Resolve CEL expressions in registry
+5. Compile resources with registered modules
+
+#### Phase 2: Register Module Hooks
+
+**start():**
+
+1. Call `module.register(ctx)` hook for all modules (module-level initialization, before any resources)
+2. Emit `Runtime.Starting` event
+
+#### Phase 3: Initialize Resources and Modules
+
+**Initialization Flow:**
+
+1. **Create all resource instances** (Phase 1 of initializeResources)
+   - For each module, call `module.create(resource, ctx)` to instantiate resources
+   - Store instances for later initialization
+
+2. **Initialize resource instances** (Phase 2 of initializeResources)
+   - For each module in order:
+     - Initialize all resources for that module by calling `instance.init()`
+     - Emit `{Kind}.Initialized` event for each resource
+     - Emit `Module.Initialized` event **after all resources for that module are initialized**
+
+   **IMPORTANT:** `Module.Initialized` is emitted only after all child resources of that module have been created and initialized. This ensures modules (containers) are marked as ready only when their resources are ready.
+
+3. Call `module.onStart(ctx)` for all modules (start long-lived operations, e.g., HTTP servers listening)
+
+4. Emit `Runtime.Started` event
+
+#### Event Order Example
+
+For a runtime with Http.Server (requires Logic.InlineFunction):
+
+```
+Resource.Registered (Http.Server.Example)
+Resource.Registered (Logic.InlineFunction.Handler)
+Module.Registered (Http)
+Module.Registered (Logic)
+Runtime.Starting
+Http.Server.Example.Initialized
+Http.Server.Example.Initialized (all Http resources)
+Module.Initialized (Http)
+Logic.InlineFunction.Handler.Initialized
+Logic.InlineFunction.Handler.Initialized (all Logic resources)
+Module.Initialized (Logic)
+Runtime.Started
+```
+
+Notice:
+
+
+- Modules are registered before resources are initialized
+- `Module.Initialized` comes **after** all resources of that module are initialized
+- This dependency order ensures resources can properly access their dependencies
 
 ## 5. Module Entry Point
 
@@ -203,6 +258,12 @@ export function create(
 interface ResourceInstance {
   init?(): void | Promise<void>;
   teardown?(): void | Promise<void>;
+  /**
+   * Optional method for debugging/snapshots
+   * Called when taking runtime state snapshots
+   * Should return serializable state data specific to this resource
+   */
+  snapshot?(): Record<string, any> | Promise<Record<string, any>>;
 }
 ```
 
@@ -554,7 +615,152 @@ interface ModuleDiscoveryResult {
 
 When a module imports another module, both are registered separately in the kernel, maintaining isolation between their resource kinds and execution contexts.
 
-## 11. The Runtime Manifest (runtime.yaml)
+## 11. Debugging and Observability
+
+The Digly Runtime provides built-in debugging capabilities useful for testing and runtime introspection.
+
+### 11.1 Event Streaming
+
+Event streaming captures all runtime events to a JSONL file for debugging and testing purposes.
+
+**Enable via CLI:**
+
+```bash
+digly --debug ./runtime.yaml
+```
+
+**Output:** Creates `.digly-debug/events.jsonl` with newline-delimited JSON events. Each line contains:
+
+```typescript
+{
+  timestamp: string;      // ISO-8601 timestamp
+  event: string;          // Event name (e.g., 'Runtime.Started', 'Module.Registered')
+  payload?: any;          // Event-specific data
+  module?: string;        // Optional: module name
+  resource?: string;      // Optional: resource URN
+  kind?: string;          // Optional: resource kind
+  name?: string;          // Optional: resource name
+}
+```
+
+**Use Cases:**
+
+- **Testing:** Verify that specific events occur in the correct order
+- **Debugging:** Observe runtime execution flow without console logging
+- **Profiling:** Record timestamps to measure execution duration between events
+
+**API Usage:**
+
+```typescript
+const kernel = new Kernel();
+await kernel.enableEventStream('./debug.jsonl');
+
+// Later, read events for testing
+const events = await kernel.getEventStream().readAll();
+const startedEvents = await kernel
+  .getEventStream()
+  .getEventsByType('Runtime.Started');
+```
+
+### 11.2 State Snapshots
+
+State snapshots capture the current runtime state (registry, resource instances, and custom state) into a YAML file for inspection and debugging.
+
+**Enable via CLI:**
+
+```bash
+digly --snapshot-on-exit ./runtime.yaml
+```
+
+**Output:** Creates `.digly-debug/snapshot.yaml` containing:
+
+```yaml
+timestamp: '2026-02-02T10:30:45.123Z'
+resources:
+  - kind: Http.Server
+    name: myserver
+    metadata:
+      uri: 'file:///path/to/resources.yaml#Http.Server.myserver'
+      generationDepth: 0
+    data:
+      port: 8080
+      host: localhost
+    snapshot: # Optional: custom snapshot data from resource instance
+      activeConnections: 42
+      uptime: 3600000
+```
+
+**Resource Organization:**
+
+Snapshots organize resources by `generationDepth` (a depth-first traversal):
+
+- **Depth 0:** Directly loaded resources from YAML files
+- **Depth 1+:** Resources generated from templates or nested generation
+
+This enables understanding resource hierarchy and template-generated resource relationships.
+
+**Custom Resource Snapshots:**
+
+Resource implementations can define a `snapshot()` method to include custom state:
+
+```typescript
+export interface ResourceInstance {
+  init?(): void | Promise<void>;
+  teardown?(): void | Promise<void>;
+
+  /**
+   * Optional method for snapshots
+   * Called when taking runtime state snapshots
+   * Should return serializable state specific to this resource
+   */
+  snapshot?(): Record<string, any> | Promise<Record<string, any>>;
+}
+```
+
+**Example implementation:**
+
+```typescript
+const server: ResourceInstance = {
+  async init() {
+    // startup logic
+  },
+
+  async snapshot() {
+    return {
+      activeConnections: this.connections.size,
+      uptime: Date.now() - this.startTime,
+      requests: this.requestCount,
+    };
+  },
+};
+```
+
+**API Usage:**
+
+```typescript
+const kernel = new Kernel();
+await kernel.loadFromConfig('./runtime.yaml');
+await kernel.start();
+
+// Take snapshot at any point
+const snapshot = await kernel.takeSnapshot('./runtime-snapshot.yaml');
+
+// Or just get the data without writing to file
+const snapshotData = await kernel.takeSnapshot();
+console.log(snapshotData.resources);
+```
+
+### 11.3 Combining Debug Flags
+
+Multiple debug flags can be combined:
+
+```bash
+digly --verbose --debug --snapshot-on-exit ./runtime.yaml
+```
+
+This enables verbose console logging, event streaming, and creates a final state snapshot on exit.
+
+## 12. The Runtime Manifest (runtime.yaml)
 
 The runtime.yaml file is the entrypoint module manifest used by the Kernel.
 

@@ -58,4 +58,10 @@ export interface ModuleCreateContext extends ModuleContext {
 export interface ResourceInstance {
   init?(): void | Promise<void>;
   teardown?(): void | Promise<void>;
+  /**
+   * Optional method for debugging/snapshots
+   * Called when taking runtime state snapshots
+   * Should return serializable state data specific to this resource
+   */
+  snapshot?(): Record<string, any> | Promise<Record<string, any>>;
 }

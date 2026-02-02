@@ -7,11 +7,19 @@ import { Kernel } from './kernel';
 async function main() {
   const args = process.argv.slice(2);
   const verbose = args.includes('--verbose');
-  const filteredArgs = args.filter((arg) => arg !== '--verbose');
+  const debug = args.includes('--debug');
+  const snapshotOnExit = args.includes('--snapshot-on-exit');
+
+  const filteredArgs = args.filter(
+    (arg) =>
+      arg !== '--verbose' && arg !== '--debug' && arg !== '--snapshot-on-exit',
+  );
 
   if (filteredArgs.length === 0) {
-    console.error('Usage: digly [--verbose] <runtime.yaml|directory>');
-    console.error('Example: digly --verbose ./runtime.yaml');
+    console.error(
+      'Usage: digly [--verbose] [--debug] [--snapshot-on-exit] <runtime.yaml|directory>',
+    );
+    console.error('Example: digly --verbose --debug ./runtime.yaml');
     process.exit(1);
   }
 
@@ -40,6 +48,14 @@ async function main() {
     }
     const kernel = new Kernel();
 
+    // Enable event streaming if debug flag is set
+    if (debug) {
+      const debugDir = path.join(process.cwd(), '.digly-debug');
+      const eventStreamPath = path.join(debugDir, 'events.jsonl');
+      await kernel.enableEventStream(eventStreamPath);
+      log.info(`Event stream enabled: ${eventStreamPath}`);
+    }
+
     // Load from runtime configuration or directory
     if (isDirectory) {
       await kernel.load(inputPath);
@@ -67,7 +83,7 @@ async function main() {
     } else {
       // log.info(`\nResources: ${count}`);
       // log.info('\nStarting modules...');
-      const startErrors = await startModules(kernel, log);
+      const startErrors = await startModules(kernel, log, snapshotOnExit);
       if (startErrors.length > 0) {
         throw new Error('One or more modules failed to start');
       }
@@ -132,6 +148,7 @@ function createLogger(verbose: boolean) {
 async function startModules(
   kernel: Kernel,
   log: ReturnType<typeof createLogger>,
+  snapshotOnExit: boolean = false,
 ) {
   const errors: Error[] = [];
   const modules = Array.from(kernel.moduleInstances.values());
@@ -154,6 +171,15 @@ async function startModules(
   if (errors.length === 0) {
     const payload = { kernel, config: kernel.getRuntimeConfig() || {} };
     await kernel.waitForIdle();
+
+    // Take snapshot if requested
+    if (snapshotOnExit) {
+      const debugDir = path.join(process.cwd(), '.digly-debug');
+      const snapshotPath = path.join(debugDir, 'snapshot.yaml');
+      await kernel.takeSnapshot(snapshotPath);
+      log.info(`Snapshot saved: ${snapshotPath}`);
+    }
+
     await kernel.emitRuntimeEvent('Runtime.Stopping', payload);
     await kernel.teardownResources();
     await kernel.emitRuntimeEvent('Runtime.Stopped', payload);

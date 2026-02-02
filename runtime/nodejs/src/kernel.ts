@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { EventStream } from './event-stream';
 import { EventBus } from './events';
 import {
   evaluateCel,
@@ -9,6 +10,7 @@ import {
 import { Loader } from './loader';
 import { ModuleLoader } from './module-loader';
 import { Registry } from './registry';
+import { SnapshotSerializer } from './snapshot-serializer';
 import {
   DiglyModule,
   DiglyRuntimeError,
@@ -36,6 +38,8 @@ export class Kernel implements IKernel {
   private registryImpl: Registry = new Registry();
   private moduleLoader: ModuleLoader = new ModuleLoader();
   private eventBus: EventBus = new EventBus();
+  private eventStream: EventStream = new EventStream();
+  private snapshotSerializer: SnapshotSerializer = new SnapshotSerializer();
   private runtimeConfig: ModuleManifest | null = null;
   private resourceInstances: Map<
     string,
@@ -47,6 +51,7 @@ export class Kernel implements IKernel {
 
   constructor() {
     this.registry = this.registryImpl.getAll();
+    this.setupEventStreaming();
   }
 
   /**
@@ -60,12 +65,23 @@ export class Kernel implements IKernel {
    * Load from runtime configuration file
    */
   async loadFromConfig(runtimeYamlPath: string): Promise<void> {
-    // Load runtime configuration and resources
+    // Load runtime configuration
     this.runtimeConfig =
       await this.loader.loadRuntimeConfigFile(runtimeYamlPath);
-    const resources = await this.loader.loadFromRuntimeConfig(runtimeYamlPath);
 
-    // Register all loaded resources
+    // Phase 1: Load and register modules first (containers must be registered before resources)
+    const runtimeDir = path.dirname(runtimeYamlPath);
+    const modules = await this.moduleLoader.loadModule({
+      source: runtimeDir,
+      manifest: runtimeYamlPath,
+    });
+
+    for (const module of modules) {
+      await this.register(module);
+    }
+
+    // Phase 2: Load and register resources
+    const resources = await this.loader.loadFromRuntimeConfig(runtimeYamlPath);
     for (const resource of resources) {
       this.registryImpl.register(resource);
       await this.eventBus.emit('Resource.Registered', { resource });
@@ -76,17 +92,8 @@ export class Kernel implements IKernel {
       this.runtimeConfig,
     );
 
-    const runtimeDir = path.dirname(runtimeYamlPath);
-    const modules = await this.moduleLoader.loadModule({
-      source: runtimeDir,
-      manifest: runtimeYamlPath,
-    });
-
+    // Phase 3: Compile resources with registered modules
     await this.compileResources(modules);
-
-    for (const module of modules) {
-      await this.register(module);
-    }
 
     this.assertAllResourceKindsClaimed();
   }
@@ -214,7 +221,7 @@ export class Kernel implements IKernel {
   }
 
   /**
-   * Phase 3: Start - Initialize modules
+   * Phase 3: Start - Initialize modules and resources
    */
   async start(): Promise<void> {
     const ctx: KernelContext = {
@@ -222,21 +229,21 @@ export class Kernel implements IKernel {
       config: this.runtimeConfig || {},
     };
 
+    // Call module register hooks first (before any initialization)
     for (const module of this.moduleInstances.values()) {
       if (module.register) {
         await module.register(this.createModuleContext(module.name));
       }
-      await this.eventBus.emit('Module.Initialized', {
-        module: module.manifest?.name || module.name,
-        resourceKinds: module.resourceKinds,
-      });
     }
 
     await this.eventBus.emit('Runtime.Starting', {
       moduleName: this.runtimeConfig?.name,
     });
+
+    // Initialize resources and emit Module.Initialized after each module's resources are ready
     await this.initializeResources();
 
+    // Call module onStart hooks
     const startPromises = Array.from(this.moduleInstances.values()).map(
       (module) => module.onStart(ctx),
     );
@@ -453,17 +460,48 @@ export class Kernel implements IKernel {
       }
     }
 
-    // Phase 2: Initialize all resource instances
+    // Phase 2: Initialize all resource instances and emit Module.Initialized after each module's resources
+    const moduleResourceMap = new Map<string, RuntimeResource[]>();
+
+    // Group resources by module
     for (const [key, { resource, instance }] of this.resourceInstances) {
-      if (instance.init) {
-        await instance.init();
+      const module = this.modules.get(resource.kind);
+      if (module) {
+        const moduleName = module.name;
+        if (!moduleResourceMap.has(moduleName)) {
+          moduleResourceMap.set(moduleName, []);
+        }
+        moduleResourceMap.get(moduleName)!.push(resource);
       }
-      await this.eventBus.emit(`${resource.kind}.Initialized`, {
-        resource: {
-          kind: resource.kind,
-          name: resource.metadata.name,
-        },
-      });
+    }
+
+    // Initialize resources and emit Module.Initialized per module
+    for (const module of this.moduleInstances.values()) {
+      const moduleName = module.name;
+      const moduleResources = moduleResourceMap.get(moduleName) || [];
+
+      // Initialize all resources for this module
+      for (const resource of moduleResources) {
+        const key = this.getResourceKey(resource.kind, resource.metadata.name);
+        const entry = this.resourceInstances.get(key);
+        if (entry && entry.instance.init) {
+          await entry.instance.init();
+        }
+        await this.eventBus.emit(`${resource.kind}.Initialized`, {
+          resource: {
+            kind: resource.kind,
+            name: resource.metadata.name,
+          },
+        });
+      }
+
+      // Emit Module.Initialized after all resources for this module are initialized
+      if (moduleResources.length > 0 || module.resourceKinds.length > 0) {
+        await this.eventBus.emit('Module.Initialized', {
+          module: module.manifest?.name || module.name,
+          resourceKinds: module.resourceKinds,
+        });
+      }
     }
   }
 
@@ -504,8 +542,8 @@ export class Kernel implements IKernel {
       await this.eventBus.emit(`${name}.ExecutionCompleted`, { urn });
       return result;
     } catch (error) {
-      await this.eventBus.emit(`${name}.ExecutionFailed`, { 
-        urn, 
+      await this.eventBus.emit(`${name}.ExecutionFailed`, {
+        urn,
         error: error instanceof Error ? error.message : String(error),
       });
       throw new DiglyRuntimeError(
@@ -600,5 +638,55 @@ export class Kernel implements IKernel {
         `Resource events cannot use reserved lifecycle event: ${leaf}`,
       );
     }
+  }
+
+  /**
+   * Enable event streaming to a file (JSONL format)
+   */
+  async enableEventStream(filePath: string): Promise<void> {
+    await this.eventStream.enable(filePath);
+  }
+
+  /**
+   * Disable event streaming
+   */
+  disableEventStream(): void {
+    this.eventStream.disable();
+  }
+
+  /**
+   * Get the event stream for testing and inspection
+   */
+  getEventStream(): EventStream {
+    return this.eventStream;
+  }
+
+  /**
+   * Take a snapshot of current runtime state
+   * Includes all resources from registry and their custom snapshot data
+   * Organizes resources by generation depth (0 = first level, 1+ = nested/generated)
+   */
+  async takeSnapshot(filePath?: string) {
+    return this.snapshotSerializer.takeSnapshot(
+      this.registryImpl.getAll(),
+      this.resourceInstances,
+      filePath,
+    );
+  }
+
+  /**
+   * Setup event streaming hook to capture all events
+   */
+  private setupEventStreaming(): void {
+    // Hook into global event emission to capture all events
+    const originalEmit = this.eventBus.emit.bind(this.eventBus);
+    this.eventBus.emit = async (event: string, payload?: any) => {
+      // Log to stream if enabled
+      if (this.eventStream.isEnabledStream()) {
+        await this.eventStream.log(event, payload);
+      }
+      // Call original emit
+      return originalEmit(event, payload);
+    };
   }
 }
