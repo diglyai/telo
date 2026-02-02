@@ -1,4 +1,5 @@
 import { evaluate } from 'cel-js';
+import { ResourceURI } from './resource-uri';
 import type {
   TemplateContext,
   TemplateDefinition,
@@ -53,6 +54,7 @@ export function instantiateTemplate(
   parameters: Record<string, any>,
   instanceName: string,
   depth = 0,
+  parentUri?: string,
 ): RuntimeResource[] {
   if (depth >= MAX_EXPANSION_DEPTH) {
     throw new Error(
@@ -68,7 +70,13 @@ export function instantiateTemplate(
   const expandedResources: RuntimeResource[] = [];
 
   for (const blueprint of template.resources) {
-    const resources = expandBlueprint(blueprint, context, depth);
+    const resources = expandBlueprint(
+      blueprint,
+      context,
+      depth,
+      parentUri,
+      template.metadata.name,
+    );
     expandedResources.push(...resources);
   }
 
@@ -82,6 +90,8 @@ function expandBlueprint(
   blueprint: TemplateResourceBlueprint,
   context: TemplateContext,
   depth: number,
+  parentUri?: string,
+  templateDefinitionName?: string,
 ): RuntimeResource[] {
   // Handle 'if' directive first
   if (blueprint.if) {
@@ -95,13 +105,33 @@ function expandBlueprint(
   if (blueprint.for) {
     // Check if it's an array of expressions (nested loops)
     if (Array.isArray(blueprint.for)) {
-      return expandNestedForLoops(blueprint, context, depth);
+      return expandNestedForLoops(
+        blueprint,
+        context,
+        depth,
+        parentUri,
+        templateDefinitionName,
+      );
     }
-    return expandForLoop(blueprint, context, depth);
+    return expandForLoop(
+      blueprint,
+      context,
+      depth,
+      parentUri,
+      templateDefinitionName,
+    );
   }
 
   // Regular resource expansion
-  return [expandSingleResource(blueprint, context, depth)];
+  return [
+    expandSingleResource(
+      blueprint,
+      context,
+      depth,
+      parentUri,
+      templateDefinitionName,
+    ),
+  ];
 }
 
 /**
@@ -112,6 +142,8 @@ function expandNestedForLoops(
   blueprint: TemplateResourceBlueprint,
   context: TemplateContext,
   depth: number,
+  parentUri?: string,
+  templateDefinitionName?: string,
 ): RuntimeResource[] {
   const forExprs = blueprint.for as string[];
 
@@ -120,13 +152,25 @@ function expandNestedForLoops(
     const innerBlueprint = { ...blueprint };
     delete innerBlueprint.for;
     delete innerBlueprint.if; // Already evaluated
-    return expandBlueprint(innerBlueprint, context, depth);
+    return expandBlueprint(
+      innerBlueprint,
+      context,
+      depth,
+      parentUri,
+      templateDefinitionName,
+    );
   }
 
   if (forExprs.length === 1) {
     // Single loop, use standard expansion
     const innerBlueprint = { ...blueprint, for: forExprs[0] };
-    return expandBlueprint(innerBlueprint, context, depth);
+    return expandBlueprint(
+      innerBlueprint,
+      context,
+      depth,
+      parentUri,
+      templateDefinitionName,
+    );
   }
 
   // Multiple loops - process the first one and recurse with the rest
@@ -165,7 +209,13 @@ function expandNestedForLoops(
       const innerBlueprint = { ...blueprint, for: restExprs };
       delete innerBlueprint.if; // Already evaluated
 
-      const expanded = expandBlueprint(innerBlueprint, loopContext, depth);
+      const expanded = expandBlueprint(
+        innerBlueprint,
+        loopContext,
+        depth,
+        parentUri,
+        templateDefinitionName,
+      );
       results.push(...expanded);
     }
   }
@@ -184,7 +234,13 @@ function expandNestedForLoops(
       const innerBlueprint = { ...blueprint, for: restExprs };
       delete innerBlueprint.if; // Already evaluated
 
-      const expanded = expandBlueprint(innerBlueprint, loopContext, depth);
+      const expanded = expandBlueprint(
+        innerBlueprint,
+        loopContext,
+        depth,
+        parentUri,
+        templateDefinitionName,
+      );
       results.push(...expanded);
     }
   } else {
@@ -204,6 +260,8 @@ function expandForLoop(
   blueprint: TemplateResourceBlueprint,
   context: TemplateContext,
   depth: number,
+  parentUri?: string,
+  templateDefinitionName?: string,
 ): RuntimeResource[] {
   const forExpr = blueprint.for as string;
 
@@ -240,7 +298,13 @@ function expandForLoop(
       delete innerBlueprint.for;
       delete innerBlueprint.if; // Already evaluated
 
-      const expanded = expandBlueprint(innerBlueprint, loopContext, depth);
+      const expanded = expandBlueprint(
+        innerBlueprint,
+        loopContext,
+        depth,
+        parentUri,
+        templateDefinitionName,
+      );
       results.push(...expanded);
     }
   }
@@ -259,7 +323,13 @@ function expandForLoop(
       delete innerBlueprint.for;
       delete innerBlueprint.if;
 
-      const expanded = expandBlueprint(innerBlueprint, loopContext, depth);
+      const expanded = expandBlueprint(
+        innerBlueprint,
+        loopContext,
+        depth,
+        parentUri,
+        templateDefinitionName,
+      );
       results.push(...expanded);
     }
   } else {
@@ -278,6 +348,8 @@ function expandSingleResource(
   blueprint: TemplateResourceBlueprint,
   context: TemplateContext,
   depth: number,
+  parentUri?: string,
+  templateDefinitionName?: string,
 ): RuntimeResource {
   // Get the actual resource (might be in 'resource' wrapper)
   const resourceDef = blueprint.resource || blueprint;
@@ -301,6 +373,27 @@ function expandSingleResource(
     throw new Error(
       `Template resource blueprint missing required 'metadata.name' field`,
     );
+  }
+
+  // Assign URI and generation depth for template-generated resources
+  if (templateDefinitionName) {
+    const resourceUri = ResourceURI.fromTemplate(
+      templateDefinitionName,
+      expanded.kind,
+      expanded.metadata.name,
+    );
+
+    // If parentUri exists, append to it; otherwise use the created URI
+    const finalUri = parentUri
+      ? ResourceURI.parse(parentUri).withChild(
+          expanded.kind,
+          expanded.metadata.name,
+        )
+      : resourceUri;
+
+    expanded.metadata.uri = finalUri.toString();
+    expanded.metadata.generationDepth =
+      (expanded.metadata.generationDepth || 0) + 1;
   }
 
   return expanded as RuntimeResource;

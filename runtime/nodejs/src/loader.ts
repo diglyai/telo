@@ -7,6 +7,7 @@ import {
   validateModuleManifest,
   validateRuntimeResource,
 } from './manifest-schemas';
+import { ResourceURI } from './resource-uri';
 import { isTemplateDefinition } from './template-definition';
 import { instantiateTemplate } from './template-expander';
 import { ModuleManifest, RuntimeResource } from './types';
@@ -158,6 +159,7 @@ export class Loader {
   ): Promise<void> {
     const content = await fs.readFile(filePath, 'utf-8');
     const documents = yaml.loadAll(content);
+    const absolutePath = path.resolve(filePath);
 
     for (const doc of documents) {
       const resource = this.normalizeResource(doc);
@@ -171,6 +173,15 @@ export class Loader {
           `Resource validation failed for ${kind}.${name}: ${formatAjvErrors(validateRuntimeResource.errors)}`,
         );
       }
+
+      // Assign URI based on file source
+      const { kind, name } = resource.metadata;
+      resource.metadata.uri = ResourceURI.fromFile(
+        absolutePath,
+        kind,
+        name,
+      ).toString();
+      resource.metadata.generationDepth = 0;
 
       // Track template names for resolution
       if (resource.kind === 'TemplateDefinition') {
@@ -375,17 +386,18 @@ export class Loader {
             parameters[key] = value;
           }
         }
-
         // Expand expressions in parameters using the parameter context itself
         // This allows parameters to reference each other (e.g., baseUrl: http://localhost:${{ basePort }})
         const expandedParameters = this.expandParameterExpressions(parameters);
 
-        // Instantiate template
+        // Instantiate template with parent URI tracking for nested template expansion
+        const parentUri = instance.metadata.uri;
         const instantiated = instantiateTemplate(
           template,
           expandedParameters,
           instance.metadata.name,
           iteration,
+          parentUri,
         );
 
         // Check if any of the instantiated resources are also template instances

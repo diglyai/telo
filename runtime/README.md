@@ -67,6 +67,87 @@ All pointers must be pre-resolved into Uniform Resource Names (URNs).
 - **Data References:** Used for structural lookups (e.g., `target: "Data.Type.Product"`).
 - **Expressions (CEL):** Injected into strings. The CEL evaluator must resolve module/kind segments as nested namespaces (e.g., `${{ Http.Server.Example.port }}`).
 
+### 3.3 Resource URIs
+
+Every resource has an optional `metadata.uri` field that provides an absolute, standard URI identifying where the resource came from and its lineage through template generations.
+
+#### 3.3.1 URI Format
+
+```
+scheme://host/path#fragment
+```
+
+Where:
+
+- **scheme:** Standard URI scheme: `file`, `http`, `https`, or others
+- **host:** Authority (e.g., `localhost` for templates, domain name for remote resources)
+- **path:** Resource location path
+- **fragment:** Resource identifier chain in the form `kind.name[/kind.child/kind.child/...]`
+
+#### 3.3.2 URI Examples
+
+**File-based resource:**
+
+```
+file:///path/to/resources.yaml#Http.Server.Example
+```
+
+**Template-generated resource (single level):**
+
+```
+http://localhost/template/ApiServer#Http.Server.api-us-east
+```
+
+**Nested template-generated resource (multiple levels):**
+
+```
+http://localhost/template/ApiServer#Http.Server/Http.Route/api-us-east
+```
+
+#### 3.3.3 URI Generation
+
+The Runtime automatically generates URIs during loading:
+
+1. **File Resources:** When a resource is loaded from a YAML file, its URI is set to `file://<absolute-path>#kind.name`
+2. **Template-Generated Resources:** When a `TemplateDefinition` is instantiated, child resources receive URIs in the form `http://localhost/template/<DefinitionName>#kind.name`
+3. **Nested Templates:** When a template generates other templates, the fragment path grows: `http://localhost/template/<Parent>#kind.name/kind.child/kind.grandchild`
+
+#### 3.3.4 Metadata Fields
+
+Each `RuntimeResource.metadata` includes:
+
+```typescript
+interface ResourceMetadata {
+  name: string;
+  uri?: string; // Absolute URI identifying resource origin and lineage
+  generationDepth?: number; // Nesting depth: 0=direct file, 1+=template-generated
+  [key: string]: any; // Custom labels or annotations
+}
+```
+
+#### 3.3.5 Use Cases
+
+- **Debugging:** Trace where a resource originated (file vs generated)
+- **Introspection:** Query resources by source (e.g., all resources from a specific file)
+- **Filtering:** Find all nested resources from a template
+- **Auditing:** Track full lineage of dynamically generated resources
+- **Caching:** Use URI as a stable identifier for resource metadata
+
+#### 3.3.6 Registry Query Methods
+
+Modules can query resources by URI through the `ModuleCreateContext`:
+
+```typescript
+// Get resource by exact URI
+getResourceByUri(uri: string): RuntimeResource | undefined;
+
+// Get all resources from a specific source file
+getResourcesBySourcePath(path: string): RuntimeResource[];
+
+// Get all resources with a specific generation depth
+getResourcesByGenerationDepth(depth: number): RuntimeResource[];
+```
+
 ## 4. Kernel Architecture
 
 The Kernel is the central orchestrator. It manages the lifecycle and the message bus.

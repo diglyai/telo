@@ -1,11 +1,16 @@
+import { ResourceURI } from './resource-uri';
 import { DiglyRuntimeError, RuntimeError, RuntimeResource } from './types';
 
 /**
  * Registry: Indexes resources by composite key of Kind and Name
+ * Maintains URI-based lookup for tracking resource origins and lineage
  */
 export class Registry {
   private resources: Map<string, Map<string, RuntimeResource>> = new Map();
   private kindInheritance: Map<string, string> = new Map(); // derivedKind -> parentKind
+  private uriIndex: Map<string, RuntimeResource> = new Map(); // URI -> Resource
+  private sourceIndex: Map<string, RuntimeResource[]> = new Map(); // source path -> Resources
+  private depthIndex: Map<number, RuntimeResource[]> = new Map(); // generation depth -> Resources
 
   register(resource: RuntimeResource): void {
     const { kind, metadata } = resource;
@@ -25,6 +30,32 @@ export class Registry {
     }
 
     kindMap.set(name, resource);
+
+    // Index by URI if available
+    if (metadata.uri) {
+      this.uriIndex.set(metadata.uri, resource);
+
+      // Index by source file/path
+      try {
+        const uri = ResourceURI.parse(metadata.uri);
+        if (uri.isFileSource()) {
+          const sourcePath = uri.path;
+          if (!this.sourceIndex.has(sourcePath)) {
+            this.sourceIndex.set(sourcePath, []);
+          }
+          this.sourceIndex.get(sourcePath)!.push(resource);
+        }
+      } catch {
+        // URI parsing failed, skip indexing
+      }
+    }
+
+    // Index by generation depth
+    const depth = metadata.generationDepth ?? 0;
+    if (!this.depthIndex.has(depth)) {
+      this.depthIndex.set(depth, []);
+    }
+    this.depthIndex.get(depth)!.push(resource);
 
     // Check if this is a Runtime.KindDefinition that creates a new kind
     if (kind === 'Runtime.KindDefinition') {
@@ -57,6 +88,48 @@ export class Registry {
   getByKind(kind: string): RuntimeResource[] {
     const kindMap = this.resources.get(kind);
     return kindMap ? Array.from(kindMap.values()) : [];
+  }
+
+  /**
+   * Get resource by its URI
+   */
+  getByUri(uri: string): RuntimeResource | undefined {
+    return this.uriIndex.get(uri);
+  }
+
+  /**
+   * Get all resources from a specific source file
+   */
+  getBySourceFile(sourceFilePath: string): RuntimeResource[] {
+    return this.sourceIndex.get(sourceFilePath) ?? [];
+  }
+
+  /**
+   * Get all resources at a specific generation depth
+   * 0 = directly from files, 1+ = template-generated
+   */
+  getByGenerationDepth(depth: number): RuntimeResource[] {
+    return this.depthIndex.get(depth) ?? [];
+  }
+
+  /**
+   * Get all template-generated resources (depth > 0)
+   */
+  getTemplateGenerated(): RuntimeResource[] {
+    const results: RuntimeResource[] = [];
+    for (const [depth, resources] of this.depthIndex) {
+      if (depth > 0) {
+        results.push(...resources);
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Get all directly-loaded resources (depth = 0)
+   */
+  getDirectlyLoaded(): RuntimeResource[] {
+    return this.depthIndex.get(0) ?? [];
   }
 
   getAll(): Map<string, Map<string, RuntimeResource>> {

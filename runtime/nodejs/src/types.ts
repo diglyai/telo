@@ -18,6 +18,8 @@ export interface RuntimeResource {
   kind: string;
   metadata: {
     name: string;
+    uri?: string; // Absolute URI identifying resource origin (scheme://host/path#kind.name/...)
+    generationDepth?: number; // Nesting depth for template-generated resources (0 = direct file, 1+ = generated)
     [key: string]: any;
   };
   [key: string]: any;
