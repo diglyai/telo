@@ -36,20 +36,18 @@ routes:
       path: /hello
       method: GET
     handler:
-      name: Logic.Inline.HelloHandler
+      name: Logic.InlineFunction.HelloHandler
     response:
       status: 200
       headers:
         Content-Type: application/json
 ---
-kind: Logic.Inline
+kind: Logic.InlineFunction
 metadata:
   name: HelloHandler
 language: javascript
 code: |
-  export default async function handler(input, ctx) {
-    return {
-      greeting: "Hello from Tracing Example!",
-      timestamp: new Date().toISOString()
-    };
-  }
+  return {
+    greeting: "Hello from Tracing Example!",
+    timestamp: new Date().toISOString()
+  };

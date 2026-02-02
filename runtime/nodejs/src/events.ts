@@ -30,7 +30,7 @@ export class EventBus {
 
   async emit(event: string, payload?: any): Promise<void> {
     if (process.env.DIGLY_VERBOSE === '1') {
-      console.log('DEBUG: Event emitted:', event);
+      console.log('DEBUG: Event emitted:', event, JSON.stringify(payload));
     }
     const set = this.handlers.get(event);
     if (!set || set.size === 0) {

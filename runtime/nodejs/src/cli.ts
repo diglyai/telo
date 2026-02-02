@@ -47,26 +47,26 @@ async function main() {
       await kernel.loadFromConfig(inputPath);
     }
 
-    const uniqueModules = Array.from(kernel.moduleInstances.values());
-    log.info('\nModules');
-    if (uniqueModules.length > 0) {
-      for (const module of uniqueModules) {
-        const kinds =
-          module.resourceKinds.length > 0
-            ? module.resourceKinds.join(', ')
-            : 'none';
-        log.info(`  - ${module.name} (handles: ${kinds})`);
-      }
-    } else {
-      log.info('  (none)');
-    }
+    // const uniqueModules = Array.from(kernel.moduleInstances.values());
+    // log.info('\nModules');
+    // if (uniqueModules.length > 0) {
+    //   for (const module of uniqueModules) {
+    //     const kinds =
+    //       module.resourceKinds.length > 0
+    //         ? module.resourceKinds.join(', ')
+    //         : 'none';
+    //     log.info(`  - ${module.name} (handles: ${kinds})`);
+    //   }
+    // } else {
+    //   log.info('  (none)');
+    // }
 
     const count = countResources(kernel);
     if (count === 0) {
-      log.info(log.warn('\nNo resources defined.'));
+      // log.info(log.warn('\nNo resources defined.'));
     } else {
-      log.info(`\nResources: ${count}`);
-      log.info('\nStarting modules...');
+      // log.info(`\nResources: ${count}`);
+      // log.info('\nStarting modules...');
       const startErrors = await startModules(kernel, log);
       if (startErrors.length > 0) {
         throw new Error('One or more modules failed to start');

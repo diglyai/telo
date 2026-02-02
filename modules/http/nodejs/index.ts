@@ -1,9 +1,9 @@
 import type {
-  ModuleContext,
-  ModuleCreateContext,
-  ResourceContext,
-  ResourceInstance,
-  RuntimeResource,
+    ModuleContext,
+    ModuleCreateContext,
+    ResourceContext,
+    ResourceInstance,
+    RuntimeResource,
 } from '@diglyai/sdk';
 import Ajv, { ErrorObject, ValidateFunction } from 'ajv';
 import Fastify, { FastifyInstance } from 'fastify';
@@ -181,8 +181,14 @@ class HttpServer implements ResourceInstance {
     this.releaseHold = this.resourceCtx.acquireHold();
     try {
       await this.resourceCtx.emitEvent('Ready', {
-        resource: this.resource,
-        app: this.app,
+        resource: {
+          kind: this.resource.kind,
+          name: this.resource.metadata.name,
+          port: this.port,
+          host: this.host,
+          baseUrl: this.baseUrl,
+          mounts: this.resource.mounts,
+        },
       });
       await this.app.listen({ host: this.host, port: this.port });
       console.log(`Http.Server listening on ${this.baseUrl}`);

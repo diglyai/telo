@@ -1,7 +1,8 @@
+kind: ModuleDefinition
 version: 1.0.0
 name: TracingDemo
 description: Example demonstrating the Tracing module with file exporter
-modules:
+imports:
   - ../../modules/tracing
   - ../../modules/http
   - ../../modules/logic

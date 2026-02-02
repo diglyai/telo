@@ -329,7 +329,7 @@ export class ModuleLoader {
     moduleDir: string,
   ): DiglyModule {
     const resourceKind = this.qualifyResourceKind(manifest, definition.metadata.resourceKind);
-    const name = resourceKind;
+    const name = `${manifest.name}:${resourceKind}`;
     const entrypoints = definition.controllers || [];
     type LoadedController = {
       register?: (ctx: any) => void | Promise<void>;

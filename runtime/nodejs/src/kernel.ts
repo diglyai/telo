@@ -68,6 +68,7 @@ export class Kernel implements IKernel {
     // Register all loaded resources
     for (const resource of resources) {
       this.registryImpl.register(resource);
+      await this.eventBus.emit('Resource.Registered', { resource });
     }
 
     resolveExpressionsInRegistry(
@@ -84,7 +85,7 @@ export class Kernel implements IKernel {
     await this.compileResources(modules);
 
     for (const module of modules) {
-      this.register(module);
+      await this.register(module);
     }
 
     this.assertAllResourceKindsClaimed();
@@ -120,7 +121,7 @@ export class Kernel implements IKernel {
   } /**
    * Phase 2: Register - Attach module drivers
    */
-  register(module: DiglyModule): void {
+  async register(module: DiglyModule): Promise<void> {
     console.log(
       `DEBUG: Registering module "${module.name}", constructor: ${module.constructor.name}`,
     );
@@ -154,6 +155,11 @@ export class Kernel implements IKernel {
     }
 
     module.onLoad(relevantResources);
+    await this.eventBus.emit('Module.Registered', {
+      module: module.name,
+      manifest: module.manifest,
+      resourceKinds: module.resourceKinds,
+    });
   }
 
   private assertAllResourceKindsClaimed(): void {
@@ -196,7 +202,7 @@ export class Kernel implements IKernel {
         console.log(`DEBUG: Module loader returned ${modules.length} modules`);
         for (const module of modules) {
           console.log(`DEBUG: About to register module:`, module.name);
-          this.register(module);
+          await this.register(module);
         }
       } catch (error) {
         throw new DiglyRuntimeError(
@@ -220,16 +226,24 @@ export class Kernel implements IKernel {
       if (module.register) {
         await module.register(this.createModuleContext(module.name));
       }
+      await this.eventBus.emit('Module.Initialized', {
+        module: module.manifest?.name || module.name,
+        resourceKinds: module.resourceKinds,
+      });
     }
 
-    await this.eventBus.emit('Runtime.Starting', ctx);
+    await this.eventBus.emit('Runtime.Starting', {
+      moduleName: this.runtimeConfig?.name,
+    });
     await this.initializeResources();
 
     const startPromises = Array.from(this.moduleInstances.values()).map(
       (module) => module.onStart(ctx),
     );
     await Promise.all(startPromises);
-    await this.eventBus.emit('Runtime.Started', ctx);
+    await this.eventBus.emit('Runtime.Started', {
+      moduleName: this.runtimeConfig?.name,
+    });
   }
 
   /**
@@ -308,6 +322,7 @@ export class Kernel implements IKernel {
   }
 
   async teardownResources(): Promise<void> {
+    await this.eventBus.emit('Runtime.TeardownStarting', {});
     const entries = Array.from(this.resourceInstances.entries());
     for (const [key, entry] of entries) {
       const { resource, instance } = entry;
@@ -315,13 +330,15 @@ export class Kernel implements IKernel {
         await instance.teardown();
       }
       await this.eventBus.emit(`${resource.kind}.Teardown`, {
-        resource,
-        instance,
-        kernel: this,
+        resource: {
+          kind: resource.kind,
+          name: resource.metadata.name,
+        },
       });
       this.resourceInstances.delete(key);
       this.resourceEventBuses.delete(key);
     }
+    await this.eventBus.emit('Runtime.TeardownCompleted', {});
   }
 
   private createModuleContext(moduleName: string): ModuleContext {
@@ -442,9 +459,10 @@ export class Kernel implements IKernel {
         await instance.init();
       }
       await this.eventBus.emit(`${resource.kind}.Initialized`, {
-        resource,
-        instance,
-        kernel: this,
+        resource: {
+          kind: resource.kind,
+          name: resource.metadata.name,
+        },
       });
     }
   }
@@ -481,8 +499,15 @@ export class Kernel implements IKernel {
     };
 
     try {
-      return await module.execute(name, input, execContext);
+      await this.eventBus.emit(`${name}.ExecutionStarted`, { urn });
+      const result = await module.execute(name, input, execContext);
+      await this.eventBus.emit(`${name}.ExecutionCompleted`, { urn });
+      return result;
     } catch (error) {
+      await this.eventBus.emit(`${name}.ExecutionFailed`, { 
+        urn, 
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw new DiglyRuntimeError(
         RuntimeError.ERR_EXECUTION_FAILED,
         `Execution failed for ${urn}: ${error instanceof Error ? error.message : String(error)}`,

@@ -1,14 +1,14 @@
 import type {
-    ModuleContext,
-    ModuleCreateContext,
-    ResourceContext,
-    ResourceInstance,
+  ModuleContext,
+  ModuleCreateContext,
+  ResourceContext,
+  ResourceInstance,
 } from '@diglyai/sdk';
 export type {
-    ModuleContext,
-    ModuleCreateContext,
-    ResourceContext,
-    ResourceInstance
+  ModuleContext,
+  ModuleCreateContext,
+  ResourceContext,
+  ResourceInstance
 } from '@diglyai/sdk';
 
 /**
@@ -106,7 +106,7 @@ export interface Kernel {
   moduleInstances: Map<string, DiglyModule>;
 
   loadFromConfig(runtimeYamlPath: string): Promise<void>;
-  register(module: DiglyModule): void;
+  register(module: DiglyModule): Promise<void>;
   start(): Promise<void>;
   execute(urn: string, input: any, ctx?: any): Promise<any>;
   acquireHold(reason?: string): () => void;
