@@ -1,4 +1,9 @@
-import type { ModuleContext, ModuleCreateContext, ResourceInstance, RuntimeResource } from '@diglyai/sdk';
+import type {
+  ModuleCreateContext,
+  ResourceInstance,
+  RuntimeResource,
+} from '@diglyai/sdk';
+import { ControllerContext } from '@diglyai/sdk';
 
 type TemplateParameter = {
   name: string;
@@ -12,7 +17,7 @@ type TemplateResource = RuntimeResource & {
   resources?: Array<Record<string, any>>;
 };
 
-export function register(_ctx: ModuleContext): void {}
+export function register(ctx: ControllerContext): void {}
 
 export async function create(
   _resource: TemplateResource,
@@ -56,7 +61,9 @@ export async function execute(
   return resource.resources || [];
 }
 
-function buildParameters(definitions: TemplateParameter[]): Record<string, any> {
+function buildParameters(
+  definitions: TemplateParameter[],
+): Record<string, any> {
   const params: Record<string, any> = {};
 
   for (const def of definitions) {

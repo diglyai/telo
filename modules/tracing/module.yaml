@@ -1,6 +1,7 @@
-kind: ModuleDefinition
-version: 1.0.0
-name: Tracing
+kind: Runtime.Module
+metadata:
+  name: Tracing
+  version: 1.0.0
 definitions:
   - tracing.yaml
   - tracing-exporters.yaml

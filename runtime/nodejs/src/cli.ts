@@ -35,18 +35,17 @@ async function main() {
 
   const isDirectory = inputStat.isDirectory();
   const log = createLogger(verbose);
-  if (verbose) {
-    process.env.DIGLY_VERBOSE = '1';
-  }
 
-  log.info(`Digly Runtime v1.0`);
-  log.info(`Loading from: ${inputPath}`);
+  // log.info(`Digly Runtime v1.0`);
+  // log.info(`Loading from: ${inputPath}`);
 
   try {
-    if (!verbose) {
-      suppressDebugLogs();
-    }
     const kernel = new Kernel();
+    if (verbose) {
+      kernel.on('*', (event) => {
+        log.info(`${event.name}: ${JSON.stringify(event.payload)}`);
+      });
+    }
 
     // Enable event streaming if debug flag is set
     if (debug) {
@@ -56,79 +55,21 @@ async function main() {
       log.info(`Event stream enabled: ${eventStreamPath}`);
     }
 
-    // Load from runtime configuration or directory
+    // Load from manifest or directory
     if (isDirectory) {
-      await kernel.load(inputPath);
+      await kernel.loadDirectory(inputPath);
     } else {
       await kernel.loadFromConfig(inputPath);
     }
 
-    // const uniqueModules = Array.from(kernel.moduleInstances.values());
-    // log.info('\nModules');
-    // if (uniqueModules.length > 0) {
-    //   for (const module of uniqueModules) {
-    //     const kinds =
-    //       module.resourceKinds.length > 0
-    //         ? module.resourceKinds.join(', ')
-    //         : 'none';
-    //     log.info(`  - ${module.name} (handles: ${kinds})`);
-    //   }
-    // } else {
-    //   log.info('  (none)');
-    // }
-
-    const count = countResources(kernel);
-    if (count === 0) {
-      // log.info(log.warn('\nNo resources defined.'));
-    } else {
-      // log.info(`\nResources: ${count}`);
-      // log.info('\nStarting modules...');
-      const startErrors = await startModules(kernel, log, snapshotOnExit);
-      if (startErrors.length > 0) {
-        throw new Error('One or more modules failed to start');
-      }
-
-      log.info(`\n${log.ok('Application initialized successfully.')}`);
-    }
+    await kernel.start();
   } catch (error) {
     console.error(
       'Error loading runtime:',
-      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : String(error),
     );
     process.exit(1);
   }
-}
-
-function countResources(kernel: Kernel): number {
-  let count = 0;
-  for (const kindMap of kernel.registry.values()) {
-    count += kindMap.size;
-  }
-  return count;
-}
-
-function getKinds(kernel: Kernel): string[] {
-  return Array.from(kernel.registry.keys()).sort();
-}
-
-function suppressDebugLogs(): void {
-  const originalLog = console.log.bind(console);
-  console.log = (...args: any[]) => {
-    if (args.length === 0) {
-      return;
-    }
-    const first = String(args[0]);
-    if (first.startsWith('DEBUG:')) {
-      return;
-    }
-    if (first.includes('No resources specified in runtime.yaml')) {
-      return;
-    }
-    if (first.includes(': Loaded ') && first.includes(' resources')) {
-      return;
-    }
-    originalLog(...args);
-  };
 }
 
 function createLogger(verbose: boolean) {
@@ -142,83 +83,6 @@ function createLogger(verbose: boolean) {
     error: (text: string) => wrap('31', text),
     dim: (text: string) => wrap('2', text),
     verbose,
-  };
-}
-
-async function startModules(
-  kernel: Kernel,
-  log: ReturnType<typeof createLogger>,
-  snapshotOnExit: boolean = false,
-) {
-  const errors: Error[] = [];
-  const modules = Array.from(kernel.moduleInstances.values());
-  if (modules.length === 0) {
-    log.info(log.warn('No modules registered.'));
-    return errors;
-  }
-
-  try {
-    await kernel.start();
-    // for (const module of modules) {
-    //   log.info(`${log.ok('✓')} ${module.name}`);
-    // }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    log.info(`${log.error('✗')} ${message}`);
-    errors.push(error instanceof Error ? error : new Error(message));
-  }
-
-  if (errors.length === 0) {
-    const payload = { kernel, config: kernel.getRuntimeConfig() || {} };
-    await kernel.waitForIdle();
-
-    // Take snapshot if requested
-    if (snapshotOnExit) {
-      const debugDir = path.join(process.cwd(), '.digly-debug');
-      const snapshotPath = path.join(debugDir, 'snapshot.yaml');
-      await kernel.takeSnapshot(snapshotPath);
-      log.info(`Snapshot saved: ${snapshotPath}`);
-    }
-
-    await kernel.emitRuntimeEvent('Runtime.Stopping', payload);
-    await kernel.teardownResources();
-    await kernel.emitRuntimeEvent('Runtime.Stopped', payload);
-    process.exit(0);
-  }
-
-  return errors;
-}
-
-function registerSignalHandlers(
-  kernel: Kernel,
-  log: ReturnType<typeof createLogger>,
-) {
-  let shuttingDown = false;
-  const handler = async () => {
-    if (shuttingDown) {
-      return;
-    }
-    shuttingDown = true;
-    try {
-      const payload = { kernel, config: kernel.getRuntimeConfig() || {} };
-      await kernel.emitRuntimeEvent('Runtime.Stopping', payload);
-      await kernel.teardownResources();
-      await kernel.emitRuntimeEvent('Runtime.Stopped', payload);
-      log.info(log.dim('Shutdown complete.'));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      log.info(log.error(`Shutdown error: ${message}`));
-    } finally {
-      process.exit(0);
-    }
-  };
-
-  process.on('SIGINT', handler);
-  process.on('SIGTERM', handler);
-
-  return () => {
-    process.off('SIGINT', handler);
-    process.off('SIGTERM', handler);
   };
 }
 

@@ -1,0 +1,25 @@
+kind: Runtime.Definition
+metadata:
+  name: FlowDefinition
+  resourceKind: Flow
+  module: Runtime
+controllers:
+  - runtime: 'node@>=20'
+    entrypoint: './nodejs/src/flow.ts'
+  - runtime: 'bun@>=1.1'
+    entrypoint: './nodejs/src/flow.ts'
+schema:
+  type: object
+  properties:
+    steps:
+      type: array
+      items:
+        type: object
+        properties:
+          kind:
+            type: string
+            description: Resource kind (e.g., Logic.JavaScript, HttpClient.Request)
+        required:
+          - kind
+  required:
+    - steps

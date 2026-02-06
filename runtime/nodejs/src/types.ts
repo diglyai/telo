@@ -1,25 +1,24 @@
 import type {
-  ModuleContext,
-  ModuleCreateContext,
+  ControllerContext,
   ResourceContext,
   ResourceInstance,
+  RuntimeErrorCode,
+  RuntimeResource,
 } from '@diglyai/sdk';
 export type {
-  ModuleContext,
-  ModuleCreateContext,
+  ControllerContext,
   ResourceContext,
   ResourceInstance
 } from '@diglyai/sdk';
 
 /**
- * Core type definitions for Digly Runtime
+ * Type for resource manifest defined in YAML files
  */
-export interface RuntimeResource {
+export interface ResourceManifest {
   kind: string;
   metadata: {
     name: string;
-    uri?: string; // Absolute URI identifying resource origin (scheme://host/path#kind.name/...)
-    generationDepth?: number; // Nesting depth for template-generated resources (0 = direct file, 1+ = generated)
+    module: string;
     [key: string]: any;
   };
   [key: string]: any;
@@ -27,7 +26,6 @@ export interface RuntimeResource {
 
 export interface KernelContext {
   kernel: Kernel;
-  [key: string]: any;
 }
 
 export interface ExecContext {
@@ -36,11 +34,11 @@ export interface ExecContext {
 }
 
 export interface ResourceDefinition {
-  kind: 'ResourceDefinition';
+  kind: string;
   metadata: {
     name: string;
     resourceKind: string;
-    module?: string;
+    module: string;
   };
   schema: Record<string, any>; // JSON Schema
   events?: string[];
@@ -50,95 +48,47 @@ export interface ResourceDefinition {
   }>;
 }
 
-export interface ModuleDiscoveryResult {
-  mainModule: {
-    manifest: ModuleManifest;
-    resourceDefinitions: ResourceDefinition[];
-  };
-  importedModules: Array<{
-    path: string;
-    manifest: ModuleManifest;
-    resourceDefinitions: ResourceDefinition[];
-  }>;
+/**
+ * Controller definition for a resource kind.
+ * Maps a fully-qualified resource kind to its controller implementation for a specific runtime.
+ */
+export interface ControllerDefinition {
+  kind: string; // Fully-qualified kind (e.g., "Http.Route")
+  runtime: string; // Runtime selector (e.g., "node@>=20")
+  entrypoint: string; // Path to controller implementation
+  controller?: any; // Lazy-loaded controller code
 }
 
-export interface ModuleManifest {
-  name: string;
-  version: string;
-  imports?: string[]; // paths to other modules to import
-  definitions?: string[]; // paths to ResourceDefinition files
-  entrypoint?: string;
-  entrypoints?: Array<{
-    runtime: string;
-    entrypoint: string;
-  }>;
-  resources?: (string | { path: string })[]; // paths to Manifests containing resources to create
-  importEntrypoints?: Record<
-    string,
-    Array<{
-      runtime: string;
-      entrypoint: string;
-    }>
-  >;
-}
-
-export interface DiglyModule {
-  name: string;
-  manifest: ModuleManifest;
-  resourceKinds: string[]; // derived from manifest
-
-  onLoad(resources: RuntimeResource[]): void;
-  onStart(ctx: KernelContext): Promise<void>;
-  execute(name: string, inputs: any, ctx: ExecContext): Promise<any>;
+/**
+ * Controller instance - runtime representation of a controller that handles resource instances.
+ */
+export interface ControllerInstance {
+  execute?(name: string, inputs: any, ctx: ExecContext): Promise<any>;
   compile?(
-    resource: RuntimeResource,
-    ctx: ModuleCreateContext,
+    resource: ResourceManifest,
+    ctx: ResourceContext,
   ): RuntimeResource | Promise<RuntimeResource>;
-  register?(ctx: ModuleContext): void | Promise<void>;
+  register?(ctx: ControllerContext): void | Promise<void>;
   create?(
-    resource: RuntimeResource,
-    ctx: ModuleCreateContext,
-    resourceCtx?: ResourceContext,
+    resource: ResourceManifest,
+    ctx: ResourceContext,
   ): ResourceInstance | null | Promise<ResourceInstance | null>;
 }
 
 export interface Kernel {
-  registry: Map<string, Map<string, RuntimeResource>>;
-  modules: Map<string, DiglyModule>;
-  moduleInstances: Map<string, DiglyModule>;
-
   loadFromConfig(runtimeYamlPath: string): Promise<void>;
-  register(module: DiglyModule): Promise<void>;
   start(): Promise<void>;
   execute(urn: string, input: any, ctx?: any): Promise<any>;
   acquireHold(reason?: string): () => void;
   waitForIdle(): Promise<void>;
 }
 
-export enum RuntimeError {
-  ERR_RESOURCE_NOT_FOUND = 'ERR_RESOURCE_NOT_FOUND',
-  ERR_MODULE_MISSING = 'ERR_MODULE_MISSING',
-  ERR_DUPLICATE_RESOURCE = 'ERR_DUPLICATE_RESOURCE',
-  ERR_EXECUTION_FAILED = 'ERR_EXECUTION_FAILED',
-}
-
 export class DiglyRuntimeError extends Error {
   constructor(
-    public code: RuntimeError,
+    public code: RuntimeErrorCode,
     message: string,
   ) {
     super(message);
     this.name = 'DiglyRuntimeError';
   }
-}
-
-export interface ModuleConfig {
-  source: string;
-  config?: Record<string, any>;
-  manifest?: string; // path to module.yaml, defaults to "module.yaml" in source directory
-  name?: string;
-}
-
-export interface ModuleLoader {
-  loadModule(config: ModuleConfig): Promise<DiglyModule[]>;
 }

@@ -1,4 +1,4 @@
-kind: ResourceDefinition
+kind: Runtime.Definition
 metadata:
   name: JobDefinition
   resourceKind: Job
@@ -11,69 +11,15 @@ controllers:
 schema:
   type: object
   properties:
-    metadata:
-      type: object
-      properties:
-        name:
-          type: string
-        description:
-          type: string
-      required:
-        - name
     steps:
       type: array
       items:
         type: object
         properties:
-          name:
-            type: string
-            description: Step name
           kind:
             type: string
             description: Resource kind (e.g., Logic.JavaScript, HttpClient.Request)
-          code:
-            type: string
-            description: Inline code for Logic.JavaScript steps
-          method:
-            type: string
-            description: HTTP method for HttpClient.Request
-          url:
-            type: string
-            description: URL for HttpClient.Request
-          event:
-            type: string
-            description: Event name for Observe.Event
-          timeout:
-            type: integer
-            description: Timeout in milliseconds for Observe.Event
-          filter:
-            type: string
-            description: CEL filter expression for Observe.Event
-          value:
-            type: string
-            description: Value expression for Assert.Value
-          input:
-            type: object
-            description: Input parameters for the step
-          body:
-            type: object
-            description: Request body for HttpClient.Request
-          headers:
-            type: object
-            description: HTTP headers for HttpClient.Request
-          outputs:
-            type: object
-            additionalProperties:
-              type: string
-            description: Output extraction mappings (JSONPath expressions)
-          assertions:
-            type: array
-            items:
-              type: string
-            description: CEL expressions to evaluate (must return boolean)
         required:
-          - name
           - kind
   required:
-    - metadata
     - steps

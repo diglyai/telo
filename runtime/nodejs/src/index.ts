@@ -1,32 +1,27 @@
+export { ControllerRegistry } from './controller-registry';
 export { EventStream } from './event-stream';
 export { Kernel } from './kernel';
 export { Loader } from './loader';
-export { ModuleLoader } from './module-loader';
-export { ModuleManifestLoader } from './module-manifest-loader';
-export { Registry } from './registry';
+export { ManifestRegistry as Registry } from './registry';
+export { ResourceURI } from './resource-uri';
 export { SnapshotSerializer } from './snapshot-serializer';
 export {
-    DiglyModule,
+    ControllerDefinition,
+    ControllerInstance,
     DiglyRuntimeError,
     ExecContext,
-    ModuleLoader as IModuleLoader,
     KernelContext,
-    ModuleConfig,
-    ModuleContext,
-    ModuleDiscoveryResult,
-    ModuleManifest,
-    ResourceDefinition,
-    RuntimeError,
-    RuntimeResource
+    ResourceDefinition
 } from './types';
 export type { Kernel as IKernel } from './types';
 
 // Template system exports
 export {
+    extractDefaultsFromSchema,
+    isTemplateDefinition,
     TemplateContext,
     TemplateDefinition,
-    TemplateResourceBlueprint, extractDefaultsFromSchema,
-    isTemplateDefinition
+    TemplateResourceBlueprint
 } from './template-definition';
 export {
     expandPropertyWithControlFlow,

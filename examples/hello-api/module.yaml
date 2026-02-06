@@ -1,6 +1,100 @@
-name: Example
-version: 1.0.0
+kind: Runtime.Module
+metadata:
+  name: Example
+  version: 1.0.0
 imports:
-  - '../../modules/studio'
-resources:
-  - 'server.yaml'
+  - ../../modules/http-server
+  - ../../modules/data
+  - ../../modules/javascript
+---
+kind: Http.Server
+metadata:
+  name: Example
+  module: Example
+baseUrl: http://localhost:8844
+port: 8844
+mounts:
+  - path: /v1
+    type: Http.Api.HelloApi
+---
+kind: OpenApi.Spec
+metadata:
+  name: HelloApiSpec
+  module: Example
+path: '/reference'
+apis:
+  - Http.Api.HelloApi
+info:
+  title: Example API
+  version: 1.0.0
+  description: An example API that greets users.
+  baseUrl: 'http://localhost:${{ Http.Server.Example.port }}/v1' # Reference to Http.Server port
+---
+kind: Data.Type
+metadata:
+  name: HelloQuery
+  module: Example
+schema:
+  properties:
+    name:
+      type: string
+      default: 'World'
+  required: ['name']
+  additionalProperties: false
+---
+kind: Data.Type
+metadata:
+  name: HelloResponse
+  module: Example
+schema:
+  type: object
+  properties:
+    greeting:
+      type: string
+    nice:
+      type: string
+  required: ['greeting', 'nice']
+---
+kind: Http.Api
+metadata:
+  name: HelloApi
+  module: Example
+routes:
+  - request:
+      path: /hello
+      method: GET
+      query: '#/HelloQuery' # Reference to Data.Type
+    handler:
+      name: SayHello
+      inputs:
+        name: '${{ request.query.name }}' # CEL expression
+    response:
+      schema:
+        body: '#/HelloResponse' # Reference to Data.Type
+      status: 200
+      body:
+        greeting: '${{ result.message }}!'
+        nice: 'WOW'
+---
+kind: JavaScript.Script
+metadata:
+  name: SayHello
+  module: Example
+code: |
+  function main({ name }) {
+    return {
+      message: `Hello ${name}!`,
+    }
+  };
+inputSchema:
+  type: object
+  properties:
+    name:
+      type: string
+  required: ['name']
+outputSchema:
+  type: object
+  properties:
+    message:
+      type: string
+  required: ['message']

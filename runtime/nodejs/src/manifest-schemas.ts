@@ -18,7 +18,9 @@ export const ModuleManifestSchema = Type.Object(
     definitions: Type.Optional(Type.Array(Type.String())),
     entrypoint: Type.Optional(Type.String()),
     entrypoints: Type.Optional(Type.Array(EntrypointSchema)),
-    importEntrypoints: Type.Optional(Type.Record(Type.String(), Type.Array(EntrypointSchema))),
+    importEntrypoints: Type.Optional(
+      Type.Record(Type.String(), Type.Array(EntrypointSchema)),
+    ),
   },
   { additionalProperties: true },
 );
@@ -26,19 +28,22 @@ export const ModuleManifestSchema = Type.Object(
 export const RuntimeResourceSchema = Type.Object(
   {
     kind: Type.String(),
-    metadata: Type.Object({ name: Type.String() }, { additionalProperties: true }),
+    metadata: Type.Object(
+      { name: Type.String() },
+      { additionalProperties: true },
+    ),
   },
   { additionalProperties: true },
 );
 
 export const ResourceDefinitionSchema = Type.Object(
   {
-    kind: Type.Literal('ResourceDefinition'),
+    kind: Type.Literal('Runtime.Definition'),
     metadata: Type.Object(
       {
         name: Type.String(),
         resourceKind: Type.String(),
-        module: Type.String(),
+        module: Type.Optional(Type.String()),
       },
       { additionalProperties: true },
     ),
@@ -55,13 +60,18 @@ export const validateModuleManifest = ajv.compile(ModuleManifestSchema);
 export const validateRuntimeResource = ajv.compile(RuntimeResourceSchema);
 export const validateResourceDefinition = ajv.compile(ResourceDefinitionSchema);
 
-export function formatAjvErrors(errors: ErrorObject[] | null | undefined): string {
+export function formatAjvErrors(
+  errors: ErrorObject[] | null | undefined,
+): string {
   if (!errors || errors.length === 0) {
     return 'Unknown schema error';
   }
   return errors
     .map((err) => {
-      const path = err.instancePath && err.instancePath.length > 0 ? err.instancePath : '/';
+      const path =
+        err.instancePath && err.instancePath.length > 0
+          ? err.instancePath
+          : '/';
       const message = err.message || 'is invalid';
       return `${path} ${message}`;
     })

@@ -1,14 +1,10 @@
-import type { RuntimeResource } from './types';
+import { RuntimeResource } from '@diglyai/sdk';
 
 /**
  * Built-in TemplateDefinition resource type
  */
 export interface TemplateDefinition extends RuntimeResource {
   kind: 'TemplateDefinition';
-  metadata: {
-    name: string;
-    [key: string]: any;
-  };
   schema: Record<string, any>; // JSONSchema defining template variables
   resources: TemplateResourceBlueprint[];
 }

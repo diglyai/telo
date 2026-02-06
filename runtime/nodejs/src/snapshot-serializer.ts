@@ -1,7 +1,8 @@
+import { RuntimeResource } from '@diglyai/sdk';
 import * as fs from 'fs/promises';
 import * as YAML from 'js-yaml';
 import * as path from 'path';
-import { ResourceInstance, RuntimeResource } from './types';
+import { ResourceInstance } from './types';
 
 export interface SnapshotData {
   timestamp: string;

@@ -1,0 +1,58 @@
+kind: Runtime.Module
+metadata:
+  name: 'JavaScript'
+  version: '1.0.0'
+---
+kind: 'Runtime.Definition'
+metadata:
+  name: 'JavaScriptDefinition'
+  resourceKind: 'Script'
+  module: 'JavaScript'
+controllers:
+  - runtime: 'node@>=20 <23'
+    entrypoint: './nodejs/javascript.ts'
+  - runtime: 'bun@>=1.1'
+    entrypoint: './nodejs/javascript.ts'
+schema:
+  type: 'object'
+  properties:
+    metadata:
+      type: 'object'
+      properties:
+        name:
+          type: 'string'
+      required: ['name']
+    code:
+      type: 'string'
+    inputSchema:
+      type: 'object'
+    outputSchema:
+      type: 'object'
+  required: ['metadata', 'code']
+---
+kind: 'Runtime.Definition'
+metadata:
+  name: 'InlineScriptDefinition'
+  resourceKind: 'InlineScript'
+  module: 'JavaScript'
+controllers:
+  - runtime: 'node@>=20 <23'
+    entrypoint: './nodejs/inline-function.ts'
+  - runtime: 'bun@>=1.1'
+    entrypoint: './nodejs/inline-function.ts'
+schema:
+  type: 'object'
+  properties:
+    metadata:
+      type: 'object'
+      properties:
+        name:
+          type: 'string'
+      required: ['name']
+    code:
+      type: 'string'
+    inputSchema:
+      type: 'object'
+    outputSchema:
+      type: 'object'
+  required: ['metadata', 'code']

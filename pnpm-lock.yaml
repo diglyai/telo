@@ -8,11 +8,8 @@ importers:
 
   .: {}
 
-  modules/http/nodejs:
+  modules/console/nodejs:
     dependencies:
-      '@diglyai/runtime':
-        specifier: workspace:*
-        version: link:../../../runtime/nodejs
       '@diglyai/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
@@ -32,11 +29,50 @@ importers:
         specifier: ^5.7.2
         version: 5.7.2
 
-  modules/http/openapi/nodejs:
+  modules/data/nodejs:
     dependencies:
-      '@diglyai/runtime':
+      '@diglyai/sdk':
         specifier: workspace:*
-        version: link:../../../../runtime/nodejs
+        version: link:../../../sdk/nodejs
+      '@sinclair/typebox':
+        specifier: ^0.34.48
+        version: 0.34.48
+
+  modules/flow/nodejs:
+    dependencies:
+      '@diglyai/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
+      '@sinclair/typebox':
+        specifier: ^0.34.48
+        version: 0.34.48
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
+
+  modules/http-server/nodejs:
+    dependencies:
+      '@diglyai/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
+      '@fastify/swagger':
+        specifier: ^9.6.1
+        version: 9.6.1
+      '@scalar/fastify-api-reference':
+        specifier: ^1.44.6
+        version: 1.44.6
+      '@sinclair/typebox':
+        specifier: ^0.34.48
+        version: 0.34.48
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
+      fastify:
+        specifier: ^5.7.2
+        version: 5.7.2
+
+  modules/http-server/openapi/nodejs:
+    dependencies:
       '@diglyai/sdk':
         specifier: workspace:*
         version: link:../../../../sdk/nodejs
@@ -56,11 +92,8 @@ importers:
         specifier: ^5.7.2
         version: 5.7.2
 
-  modules/logic/nodejs:
+  modules/javascript/nodejs:
     dependencies:
-      '@diglyai/runtime':
-        specifier: workspace:*
-        version: link:../../../runtime/nodejs
       '@diglyai/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
@@ -80,13 +113,25 @@ importers:
         specifier: ^5.7.2
         version: 5.7.2
 
+  modules/pipeline/nodejs:
+    dependencies:
+      '@diglyai/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
+      '@sinclair/typebox':
+        specifier: ^0.34.48
+        version: 0.34.48
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
+
   modules/starlark/nodejs:
     dependencies:
       '@diglyai/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
       ajv:
-        specifier: ^8.12.0
+        specifier: ^8.17.1
         version: 8.17.1
       starlark-webasm:
         specifier: ^1.0.3

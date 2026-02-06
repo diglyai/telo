@@ -1,7 +1,8 @@
-kind: ModuleDefinition
-name: 'DiglyStudio'
-version: '1.0.0'
+kind: Runtime.Module
+metadata:
+  name: DiglyStudio
+  version: '1.0.0'
 imports:
-  - '../http'
-  - '../logic'
-  - '../data'
+  - ../http
+  - ../logic
+  - ../data

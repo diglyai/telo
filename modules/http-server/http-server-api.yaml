@@ -1,0 +1,86 @@
+kind: 'Runtime.Definition'
+metadata:
+  name: 'HttpApiDefinition'
+  resourceKind: 'Api'
+  module: 'Http'
+controllers:
+  - runtime: 'node@>=20'
+    entrypoint: './nodejs/http-api-controller.ts'
+  - runtime: 'bun@>=1.1'
+    entrypoint: './nodejs/http-api-controller.ts'
+schema:
+  type: 'object'
+  properties:
+    metadata:
+      type: 'object'
+      properties:
+        name:
+          type: 'string'
+      required: ['name']
+    routes:
+      type: 'array'
+      items:
+        oneOf:
+          - type: 'string'
+          - type: 'object'
+            properties:
+              request:
+                type: 'object'
+                properties:
+                  path:
+                    type: 'string'
+                  method:
+                    type: 'string'
+                    enum:
+                      [
+                        'GET',
+                        'POST',
+                        'PUT',
+                        'DELETE',
+                        'PATCH',
+                        'HEAD',
+                        'OPTIONS',
+                      ]
+                  query:
+                    type: 'object'
+                  body:
+                    type: 'object'
+                  headers:
+                    type: 'object'
+                required: ['path', 'method']
+              handler:
+                type: 'string'
+              response:
+                type: 'object'
+                properties:
+                  status:
+                    type: 'integer'
+                  headers:
+                    type: 'object'
+                  body:
+                    oneOf:
+                      - type: 'string'
+                      - type: 'object'
+                  schema:
+                    type: 'object'
+                    description: 'Response schema definition'
+                    properties:
+                      status:
+                        type: 'integer'
+                      headers:
+                        type: 'object'
+                      body:
+                        type: 'object'
+                  mapping:
+                    type: 'object'
+                    description: 'Response mapping expressions'
+                    properties:
+                      status:
+                        type: 'string'
+                      headers:
+                        type: 'object'
+                        additionalProperties:
+                          type: 'string'
+                      body:
+                        type: 'string'
+  required: ['metadata', 'routes']

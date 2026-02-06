@@ -1,0 +1,58 @@
+kind: 'Runtime.Definition'
+metadata:
+  name: 'HttpServerDefinition'
+  resourceKind: 'Server'
+  module: 'Http'
+controllers:
+  - runtime: 'node@>=20 <23'
+    entrypoint: './nodejs/http-server-controller.ts'
+  - runtime: 'bun@>=1.1'
+    entrypoint: './nodejs/http-server-controller.ts'
+schema:
+  type: 'object'
+  properties:
+    metadata:
+      type: 'object'
+      properties:
+        name:
+          type: 'string'
+      required: ['name']
+    host:
+      type: 'string'
+      default: 'localhost'
+    port:
+      type: 'integer'
+      minimum: 1
+      maximum: 65535
+    ssl:
+      type: 'object'
+      properties:
+        enabled:
+          type: 'boolean'
+        cert:
+          type: 'string'
+        key:
+          type: 'string'
+    middleware:
+      type: 'array'
+      items:
+        type: 'string'
+    mounts:
+      type: 'array'
+      items:
+        type: 'object'
+        properties:
+          path:
+            type: 'string'
+          type:
+            type: 'string'
+    cors:
+      type: 'object'
+      properties:
+        enabled:
+          type: 'boolean'
+        origins:
+          type: 'array'
+          items:
+            type: 'string'
+  required: ['metadata', 'port', 'mounts']

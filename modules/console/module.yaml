@@ -1,0 +1,19 @@
+kind: Runtime.Module
+metadata:
+  name: Console
+  version: 1.0.0
+---
+kind: Runtime.Definition
+metadata:
+  name: WriteLineDefinition
+  resourceKind: WriteLine
+  module: Console
+controllers:
+  - runtime: nodejs
+    entrypoint: ./nodejs/src/writeline-controller.ts
+schema:
+  type: object
+  properties:
+    text:
+      type: string
+  required: ['text']

@@ -1,5 +1,6 @@
+import { RuntimeResource } from '@diglyai/sdk';
 import { evaluate } from 'cel-js';
-import type { ModuleManifest, RuntimeResource } from './types';
+import type { ResourceManifest } from './types';
 
 type ResourceId = { kind: string; name: string };
 
@@ -32,7 +33,7 @@ export function expandValue(value: any, context: Record<string, any>): any {
 
 export function resolveExpressionsInRegistry(
   registry: Map<string, Map<string, RuntimeResource>>,
-  runtimeConfig: ModuleManifest | null,
+  runtimeConfig: ResourceManifest | null,
 ): void {
   const maxPasses = 5;
   for (let pass = 0; pass < maxPasses; pass += 1) {
@@ -60,7 +61,7 @@ export function resolveExpressionsInRegistry(
 
 function buildEvaluationContext(
   registry: Map<string, Map<string, RuntimeResource>>,
-  runtimeConfig: ModuleManifest | null,
+  runtimeConfig: ResourceManifest | null,
 ): Record<string, any> {
   // Whitelist environment variables
   const allowedEnvVars = [
@@ -93,7 +94,7 @@ function buildEvaluationContext(
       modules[alias] = moduleEntry;
     }
   }
-  context.Module = modules;
+  context.Namespace = modules;
 
   for (const [kind, resourcesByName] of registry.entries()) {
     const kindBucket: Record<string, any> = {};

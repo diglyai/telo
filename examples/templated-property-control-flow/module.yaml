@@ -1,6 +1,7 @@
 name: TemplatedPropertyControlFlow
-version: 1.0.0
-description: Examples demonstrating the DiglyAI TemplateDefinition system with property-level control flow
+metadata:
+  version: 1.0.0
+  description: Examples demonstrating the DiglyAI TemplateDefinition system with property-level control flow
 
 # Import required modules for the examples
 imports:

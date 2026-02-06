@@ -1,21 +1,22 @@
+import { RuntimeResource } from '@diglyai/sdk';
 import { ResourceURI } from './resource-uri';
-import { DiglyRuntimeError, RuntimeError, RuntimeResource } from './types';
+import { DiglyRuntimeError, ResourceManifest } from './types';
 
 /**
  * Registry: Indexes resources by composite key of Kind and Name
  * Maintains URI-based lookup for tracking resource origins and lineage
  */
-export class Registry {
-  private resources: Map<string, Map<string, RuntimeResource>> = new Map();
+export class ManifestRegistry {
+  private resources: Map<string, Map<string, ResourceManifest>> = new Map();
   private kindInheritance: Map<string, string> = new Map(); // derivedKind -> parentKind
-  private uriIndex: Map<string, RuntimeResource> = new Map(); // URI -> Resource
-  private sourceIndex: Map<string, RuntimeResource[]> = new Map(); // source path -> Resources
-  private depthIndex: Map<number, RuntimeResource[]> = new Map(); // generation depth -> Resources
+  private uriIndex: Map<string, ResourceManifest> = new Map(); // URI -> Resource
+  private sourceIndex: Map<string, ResourceManifest[]> = new Map(); // source path -> Resources
+  private depthIndex: Map<number, ResourceManifest[]> = new Map(); // generation depth -> Resources
 
   register(resource: RuntimeResource): void {
     const { kind, metadata } = resource;
     const { name } = metadata;
-
+    console.log('Registering resource:', kind, name);
     if (!this.resources.has(kind)) {
       this.resources.set(kind, new Map());
     }
@@ -24,7 +25,7 @@ export class Registry {
 
     if (kindMap.has(name)) {
       throw new DiglyRuntimeError(
-        RuntimeError.ERR_DUPLICATE_RESOURCE,
+        'ERR_DUPLICATE_RESOURCE',
         `Duplicate resource: ${kind}.${name}`,
       );
     }
@@ -58,13 +59,13 @@ export class Registry {
     this.depthIndex.get(depth)!.push(resource);
 
     // Check if this is a Runtime.KindDefinition that creates a new kind
-    if (kind === 'Runtime.KindDefinition') {
-      const newKind = name;
-      const parentKind = resource?.extends;
-      if (parentKind) {
-        this.kindInheritance.set(newKind, parentKind);
-      }
-    }
+    // if (kind === 'Runtime.KindDefinition') {
+    //   const newKind = name;
+    //   const parentKind = resource?.extends;
+    //   if (parentKind) {
+    //     this.kindInheritance.set(newKind, parentKind);
+    //   }
+    // }
   }
 
   getParentKind(kind: string): string | undefined {
@@ -81,11 +82,11 @@ export class Registry {
     return chain;
   }
 
-  get(kind: string, name: string): RuntimeResource | undefined {
+  get(kind: string, name: string): ResourceManifest | undefined {
     return this.resources.get(kind)?.get(name);
   }
 
-  getByKind(kind: string): RuntimeResource[] {
+  getByKind(kind: string): ResourceManifest[] {
     const kindMap = this.resources.get(kind);
     return kindMap ? Array.from(kindMap.values()) : [];
   }
@@ -93,14 +94,14 @@ export class Registry {
   /**
    * Get resource by its URI
    */
-  getByUri(uri: string): RuntimeResource | undefined {
+  getByUri(uri: string): ResourceManifest | undefined {
     return this.uriIndex.get(uri);
   }
 
   /**
    * Get all resources from a specific source file
    */
-  getBySourceFile(sourceFilePath: string): RuntimeResource[] {
+  getBySourceFile(sourceFilePath: string): ResourceManifest[] {
     return this.sourceIndex.get(sourceFilePath) ?? [];
   }
 
@@ -108,15 +109,15 @@ export class Registry {
    * Get all resources at a specific generation depth
    * 0 = directly from files, 1+ = template-generated
    */
-  getByGenerationDepth(depth: number): RuntimeResource[] {
+  getByGenerationDepth(depth: number): ResourceManifest[] {
     return this.depthIndex.get(depth) ?? [];
   }
 
   /**
    * Get all template-generated resources (depth > 0)
    */
-  getTemplateGenerated(): RuntimeResource[] {
-    const results: RuntimeResource[] = [];
+  getTemplateGenerated(): ResourceManifest[] {
+    const results: ResourceManifest[] = [];
     for (const [depth, resources] of this.depthIndex) {
       if (depth > 0) {
         results.push(...resources);
@@ -128,11 +129,13 @@ export class Registry {
   /**
    * Get all directly-loaded resources (depth = 0)
    */
-  getDirectlyLoaded(): RuntimeResource[] {
+  getDirectlyLoaded(): ResourceManifest[] {
     return this.depthIndex.get(0) ?? [];
   }
 
-  getAll(): Map<string, Map<string, RuntimeResource>> {
-    return this.resources;
+  getAll(): ResourceManifest[] {
+    return Array.from(this.resources.values())
+      .map((kindMap) => Array.from(kindMap.values()))
+      .flat();
   }
 }

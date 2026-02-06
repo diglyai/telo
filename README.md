@@ -26,7 +26,7 @@ mounts:
 kind: OpenApi.Spec
 metadata:
   name: HelloApiSpec
-path: '/reference'
+path: /reference
 apis:
   - Http.Api.HelloApi
 info:
@@ -76,7 +76,7 @@ routes:
         greeting: '${{ result.message }}!'
         nice: 'WOW'
 ---
-kind: Logic.JavaScript
+kind: JavaScript.Script
 name: SayHello
 code: |
   function main({ name }) {
@@ -85,17 +85,11 @@ code: |
     }
   };
 inputSchema:
-  type: object
-  properties:
-    name:
-      type: string
-  required: ['name']
+  name:
+    type: string
 outputSchema:
-  type: object
-  properties:
-    message:
-      type: string
-  required: ['message']
+  message:
+    type: string
 ```
 
 ## What It Does

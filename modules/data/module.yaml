@@ -1,5 +1,6 @@
-kind: ModuleDefinition
-name: "Data"
-version: "1.0.0"
+kind: Runtime.Module
+metadata:
+  name: Data
+  version: '1.0.0'
 definitions:
-  - "resources.yaml"
+  - 'type.yaml'

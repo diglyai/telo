@@ -1,0 +1,24 @@
+kind: Runtime.Module
+metadata:
+  name: ProductDataTypeExample
+  version: 1.0.0
+imports:
+  - ../../modules/data
+---
+kind: Data.Type
+metadata:
+  name: Product
+  module: ProductDataTypeExample
+schema:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    price:
+      type: number
+    inStock:
+      type: boolean
+  required: ['id', 'name', 'price', 'inStock']

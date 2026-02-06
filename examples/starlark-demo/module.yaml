@@ -1,8 +1,63 @@
-kind: ModuleDefinition
-name: StarlarkDemo
-description: A demo module showcasing Starlark scripts
-version: 1.0.0
+kind: Runtime.Module
+metadata:
+  name: StarlarkDemo
+  version: 1.0.0
+  description: A demo module showcasing Starlark scripts
 imports:
+  - ../../modules/flow
   - ../../modules/starlark
-resources:
-  - ./demo.yaml
+  - ../../modules/console
+---
+kind: Starlark.Script
+metadata:
+  name: ExampleStarlarkScript
+  module: StarlarkDemo
+code: |
+  def main():
+    result = 2 * 2
+    return {"result": result}
+inputSchema:
+  type: object
+  properties:
+    value:
+      type: number
+  required: [value]
+outputSchema:
+  type: object
+  properties:
+    result:
+      type: number
+  required: [result]
+---
+kind: Console.WriteLine
+metadata:
+  name: WriteResult
+  module: StarlarkDemo
+inputSchema:
+  type: object
+  properties:
+    result:
+      type: number
+  required: [result]
+text: |
+  Evaluated starlark code.
+  Result is: ${{ result }}
+---
+kind: Runtime.Flow
+metadata:
+  name: RunScriptOnEvent
+  module: StarlarkDemo
+trigger:
+  event: Runtime.Started
+  once: true
+  filter: 'true'
+steps:
+  - name: Step1
+    input:
+      value: 42
+    invoke:
+      kind: Starlark.Script
+      name: ExampleStarlarkScript
+  - input:
+      result: ${{ Step1.output.result }}
+    invoke: Console.WriteLine.WriteResult

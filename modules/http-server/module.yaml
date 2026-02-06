@@ -1,0 +1,9 @@
+kind: Runtime.Module
+metadata:
+  name: 'Http'
+  version: '1.0.0'
+imports:
+  - './openapi'
+definitions:
+  - 'http-server-api.yaml'
+  - 'http-server.yaml'

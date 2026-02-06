@@ -1,3 +1,12 @@
+kind: Runtime.Module
+metadata:
+  name: PipelineBasic
+  version: 1.0.0
+imports:
+  - ../modules/pipeline
+  - ../modules/javascript
+  - ../modules/assert
+---
 kind: Pipeline.Job
 metadata:
   name: TestBasicAddition
@@ -5,12 +14,10 @@ metadata:
 
 steps:
   - name: Add two numbers
-    kind: Logic.JavaScript
+    kind: JavaScript.InlineScript
     code: |
-      function main({ a, b }) {
-        return { result: a + b }
-      }
-    input:
+      return a + b;
+    inputs:
       a: 5
       b: 3
     outputs:

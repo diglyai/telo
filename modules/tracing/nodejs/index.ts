@@ -1,5 +1,5 @@
 import type {
-  ModuleContext,
+  ControllerContext,
   ModuleCreateContext,
   ResourceInstance,
   RuntimeResource,
@@ -73,7 +73,9 @@ class EventBuffer {
           failedEvents.push(item);
           // Wait before next retry
           if (this.retryDelay > 0) {
-            await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
+            await new Promise((resolve) =>
+              setTimeout(resolve, this.retryDelay),
+            );
           }
         } else {
           // Max retries reached, log and drop event
@@ -179,7 +181,7 @@ function parseResourceRef(ref: string): { kind: string; name: string } {
 }
 
 // Module Registration
-export function register(ctx: ModuleContext): void {
+export function register(ctx: ControllerContext): void {
   // No global registration needed for now
 }
 
@@ -249,7 +251,10 @@ export function create(
           (r) => r.metadata.name === name,
         ) as FileExporterResource | undefined;
 
-        if (exporterResource && exporterResource.kind === 'Tracing.FileExporter') {
+        if (
+          exporterResource &&
+          exporterResource.kind === 'Tracing.FileExporter'
+        ) {
           const mode = exporterResource.mode || 'append';
           await exporters[i].init(mode);
         }
@@ -317,7 +322,10 @@ export function create(
     };
 
     // Event handler storage for cleanup
-    const handlers: Array<{ event: string; handler: (payload?: any) => void | Promise<void> }> = [];
+    const handlers: Array<{
+      event: string;
+      handler: (payload?: any) => void | Promise<void>;
+    }> = [];
 
     return {
       init: async () => {
@@ -354,13 +362,19 @@ export function create(
           const initEvent = `${kind}.Initialized`;
           const teardownEvent = `${kind}.Teardown`;
 
-          if (eventPatterns.some((pattern) => matchesPattern(initEvent, pattern))) {
+          if (
+            eventPatterns.some((pattern) => matchesPattern(initEvent, pattern))
+          ) {
             const handler = createEventHandler(initEvent);
             ctx.on(initEvent, handler);
             handlers.push({ event: initEvent, handler });
           }
 
-          if (eventPatterns.some((pattern) => matchesPattern(teardownEvent, pattern))) {
+          if (
+            eventPatterns.some((pattern) =>
+              matchesPattern(teardownEvent, pattern),
+            )
+          ) {
             const handler = createEventHandler(teardownEvent);
             ctx.on(teardownEvent, handler);
             handlers.push({ event: teardownEvent, handler });

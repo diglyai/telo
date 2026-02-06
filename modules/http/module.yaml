@@ -1,9 +1,0 @@
-kind: ModuleDefinition
-name: 'Http'
-version: '1.0.0'
-imports:
-  - './openapi'
-definitions:
-  - 'http-route.yaml'
-  - 'http-api.yaml'
-  - 'http-server.yaml'

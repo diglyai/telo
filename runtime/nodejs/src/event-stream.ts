@@ -39,7 +39,7 @@ export class EventStream {
     event: string,
     payload?: any,
     metadata?: {
-      module?: string;
+      namespace?: string;
       resource?: string;
       kind?: string;
       name?: string;

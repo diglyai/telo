@@ -1,7 +1,0 @@
-kind: ModuleDefinition
-name: 'Logic'
-version: '1.0.0'
-definitions:
-  - 'logic.yaml'
-  - 'inline-function.yaml'
-  - 'javascript.yaml'

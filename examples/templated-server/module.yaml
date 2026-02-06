@@ -1,7 +1,8 @@
-kind: ModuleDefinition
+kind: Runtime.Module
 name: TemplatedSimpleServer
-version: 1.0.0
-description: Examples demonstrating the DiglyAI TemplateDefinition system
+metadata:
+  version: 1.0.0
+  description: Examples demonstrating the DiglyAI TemplateDefinition system
 
 # Import required modules for the examples
 imports:

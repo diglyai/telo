@@ -1,131 +1,45 @@
+import { RuntimeResource } from '@diglyai/sdk';
 import { evaluate } from 'cel-js';
 import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
-import {
-  formatAjvErrors,
-  validateModuleManifest,
-  validateRuntimeResource,
-} from './manifest-schemas';
+import { formatAjvErrors, validateRuntimeResource } from './manifest-schemas';
 import { ResourceURI } from './resource-uri';
 import { isTemplateDefinition } from './template-definition';
 import { instantiateTemplate } from './template-expander';
-import { ModuleManifest, RuntimeResource } from './types';
+import { ResourceManifest } from './types';
 
 /**
  * Loader: Ingests resolved YAML manifests from disk into memory
  */
 export class Loader {
-  private runtimeConfig: ModuleManifest | null = null;
-  private moduleName: string | null = null;
-  private templateNames: Set<string> = new Set();
-
-  async loadFromRuntimeConfig(
-    runtimeYamlPath: string,
-  ): Promise<RuntimeResource[]> {
-    // Load runtime config first
-    this.runtimeConfig = await this.loadRuntimeConfigFile(runtimeYamlPath);
-
-    if (
-      !this.runtimeConfig.resources ||
-      this.runtimeConfig.resources.length === 0
-    ) {
-      console.log('No resources specified in runtime.yaml');
-      return [];
-    }
-
-    const resources: RuntimeResource[] = [];
-    const basePath = path.dirname(runtimeYamlPath);
-
-    for (const resourceEntry of this.runtimeConfig.resources) {
-      const resourcePath =
-        typeof resourceEntry === 'string' ? resourceEntry : resourceEntry.path;
-      const resolvedPath = this.resolveManifestPath(resourcePath, basePath);
-      await this.loadManifestSource(resolvedPath, resources);
-    }
-
-    const ordered = this.orderResourcesByKindDependencies(resources);
-    return this.expandTemplateInstances(ordered);
-  }
-
-  async loadDirectory(dirPath: string): Promise<RuntimeResource[]> {
+  async loadDirectory(dirPath: string): Promise<ResourceManifest[]> {
     const resources: RuntimeResource[] = [];
     await this.walkDirectory(dirPath, resources);
     const ordered = this.orderResourcesByKindDependencies(resources);
     return this.expandTemplateInstances(ordered);
   }
 
-  private resolveManifestPath(manifestPath: string, basePath: string): string {
-    // Handle environment variables with CEL expression format
-    if (manifestPath.includes('${{') && manifestPath.includes('}}')) {
-      // Simple env var substitution for ${{{ env.VAR_NAME }}}
-      const envVarMatch = manifestPath.match(
-        /\$\{\{\s*env\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/,
-      );
-      if (envVarMatch) {
-        const envValue = process.env[envVarMatch[1]];
-        if (!envValue) {
-          throw new Error(`Environment variable ${envVarMatch[1]} not found`);
-        }
-        manifestPath = manifestPath.replace(envVarMatch[0], envValue);
-      }
-    }
-
-    // Handle URLs
-    if (
-      manifestPath.startsWith('http://') ||
-      manifestPath.startsWith('https://')
-    ) {
-      return manifestPath;
-    }
-
-    // Handle absolute paths
-    if (path.isAbsolute(manifestPath)) {
-      return manifestPath;
-    }
-
-    // Handle relative paths
-    return path.resolve(basePath, manifestPath);
-  }
-
-  private async loadManifestSource(
-    sourcePath: string,
-    resources: RuntimeResource[],
-  ): Promise<void> {
-    if (sourcePath.startsWith('http://') || sourcePath.startsWith('https://')) {
-      throw new Error('Remote manifest loading not yet implemented');
-    }
-
-    const stats = await fs.stat(sourcePath);
-
-    if (stats.isDirectory()) {
-      await this.walkDirectory(sourcePath, resources);
-    } else if (stats.isFile() && this.isYamlFile(path.basename(sourcePath))) {
-      await this.loadYamlFile(sourcePath, resources);
-    } else {
-      throw new Error(`Invalid manifest source: ${sourcePath}`);
-    }
-  }
-
-  async loadRuntimeConfigFile(
-    runtimeYamlPath: string,
-  ): Promise<ModuleManifest> {
+  async loadManifest(runtimeYamlPath: string): Promise<ResourceManifest[]> {
     const content = await fs.readFile(runtimeYamlPath, 'utf-8');
-    const config = yaml.load(content) as ModuleManifest;
+    const config = yaml.loadAll(content) as ResourceManifest[];
 
-    if (!validateModuleManifest(config)) {
-      throw new Error(
-        `Invalid runtime.yaml format: ${formatAjvErrors(validateModuleManifest.errors)}`,
-      );
-    }
+    // if (!validateModuleManifest(config)) {
+    //   throw new Error(
+    //     `Invalid runtime.yaml format: ${formatAjvErrors(validateModuleManifest.errors)}`,
+    //   );
+    // }
 
-    // Store module name for template resolution
-    this.moduleName = config.name || null;
+    // Store namespace for template resolution
+    // this.namespace = config.name || null;
 
-    return config;
-  }
-  getRuntimeConfig(): ModuleManifest | null {
-    return this.runtimeConfig;
+    return config.map((m) => ({
+      ...m,
+      metadata: {
+        ...m.metadata,
+        source: runtimeYamlPath,
+      },
+    }));
   }
 
   private async walkDirectory(
@@ -176,17 +90,13 @@ export class Loader {
 
       // Assign URI based on file source
       const { kind, name } = resource.metadata;
+      resource.metadata.source = filePath;
       resource.metadata.uri = ResourceURI.fromFile(
         absolutePath,
         kind,
         name,
       ).toString();
       resource.metadata.generationDepth = 0;
-
-      // Track template names for resolution
-      if (resource.kind === 'TemplateDefinition') {
-        this.templateNames.add(resource.metadata.name);
-      }
 
       resources.push(resource);
     }
@@ -203,18 +113,6 @@ export class Loader {
       typeof doc.metadata === 'object' &&
       typeof doc.metadata.name === 'string'
     ) {
-      // Resolve "Self." prefix to module name
-      if (this.moduleName && doc.kind.startsWith('Self.')) {
-        doc.kind = `${this.moduleName}.${doc.kind.substring(5)}`;
-      }
-      // Resolve non-prefixed kind to Self. if it matches a known template
-      else if (
-        this.moduleName &&
-        !doc.kind.includes('.') &&
-        this.templateNames.has(doc.kind)
-      ) {
-        doc.kind = `${this.moduleName}.${doc.kind}`;
-      }
       return doc as RuntimeResource;
     }
 
@@ -326,22 +224,6 @@ export class Loader {
       if (isTemplateDefinition(resource)) {
         templates.set(resource.metadata.name, resource);
         regularResources.push(resource); // Keep definitions in registry
-      } else if (
-        this.moduleName &&
-        resource.kind.startsWith(`${this.moduleName}.`)
-      ) {
-        // This is a template instance (Module.TemplateName)
-        const templateName = resource.kind.substring(
-          this.moduleName.length + 1,
-        );
-        if (templates.has(templateName)) {
-          instancesMap.set(
-            `${resource.kind}.${resource.metadata.name}`,
-            resource,
-          );
-        } else {
-          regularResources.push(resource);
-        }
       } else {
         regularResources.push(resource);
       }
@@ -360,11 +242,8 @@ export class Loader {
       const newInstances: RuntimeResource[] = [];
 
       for (const instance of currentInstances) {
-        // Extract template name from Module.TemplateName
-        const templateName =
-          this.moduleName && instance.kind.startsWith(`${this.moduleName}.`)
-            ? instance.kind.substring(this.moduleName.length + 1)
-            : instance.kind;
+        // Extract template name from Namespace.TemplateName
+        const templateName = instance.kind;
         const template = templates.get(templateName);
 
         if (!template) {

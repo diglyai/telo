@@ -1,270 +1,176 @@
-import * as fs from 'fs/promises';
+import { ResourceContext, RuntimeEvent, RuntimeResource } from '@diglyai/sdk';
 import * as path from 'path';
+import { ControllerRegistry } from './controller-registry';
 import { EventStream } from './event-stream';
 import { EventBus } from './events';
-import {
-  evaluateCel,
-  expandValue,
-  resolveExpressionsInRegistry,
-} from './expressions';
+import { evaluateCel, expandValue } from './expressions';
 import { Loader } from './loader';
-import { ModuleLoader } from './module-loader';
-import { Registry } from './registry';
+import { ManifestRegistry } from './registry';
+import { ResourceContextImpl } from './resource-context';
 import { SnapshotSerializer } from './snapshot-serializer';
 import {
-  DiglyModule,
+  ControllerContext,
   DiglyRuntimeError,
   ExecContext,
   Kernel as IKernel,
-  KernelContext,
-  ModuleContext,
-  ModuleCreateContext,
-  ModuleManifest,
-  ResourceContext,
+  ResourceDefinition,
   ResourceInstance,
-  RuntimeError,
-  RuntimeResource,
+  ResourceManifest,
 } from './types';
 
 /**
  * Kernel: Central orchestrator managing lifecycle and message bus
+ * Handles resource loading, initialization, and execution through controllers
  */
 export class Kernel implements IKernel {
-  public registry: Map<string, Map<string, RuntimeResource>>;
-  public modules: Map<string, DiglyModule> = new Map(); // kind -> module mapping
-  public moduleInstances: Map<string, DiglyModule> = new Map(); // name -> module mapping
-
   private loader: Loader = new Loader();
-  private registryImpl: Registry = new Registry();
-  private moduleLoader: ModuleLoader = new ModuleLoader();
+  private manifests: ManifestRegistry = new ManifestRegistry();
+  private initializationQueue: ResourceManifest[] = [];
+  private controllers: ControllerRegistry = new ControllerRegistry();
   private eventBus: EventBus = new EventBus();
   private eventStream: EventStream = new EventStream();
   private snapshotSerializer: SnapshotSerializer = new SnapshotSerializer();
-  private runtimeConfig: ModuleManifest | null = null;
+  private runtimeManifests: ResourceManifest[] | null = null;
   private resourceInstances: Map<
     string,
-    { resource: RuntimeResource; instance: ResourceInstance }
+    { resource: ResourceManifest; instance: ResourceInstance }
   > = new Map();
   private resourceEventBuses: Map<string, EventBus> = new Map();
   private holdCount = 0;
   private idleResolvers: Array<() => void> = [];
 
   constructor() {
-    this.registry = this.registryImpl.getAll();
     this.setupEventStreaming();
   }
 
   /**
-   * Register a static/built-in module before loading
+   * Register a resource dynamically during initialization
    */
-  registerStaticModule(name: string, module: DiglyModule): void {
-    this.moduleLoader.registerStaticModule(name, module);
+  registerManifest(resource: ResourceManifest): void {
+    this.initializationQueue.push(resource);
+  }
+
+  async registerController(
+    moduleName: string,
+    resourceKind: string,
+    controllerInstance: any,
+  ): Promise<void> {
+    this.controllers.registerController(
+      `${moduleName}.${resourceKind}`,
+      controllerInstance,
+    );
+    await controllerInstance.register?.(
+      this.createControllerContext(`${moduleName}.${resourceKind}`),
+    );
+  }
+
+  /**
+   * Register a resource definition with the controller registry
+   */
+  registerResourceDefinition(
+    definition: ResourceDefinition,
+    basePath?: string,
+    namespace?: string | null,
+  ): void {
+    this.controllers.registerDefinition(definition, basePath, namespace);
+  }
+
+  /**
+   * Load built-in Runtime definitions (e.g., Runtime.Module)
+   */
+  private async loadBuiltinDefinitions(): Promise<void> {
+    this.controllers.registerDefinition(
+      {
+        kind: 'Runtime.Definition',
+        metadata: {
+          name: 'Definition',
+          resourceKind: 'Definition',
+          module: 'Runtime',
+        },
+        schema: { type: 'object' },
+      },
+      'runtime',
+      'Runtime',
+    );
+    this.controllers.registerController(
+      'Runtime.Definition',
+      await import('./controllers/resource-definition/resource-definition-controller'),
+    );
+    const moduleSchema = await import('./controllers/module/module.json');
+    this.controllers.registerDefinition(
+      {
+        kind: 'Runtime.Definition',
+        metadata: { name: 'Module', resourceKind: 'Module', module: 'Runtime' },
+        schema: moduleSchema,
+      },
+      'runtime',
+      'Runtime',
+    );
+    this.controllers.registerController(
+      'Runtime.Module',
+      await import('./controllers/module/module-controller'),
+    );
   }
 
   /**
    * Load from runtime configuration file
    */
   async loadFromConfig(runtimeYamlPath: string): Promise<void> {
+    // Initialize built-in Runtime definitions first
+    await this.loadBuiltinDefinitions();
+
     // Load runtime configuration
-    this.runtimeConfig =
-      await this.loader.loadRuntimeConfigFile(runtimeYamlPath);
-
-    // Phase 1: Load and register modules first (containers must be registered before resources)
-    const runtimeDir = path.dirname(runtimeYamlPath);
-    const modules = await this.moduleLoader.loadModule({
-      source: runtimeDir,
-      manifest: runtimeYamlPath,
-    });
-
-    for (const module of modules) {
-      await this.register(module);
-    }
-
-    // Phase 2: Load and register resources
-    const resources = await this.loader.loadFromRuntimeConfig(runtimeYamlPath);
-    for (const resource of resources) {
-      this.registryImpl.register(resource);
-      await this.eventBus.emit('Resource.Registered', { resource });
-    }
-
-    resolveExpressionsInRegistry(
-      this.registryImpl.getAll(),
-      this.runtimeConfig,
-    );
-
-    // Phase 3: Compile resources with registered modules
-    await this.compileResources(modules);
-
-    this.assertAllResourceKindsClaimed();
+    this.initializationQueue = await this.loader.loadManifest(runtimeYamlPath);
   }
 
   /**
    * Phase 1: Load - Ingest files from directory and load runtime config
    * @deprecated Use loadFromConfig instead
    */
-  async load(dirPath: string): Promise<void> {
-    const runtimeYamlPath = path.join(dirPath, 'runtime.yaml');
-    const moduleYamlPath = path.join(dirPath, 'module.yaml');
+  async loadDirectory(dirPath: string): Promise<void> {
+    const configYamlPath = path.join(dirPath, 'module.yaml');
 
-    if (await this.pathExists(runtimeYamlPath)) {
-      await this.loadFromConfig(runtimeYamlPath);
-      return;
-    }
-
-    if (await this.pathExists(moduleYamlPath)) {
-      await this.loadFromConfig(moduleYamlPath);
-      return;
-    }
-
-    // Fallback to old behavior if no manifest exists
-    const resources = await this.loader.loadDirectory(dirPath);
-    for (const resource of resources) {
-      this.registryImpl.register(resource);
-    }
-    resolveExpressionsInRegistry(
-      this.registryImpl.getAll(),
-      this.runtimeConfig,
-    );
-  } /**
-   * Phase 2: Register - Attach module drivers
-   */
-  async register(module: DiglyModule): Promise<void> {
-    console.log(
-      `DEBUG: Registering module "${module.name}", constructor: ${module.constructor.name}`,
-    );
-
-    // Check if module already registered
-    if (this.moduleInstances.has(module.name)) {
-      console.log(
-        `DEBUG: Module "${module.name}" already registered, skipping`,
-      );
-      return; // Skip duplicate registration
-    }
-
-    console.log(`DEBUG: Adding module "${module.name}" to moduleInstances`);
-    // Register module instance
-    this.moduleInstances.set(module.name, module);
-
-    // Map each kind to this module
-    for (const kind of module.resourceKinds) {
-      if (this.modules.has(kind)) {
-        throw new Error(
-          `Module conflict: Kind "${kind}" is already claimed by module "${this.modules.get(kind)!.name}"`,
-        );
-      }
-      this.modules.set(kind, module);
-    }
-
-    // Filter registry for resources matching module's Kinds
-    const relevantResources: RuntimeResource[] = [];
-    for (const kind of module.resourceKinds) {
-      relevantResources.push(...this.registryImpl.getByKind(kind));
-    }
-
-    module.onLoad(relevantResources);
-    await this.eventBus.emit('Module.Registered', {
-      module: module.name,
-      manifest: module.manifest,
-      resourceKinds: module.resourceKinds,
-    });
-  }
-
-  private assertAllResourceKindsClaimed(): void {
-    for (const [kind, resources] of this.registryImpl.getAll()) {
-      // Skip built-in kinds handled by the kernel itself
-      if (kind === 'Runtime.KindDefinition' || kind === 'TemplateDefinition') {
-        continue;
-      }
-
-      if (!this.modules.has(kind) && resources.size > 0) {
-        // Check if this kind is derived from another kind
-        const parentKind = this.registryImpl.getParentKind(kind);
-        if (parentKind && this.modules.has(parentKind)) {
-          // Inherit the parent's module for this derived kind
-          const parentModule = this.modules.get(parentKind)!;
-          this.modules.set(kind, parentModule);
-          console.log(
-            `DEBUG: Kind "${kind}" inherits controller from "${parentKind}"`,
-          );
-        } else {
-          throw new DiglyRuntimeError(
-            RuntimeError.ERR_MODULE_MISSING,
-            `No module registered for Kind: ${kind}`,
-          );
-        }
-      }
-    }
+    await this.loadFromConfig(configYamlPath);
   }
 
   /**
-   * Load modules from configuration
-   */
-  private async loadModulesFromImports(importPaths: string[]): Promise<void> {
-    for (const importPath of importPaths) {
-      try {
-        console.log(`DEBUG: Loading module import:`, importPath);
-        const modules = await this.moduleLoader.loadModule({
-          source: importPath,
-        });
-        console.log(`DEBUG: Module loader returned ${modules.length} modules`);
-        for (const module of modules) {
-          console.log(`DEBUG: About to register module:`, module.name);
-          await this.register(module);
-        }
-      } catch (error) {
-        throw new DiglyRuntimeError(
-          RuntimeError.ERR_MODULE_MISSING,
-          `Failed to load module from "${importPath}": ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Phase 3: Start - Initialize modules and resources
+   * Phase 2: Start - Initialize resources
    */
   async start(): Promise<void> {
-    const ctx: KernelContext = {
-      kernel: this,
-      config: this.runtimeConfig || {},
-    };
-
-    // Call module register hooks first (before any initialization)
-    for (const module of this.moduleInstances.values()) {
-      if (module.register) {
-        await module.register(this.createModuleContext(module.name));
+    // Call controller register hooks first (before any initialization)
+    for (const kind of this.controllers.getKinds()) {
+      const controller = await this.controllers.getController(kind);
+      if (controller?.register) {
+        await controller.register(
+          this.createControllerContext(`controller:${kind}`),
+        );
       }
     }
 
-    await this.eventBus.emit('Runtime.Starting', {
-      moduleName: this.runtimeConfig?.name,
-    });
-
-    // Initialize resources and emit Module.Initialized after each module's resources are ready
+    // Initialize resources
     await this.initializeResources();
+    await this.eventBus.emit('Runtime.Initialized', {});
 
-    // Call module onStart hooks
-    const startPromises = Array.from(this.moduleInstances.values()).map(
-      (module) => module.onStart(ctx),
-    );
-    await Promise.all(startPromises);
-    await this.eventBus.emit('Runtime.Started', {
-      moduleName: this.runtimeConfig?.name,
-    });
+    await this.eventBus.emit('Runtime.Starting', {});
+
+    await this.runInstances();
+
+    await this.eventBus.emit('Runtime.Started', {});
+
+    await this.waitForIdle();
+
+    await this.eventBus.emit('Runtime.Stopping', {});
+    await this.teardownResources();
+    await this.eventBus.emit('Runtime.Stopped', {});
   }
 
-  /**
-   * Get runtime configuration
-   */
-  getRuntimeConfig(): ModuleManifest | null {
-    return this.runtimeConfig;
-  }
-
-  /**
-   * Get module loader for advanced module management
-   */
-  getModuleLoader(): ModuleLoader {
-    return this.moduleLoader;
+  async runInstances(): Promise<void> {
+    for (const entry of this.resourceInstances.values()) {
+      const { resource, instance } = entry;
+      if (instance.run) {
+        await instance.run();
+      }
+    }
   }
 
   async emitRuntimeEvent(event: string, payload?: any): Promise<void> {
@@ -305,21 +211,6 @@ export class Kernel implements IKernel {
     });
   }
 
-  async emitResourceEvent(
-    kind: string,
-    name: string,
-    event: string,
-    payload?: any,
-  ): Promise<void> {
-    this.assertResourceEventAllowed(event);
-    const bus = this.getResourceEventBus(kind, name);
-    await bus.emit(`${kind}.${event}`, payload);
-  }
-
-  getModuleContext(moduleName: string): ModuleContext {
-    return this.createModuleContext(moduleName);
-  }
-
   hasEventHandlers(event: string): boolean {
     return this.eventBus.hasHandlers(event);
   }
@@ -329,37 +220,46 @@ export class Kernel implements IKernel {
   }
 
   async teardownResources(): Promise<void> {
-    await this.eventBus.emit('Runtime.TeardownStarting', {});
     const entries = Array.from(this.resourceInstances.entries());
     for (const [key, entry] of entries) {
       const { resource, instance } = entry;
       if (instance.teardown) {
         await instance.teardown();
       }
-      await this.eventBus.emit(`${resource.kind}.Teardown`, {
-        resource: {
-          kind: resource.kind,
-          name: resource.metadata.name,
+      await this.eventBus.emit(
+        `${resource.metadata.module}.${resource.metadata.name}.Teardown`,
+        {
+          resource: { kind: resource.kind, name: resource.metadata.name },
         },
-      });
+      );
       this.resourceInstances.delete(key);
       this.resourceEventBuses.delete(key);
     }
-    await this.eventBus.emit('Runtime.TeardownCompleted', {});
   }
 
-  private createModuleContext(moduleName: string): ModuleContext {
+  on(
+    event: string,
+    handler: (event: RuntimeEvent) => void | Promise<void>,
+  ): void {
+    this.eventBus.on(event, handler);
+  }
+
+  private createControllerContext(kind: string): ControllerContext {
     return {
-      on: (event: string, handler: (payload?: any) => void | Promise<void>) =>
-        this.eventBus.on(event, handler),
-      once: (event: string, handler: (payload?: any) => void | Promise<void>) =>
-        this.eventBus.once(event, handler),
-      off: (event: string, handler: (payload?: any) => void | Promise<void>) =>
-        this.eventBus.off(event, handler),
+      on: (
+        event: string,
+        handler: (event: RuntimeEvent) => void | Promise<void>,
+      ) => this.eventBus.on(event, handler),
+      once: (
+        event: string,
+        handler: (event: RuntimeEvent) => void | Promise<void>,
+      ) => this.eventBus.once(event, handler),
+      off: (
+        event: string,
+        handler: (event: RuntimeEvent) => void | Promise<void>,
+      ) => this.eventBus.off(event, handler),
       emit: (event: string, payload?: any) => {
-        const namespaced = event.includes('.')
-          ? event
-          : `${moduleName}.${event}`;
+        const namespaced = event.includes('.') ? event : `${kind}.${event}`;
         void this.eventBus.emit(namespaced, payload);
       },
       acquireHold: (reason?: string) => this.acquireHold(reason),
@@ -370,162 +270,187 @@ export class Kernel implements IKernel {
     };
   }
 
-  private createModuleCreateContext(moduleName: string): ModuleCreateContext {
-    return {
-      ...this.createModuleContext(moduleName),
-      kernel: this,
-      getResources: (kind: string) => this.registryImpl.getByKind(kind),
-      onResourceEvent: (kind: string, name: string, event: string, handler) => {
-        this.assertResourceEventAllowed(event);
-        this.getResourceEventBus(kind, name).on(`${kind}.${event}`, handler);
-      },
-      onceResourceEvent: (
-        kind: string,
-        name: string,
-        event: string,
-        handler,
-      ) => {
-        this.assertResourceEventAllowed(event);
-        this.getResourceEventBus(kind, name).once(`${kind}.${event}`, handler);
-      },
-      offResourceEvent: (
-        kind: string,
-        name: string,
-        event: string,
-        handler,
-      ) => {
-        this.assertResourceEventAllowed(event);
-        this.getResourceEventBus(kind, name).off(`${kind}.${event}`, handler);
-      },
-      emitResourceEvent: (
-        kind: string,
-        name: string,
-        event: string,
-        payload?: any,
-      ) => this.emitResourceEvent(kind, name, event, payload),
-      createResourceContext: (kind: string, name: string) =>
-        this.createResourceContext(moduleName, kind, name),
-    };
+  private createResourceContext(resource: ResourceManifest): ResourceContext {
+    return this.createResourceContextWithNamespace(resource);
   }
 
-  private createResourceContext(
-    moduleName: string,
+  private createResourceContextWithNamespace(
+    resource: ResourceManifest,
+  ): ResourceContext {
+    return new ResourceContextImpl(
+      this,
+      resource.metadata,
+      // this.createControllerContext(resource.kind),
+    );
+  }
+
+  getResourcesByKind(kind: string): RuntimeResource[] {
+    const resources: RuntimeResource[] = [];
+    for (const entry of this.resourceInstances.values()) {
+      if (entry.resource.kind === kind) {
+        resources.push(entry.instance as any);
+      }
+    }
+    return resources;
+  }
+
+  getResourceByName(
+    module: string,
     kind: string,
     name: string,
-  ): ResourceContext {
-    const baseContext = this.createModuleContext(moduleName);
-    return {
-      ...baseContext,
-      acquireHold: (reason?: string) => {
-        const fullReason = reason
-          ? `${kind}:${name} - ${reason}`
-          : `${kind}:${name}`;
-        return this.acquireHold(fullReason);
-      },
-      emitEvent: (event: string, payload?: any) =>
-        this.emitResourceEvent(kind, name, event, payload),
-    };
+  ): RuntimeResource | null {
+    // const [declarationModule, knd] = kind.includes('.')
+    //   ? kind.split('.', 2)
+    //   : ['Runtime', kind];
+    const key = this.getResourceKey(module, kind, name);
+    const entry = this.resourceInstances.get(key);
+    if (entry) {
+      return entry.instance as any;
+    }
+    console.log('key not found:', key);
+    console.log('existing keys:', Array.from(this.resourceInstances.keys()));
+    return null;
   }
 
   private async initializeResources(): Promise<void> {
-    // Phase 1: Create all resource instances
-    for (const module of this.moduleInstances.values()) {
-      if (!module.create) {
-        continue;
-      }
-      for (const kind of module.resourceKinds) {
-        const resources = this.registryImpl.getByKind(kind);
-        for (const resource of resources) {
-          const key = this.getResourceKey(kind, resource.metadata.name);
-          if (this.resourceInstances.has(key)) {
-            continue;
-          }
-          this.ensureResourceEventBus(kind, resource.metadata.name);
-          const resourceCtx = this.createResourceContext(
-            module.name,
-            kind,
-            resource.metadata.name,
+    /**
+     * Step 4: Multi-Pass Controller Discovery Loop (Max 10 Passes)
+     * Loop up to 10 passes to discover controllers and create resource instances.
+     * Each pass removes handled resources from the list, making subsequent passes faster.
+     */
+
+    // Collect all resources from registry as a list
+
+    let passNumber = 1;
+    const MAX_PASSES = 10;
+    const createdResources: Array<{
+      kind: string;
+      resource: ResourceManifest;
+      instance: ResourceInstance;
+    }> = [];
+    let handledThisPass: Array<{
+      kind: string;
+      resource: ResourceManifest;
+    }> = [];
+    // Track latest error for each resource
+    const resourceErrors: Map<string, string> = new Map();
+
+    // Multi-pass loop
+    do {
+      handledThisPass = [];
+
+      for (const resource of this.initializationQueue) {
+        const kind = resource.kind;
+        const key = this.getResourceKey(
+          resource.metadata.module,
+          kind,
+          resource.metadata.name,
+        );
+        const resourceId = `${kind}:${resource.metadata.name}`;
+
+        // Skip if already created
+        if (this.resourceInstances.has(key)) {
+          continue;
+        }
+
+        const controller = this.controllers.getControllerOrUndefined(kind);
+
+        if (!controller) {
+          // No controller and no definition - track error and skip for now
+          resourceErrors.set(
+            resourceId,
+            `No controller registered for kind: ${kind}`,
           );
-          const instance = await module.create(
+          continue;
+        }
+
+        if (!controller.create) {
+          // Controller exists but has no create method, skip
+          throw new DiglyRuntimeError(
+            'ERR_CONTROLLER_INVALID',
+            `Controller for ${kind} does not implement create method`,
+          );
+        }
+
+        try {
+          // Create resource instance
+          const instance = await controller.create(
             resource,
-            this.createModuleCreateContext(module.name),
-            resourceCtx,
+            this.createResourceContext(resource),
           );
-          if (!instance) {
-            this.resourceEventBuses.delete(key);
-            continue;
+
+          if (instance) {
+            if (instance.init) {
+              await instance.init(this.createResourceContext(resource));
+            }
+            this.resourceInstances.set(key, { resource, instance });
+            createdResources.push({ kind, resource, instance });
+            handledThisPass.push({ kind, resource });
+            resourceErrors.delete(resourceId);
           }
-          this.resourceInstances.set(key, { resource, instance });
+          this.initializationQueue = this.initializationQueue.filter(
+            (r) =>
+              r.metadata.module !== resource.metadata.module ||
+              r.kind !== resource.kind ||
+              r.metadata.name !== resource.metadata.name,
+          );
+        } catch (error) {
+          // Creation failed - track latest error and retry later
+          resourceErrors.set(
+            resourceId,
+            error instanceof Error ? error.message : String(error),
+          );
         }
+      }
+
+      passNumber++;
+    } while (passNumber <= MAX_PASSES && handledThisPass.length > 0);
+
+    const unhandledResources: Map<string, string> = new Map();
+
+    // After loop, collect any resources that were never handled
+    for (const { kind, metadata } of this.initializationQueue) {
+      const key = this.getResourceKey(metadata.module, kind, metadata.name);
+      if (!this.resourceInstances.has(key)) {
+        const resourceId = `${kind}:${metadata.name}`;
+        const errorMessage = resourceErrors.get(resourceId) || 'Unknown error';
+        unhandledResources.set(resourceId, errorMessage);
       }
     }
 
-    // Phase 2: Initialize all resource instances and emit Module.Initialized after each module's resources
-    const moduleResourceMap = new Map<string, RuntimeResource[]>();
-
-    // Group resources by module
-    for (const [key, { resource, instance }] of this.resourceInstances) {
-      const module = this.modules.get(resource.kind);
-      if (module) {
-        const moduleName = module.name;
-        if (!moduleResourceMap.has(moduleName)) {
-          moduleResourceMap.set(moduleName, []);
-        }
-        moduleResourceMap.get(moduleName)!.push(resource);
-      }
-    }
-
-    // Initialize resources and emit Module.Initialized per module
-    for (const module of this.moduleInstances.values()) {
-      const moduleName = module.name;
-      const moduleResources = moduleResourceMap.get(moduleName) || [];
-
-      // Initialize all resources for this module
-      for (const resource of moduleResources) {
-        const key = this.getResourceKey(resource.kind, resource.metadata.name);
-        const entry = this.resourceInstances.get(key);
-        if (entry && entry.instance.init) {
-          await entry.instance.init();
-        }
-        await this.eventBus.emit(`${resource.kind}.Initialized`, {
-          resource: {
-            kind: resource.kind,
-            name: resource.metadata.name,
-          },
-        });
-      }
-
-      // Emit Module.Initialized after all resources for this module are initialized
-      if (moduleResources.length > 0 || module.resourceKinds.length > 0) {
-        await this.eventBus.emit('Module.Initialized', {
-          module: module.manifest?.name || module.name,
-          resourceKinds: module.resourceKinds,
-        });
-      }
+    // After all passes complete, check for unhandled resources
+    if (unhandledResources.size > 0) {
+      const unhandledList = Array.from(unhandledResources.entries())
+        .map(([resource, error]) => `- ${resource}: ${error}`)
+        .join('\n');
+      throw new DiglyRuntimeError(
+        'ERR_CONTROLLER_NOT_FOUND',
+        `Unable to process resources:\n\n${unhandledList}`,
+      );
     }
   }
 
   /**
-   * Execute - Synchronous dispatcher routing execution requests
+   * Execute - Dispatch execution request to appropriate controller
    */
   async execute(urn: string, input: any, ctx?: any): Promise<any> {
     const [kind, name] = this.parseUrn(urn);
 
     // Lookup resource
-    const resource = this.registryImpl.get(kind, name);
+    const resource = this.manifests.get(kind, name);
     if (!resource) {
       throw new DiglyRuntimeError(
-        RuntimeError.ERR_RESOURCE_NOT_FOUND,
+        'ERR_RESOURCE_NOT_FOUND',
         `Resource not found: ${urn}`,
       );
     }
 
-    // Find module for this Kind
-    const module = this.modules.get(kind);
-    if (!module) {
+    // Find controller for this Kind
+    const controller = await this.controllers.getController(kind);
+    if (!controller) {
       throw new DiglyRuntimeError(
-        RuntimeError.ERR_MODULE_MISSING,
-        `No module registered for Kind: ${kind}`,
+        'ERR_CONTROLLER_NOT_FOUND',
+        `No controller registered for Kind: ${kind}`,
       );
     }
 
@@ -538,7 +463,10 @@ export class Kernel implements IKernel {
 
     try {
       await this.eventBus.emit(`${name}.ExecutionStarted`, { urn });
-      const result = await module.execute(name, input, execContext);
+      const result = await controller.execute?.(name, input, {
+        ...execContext,
+        resource,
+      });
       await this.eventBus.emit(`${name}.ExecutionCompleted`, { urn });
       return result;
     } catch (error) {
@@ -547,7 +475,7 @@ export class Kernel implements IKernel {
         error: error instanceof Error ? error.message : String(error),
       });
       throw new DiglyRuntimeError(
-        RuntimeError.ERR_EXECUTION_FAILED,
+        'ERR_EXECUTION_FAILED',
         `Execution failed for ${urn}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
@@ -565,69 +493,36 @@ export class Kernel implements IKernel {
     return [kind, name];
   }
 
-  private async pathExists(filePath: string): Promise<boolean> {
-    try {
-      const stat = await fs.stat(filePath);
-      return stat.isFile();
-    } catch {
-      return false;
+  async invoke(
+    module: string,
+    kind: string,
+    name: string,
+    ...args: any[]
+  ): Promise<any> {
+    const instance: any = this.getResourceByName(module, kind, name);
+    if (!instance) {
+      throw new DiglyRuntimeError(
+        'ERR_RESOURCE_NOT_FOUND',
+        `Resource not found for invocation: ${module}.${kind}.${name}`,
+      );
     }
+    if (
+      typeof instance !== 'object' ||
+      typeof instance['invoke'] !== 'function'
+    ) {
+      throw new DiglyRuntimeError(
+        'ERR_RESOURCE_NOT_INVOKABLE',
+        `Resource ${kind}.${name} does not have an invoke method`,
+      );
+    }
+    return instance['invoke'](...args);
   }
 
-  private getResourceKey(kind: string, name: string): string {
-    return `${kind}.${name}`;
-  }
-
-  private ensureResourceEventBus(kind: string, name: string): EventBus {
-    const key = this.getResourceKey(kind, name);
-    const existing = this.resourceEventBuses.get(key);
-    if (existing) {
-      return existing;
+  private getResourceKey(module: string, kind: string, name: string): string {
+    if (!kind.includes('.')) {
+      throw new Error(`Resource kind must include module prefix: ${kind}`);
     }
-    const bus = new EventBus();
-    this.resourceEventBuses.set(key, bus);
-    return bus;
-  }
-
-  private getResourceEventBus(kind: string, name: string): EventBus {
-    const key = this.getResourceKey(kind, name);
-    const bus = this.resourceEventBuses.get(key);
-    if (!bus) {
-      throw new Error(`Resource instance not found: ${kind}.${name}`);
-    }
-    return bus;
-  }
-
-  private async compileResources(modules: DiglyModule[]): Promise<void> {
-    for (const module of modules) {
-      if (!module.compile) {
-        continue;
-      }
-      const ctx = this.createModuleCreateContext(module.name);
-      for (const kind of module.resourceKinds) {
-        const resources = this.registryImpl.getByKind(kind);
-        for (const resource of resources) {
-          const compiled = await module.compile(resource, ctx);
-          if (!compiled) {
-            continue;
-          }
-          if (compiled.kind !== resource.kind) {
-            throw new Error(
-              `Compile changed resource kind from ${resource.kind} to ${compiled.kind}`,
-            );
-          }
-          if (compiled.metadata?.name !== resource.metadata.name) {
-            throw new Error(
-              `Compile changed resource name from ${resource.metadata.name} to ${compiled.metadata?.name}`,
-            );
-          }
-          const kindMap = this.registryImpl.getAll().get(kind);
-          if (kindMap) {
-            kindMap.set(resource.metadata.name, compiled);
-          }
-        }
-      }
-    }
+    return `${module}.${kind}.${name}`;
   }
 
   private assertResourceEventAllowed(event: string): void {
@@ -663,29 +558,24 @@ export class Kernel implements IKernel {
 
   /**
    * Take a snapshot of current runtime state
-   * Includes all resources from registry and their custom snapshot data
-   * Organizes resources by generation depth (0 = first level, 1+ = nested/generated)
    */
-  async takeSnapshot(filePath?: string) {
-    return this.snapshotSerializer.takeSnapshot(
-      this.registryImpl.getAll(),
-      this.resourceInstances,
-      filePath,
-    );
-  }
+  // async takeSnapshot(filePath?: string) {
+  //   return this.snapshotSerializer.takeSnapshot(
+  //     this.manifests.getAll(),
+  //     this.resourceInstances,
+  //     filePath,
+  //   );
+  // }
 
   /**
    * Setup event streaming hook to capture all events
    */
   private setupEventStreaming(): void {
-    // Hook into global event emission to capture all events
     const originalEmit = this.eventBus.emit.bind(this.eventBus);
     this.eventBus.emit = async (event: string, payload?: any) => {
-      // Log to stream if enabled
       if (this.eventStream.isEnabledStream()) {
         await this.eventStream.log(event, payload);
       }
-      // Call original emit
       return originalEmit(event, payload);
     };
   }

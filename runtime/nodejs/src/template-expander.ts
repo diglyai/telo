@@ -1,3 +1,4 @@
+import { RuntimeResource } from '@diglyai/sdk';
 import { evaluate } from 'cel-js';
 import { ResourceURI } from './resource-uri';
 import type {
@@ -9,7 +10,6 @@ import {
   extractDefaultsFromSchema,
   isTemplateDefinition,
 } from './template-definition';
-import type { RuntimeResource } from './types';
 
 const MAX_EXPANSION_DEPTH = 10;
 const TEMPLATE_REGEX = /\$\{\{\s*([^}]+?)\s*\}\}/g;

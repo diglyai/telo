@@ -1,0 +1,14 @@
+{
+  "name": "@diglyai/flow",
+  "type": "module",
+  "main": "./src/flow.ts",
+  "module": "./src/flow.ts",
+  "exports": {
+    ".": "./src/flow.ts"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.48",
+    "@diglyai/sdk": "workspace:*",
+    "ajv": "^8.17.1"
+  }
+}

@@ -1,6 +1,7 @@
-kind: ModuleDefinition
-name: HttpClient
-version: 1.0.0
-description: HTTP request client for testing and orchestration
+kind: Runtime.Module
+metadata:
+  name: HttpClient
+  version: 1.0.0
+  description: HTTP request client for testing and orchestration
 definitions:
   - request.yaml

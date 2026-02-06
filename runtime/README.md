@@ -10,28 +10,27 @@
 
 ## 1. Core Concepts
 
-The Digly Runtime is a **Read-Only Execution Host**. It is designed with the assumption that a "Linker" has already performed schema validation, ID resolution, and dependency flattening. The runtime follows a **polyglot architecture**, enabling compatible implementations in multiple languages.
+The Digly Runtime is a **Read-Only Execution Host**. It is designed with the assumption that a "Loader" (or "Linker") has already performed schema validation, ID resolution, module discovery, and resource loading. The runtime follows a **polyglot architecture**, enabling compatible implementations in multiple languages.
 
-The Runtime performs four specific functions:
+The Runtime performs three specific functions:
 
-- **Loader:** Ingests resolved YAML resources from disk into an immutable memory state.
 - **Template Expander:** Dynamically generates resources from TemplateDefinition blueprints with control flow (for/if).
 - **Registry:** Indexes resources by a composite key of Kind and Name.
-- **Router:** A synchronous dispatcher that routes execution requests between Modules based on URNs.
+- **Router:** A synchronous dispatcher that routes execution requests based on URNs.
+
+**Module Loading and Resource Discovery:** These are responsibilities of the Loader, not the Runtime. The Loader prepares modules and resources before handing them to the Runtime.
 
 **See [TEMPLATES.md](./TEMPLATES.md) for comprehensive template system documentation.**
 
-## 2. Input Format (The Distribution)
+## 2. Input Format
 
-The Runtime consumes a directory containing YAML files or a single YAML file.
+The Runtime receives pre-loaded resources and modules from the Loader. Resources are already validated and indexed.
 
-**Strict typing requirement:** YAML is intended to be strictly typed. The runtime must validate all manifests and resources before execution and **fail fast** if anything is invalid or inconsistent.
+### 2.1 Resource Format
 
-### 2.1 File System Structure
-
-- Files may be nested in subdirectories for organization, but the Runtime treats the namespace as flat based on resource metadata.
-- **Multiple Documents:** A single file may contain multiple resources separated by `---`.
-- **Entrypoint Manifest:** `runtime.yaml` is the chosen entrypoint manifest filename. It is not reserved by the format, and any YAML file can serve as a module or resource manifest depending on how it is referenced.
+- The Runtime does not load files directly; the Loader handles file I/O and validation.
+- Resources are provided as in-memory objects, already validated against their schemas.
+- **Multiple Formats Supported:** Resources may come from files, templates, or dynamically-generated sources.
 
 ### 2.2 Resource Object Model
 
@@ -42,7 +41,7 @@ interface RuntimeResource {
   kind: string; // e.g., "Http.Route", "Logic.JavaScript", "Workflow.Step"
   metadata: {
     name: string; // Unique identifier within the Kind
-    [key: string]: any; // Optional labels or annotations
+    [key: string]: any; // Custom labels or annotations
   };
   // All configuration fields are flat at the top level.
   // Resource kinds should define their own top-level fields (e.g., "routes", "port", "mounts").
@@ -65,7 +64,7 @@ All pointers must be pre-resolved into Uniform Resource Names (URNs).
 
 - **Logic References:** Used in fields that trigger execution (e.g., `handler: "Logic.JavaScript.Insert"`).
 - **Data References:** Used for structural lookups (e.g., `target: "Data.Type.Product"`).
-- **Expressions (CEL):** Injected into strings. The CEL evaluator must resolve module/kind segments as nested namespaces (e.g., `${{ Http.Server.Example.port }}`).
+- **Expressions (CEL):** Injected into strings. The CEL evaluator must resolve kind/resource segments as nested namespaces (e.g., `${{ Http.Server.Example.port }}`).
 
 ### 3.3 Resource URIs
 
@@ -118,10 +117,10 @@ Each `RuntimeResource.metadata` includes:
 
 ```typescript
 interface ResourceMetadata {
-  name: string;
-  uri?: string; // Absolute URI identifying resource origin and lineage
-  generationDepth?: number; // Nesting depth: 0=direct file, 1+=template-generated
-  [key: string]: any; // Custom labels or annotations
+  name: string; // User-provided in YAML
+  uri: string; // Runtime-computed during Step 4: Absolute URI identifying resource origin and lineage
+  generationDepth: number; // Runtime-computed during Step 4: Nesting depth (0=file, 1+=template-generated)
+  [key: string]: any; // User-provided custom labels or annotations
 }
 ```
 
@@ -166,86 +165,183 @@ interface Kernel {
 }
 ```
 
-### 4.2 Boot Sequence (Strict Order)
+### 4.2 Boot Sequence
 
-The runtime follows a three-phase boot sequence with strict ordering to ensure proper initialization dependencies:
+The runtime follows a six-step boot sequence with strict ordering to ensure proper initialization dependencies. **Any error at any step immediately halts the entire boot sequence.**
 
-#### Phase 1: Load Configuration
+#### Step 1: Load Manifests from YAML Files
 
-**loadFromConfig(runtimeYamlPath):**
+**loadFromConfig() (via Loader):**
 
-1. Load runtime configuration manifest (runtime.yaml)
-2. **Load and register all modules** (containers must be available before resources)
-   - Discover modules from imports and entrypoints
-   - Register each module and emit `Module.Registered` event
-3. **Load and register all resources**
-   - Parse YAML documents from resources list
-   - Recursively register resources and emit `Resource.Registered` event
-   - Order resources so that any resource whose `metadata.name` defines a Kind used by another resource is loaded first
-   - **CRITICAL:** If `registry[Kind][Name]` already exists, the Kernel must panic and exit (Duplicate Resource Error)
-   - Cyclic Kind dependencies must cause startup failure
-4. Resolve CEL expressions in registry
-5. Compile resources with registered modules
+1. Read YAML files from runtime config `resources` list
+2. Parse all YAML documents using `yaml.loadAll()`
+3. Deserialize each document into a raw manifest object
+4. Validate each manifest has `kind` and `metadata.name` fields (runtime fields `uri` and `generationDepth` are added later)
+5. **If ANY parsing/validation error occurs: FAIL bootstrap immediately**
 
-#### Phase 2: Register Module Hooks
+Result: Uncompiled manifest objects in memory.
 
-**start():**
+#### Step 2: Compile Manifests with YAML-CEL Templating Engine
 
-1. Call `module.register(ctx)` hook for all modules (module-level initialization, before any resources)
-2. Emit `Runtime.Starting` event
+**compileManifests() (via yaml-cel-templating):**
 
-#### Phase 3: Initialize Resources and Modules
+For each raw manifest object, apply YAML-CEL templating compilation:
 
-**Initialization Flow:**
+1. Process directives in priority order:
+   - `$schema` - Type validation for parent scope data
+   - `$let` - Variable definitions (scoped to current object and descendants)
+   - `$assert` - Assertions with optional `$msg` error messages
+   - `$if` / `$then` / `$else` - Conditional blocks
+   - `$for` / `$do` - Iteration over collections
+   - `$include` / `$with` - External file inclusion and composition
 
-1. **Create all resource instances** (Phase 1 of initializeResources)
-   - For each module, call `module.create(resource, ctx)` to instantiate resources
-   - Store instances for later initialization
+2. Resolve CEL interpolations (`${...}`) in string values
 
-2. **Initialize resource instances** (Phase 2 of initializeResources)
-   - For each module in order:
-     - Initialize all resources for that module by calling `instance.init()`
-     - Emit `{Kind}.Initialized` event for each resource
-     - Emit `Module.Initialized` event **after all resources for that module are initialized**
+3. **If ANY compilation error occurs (CEL evaluation failure, assertion failure, schema validation failure): FAIL bootstrap immediately with detailed error context**
 
-   **IMPORTANT:** `Module.Initialized` is emitted only after all child resources of that module have been created and initialized. This ensures modules (containers) are marked as ready only when their resources are ready.
+Result: Fully expanded manifest objects ready for registration. All structural directives processed, all interpolations resolved.
 
-3. Call `module.onStart(ctx)` for all modules (start long-lived operations, e.g., HTTP servers listening)
+See [yaml-cel-templating/README.md](../yaml-cel-templating/README.md) for comprehensive directive documentation.
 
-4. Emit `Runtime.Started` event
+#### Step 3: Register Compiled Manifests into Registry
+
+**registerResources():**
+
+1. For each compiled manifest:
+   - Extract `kind` and `metadata.name`
+   - Add manifest to registry: `registry[kind][name] = manifest`
+     - Registry checks if `(kind, name)` pair already exists in registry
+     - **If duplicate found: FAIL bootstrap immediately with error**
+   - Emit `Resource.Registered` event
+
+2. Index resources for discovery (by URI, source file, generation depth)
+
+Result: Registry populated with all compiled manifests, indexed by Kind and Name.
+
+#### Step 4: Multi-Pass Controller Discovery Loop (Max 10 Passes)
+
+**discoverAndCreateResources() - Loop:**
+
+Run up to 10 passes to discover resource definitions and create resource instances. Each pass removes handled resources from the list, making subsequent passes faster:
+
+```
+unhandledResources = getAll resources from registry as list
+passNumber = 1
+
+while (passNumber <= 10 && unhandledResources is not empty):
+  handledThisPass = []
+
+  for each resource in unhandledResources:
+    definition = find definition for resource.kind
+
+    if definition not found:
+      continue  # Try again in next pass
+
+    # Assign URI just before passing to create()
+    resource.metadata.uri = generateUri(resource.kind, resource.name)
+
+    # Create resource instance
+    controller = find controller for definition
+    if controller
+      instance = controller.create(resource, context)
+    else
+      instance = wrapped resource
+
+    if instance != null:
+      resourceInstances[resource.kind][resource.name] = instance
+
+      # Initialize immediately after creation
+      if instance.init exists:
+        await instance.init()
+
+      emit `{resource.kind}.Initialized` event
+      handledThisPass.append(resource)
+
+  # Remove handled resources from list (list gets smaller each pass)
+  unhandledResources = unhandledResources.filter(r => r not in handledThisPass)
+
+  if handledThisPass is empty:
+    break  # No resources handled this pass
+
+  passNumber++
+
+# After all passes complete
+if unhandledResources is not empty:
+  # FAIL: Unhandled resources remain
+  for each resource in unhandledResources:
+    FAIL bootstrap with error:
+      "No controller found for resource: {resource.kind}.{resource.name}"
+```
+
+**Key Points:**
+
+- Start with full list of unhandled resources
+- Each pass removes successfully handled resources
+- List gets progressively smaller (faster iterations)
+- Maximum 10 passes prevents infinite loops from circular dependencies
+- URI assignment and resource initialization (`instance.init()`) happens just after `controller.create()` call
+- If any resources remain unhandled after all passes: FAIL bootstrap immediately
+- If any controller.create() or instance.init() throws error: FAIL bootstrap immediately
 
 #### Event Order Example
 
-For a runtime with Http.Server (requires Logic.InlineFunction):
+For a runtime with Http.Server and JavaScript.Script (created in Pass 1):
 
 ```
-Resource.Registered (Http.Server.Example)
-Resource.Registered (Logic.InlineFunction.Handler)
-Module.Registered (Http)
-Module.Registered (Logic)
+Resource.Registered (Http.Server:Api)
+Resource.Registered (JavaScript.Script:MyHandler)
 Runtime.Starting
-Http.Server.Example.Initialized
-Http.Server.Example.Initialized (all Http resources)
-Module.Initialized (Http)
-Logic.InlineFunction.Handler.Initialized
-Logic.InlineFunction.Handler.Initialized (all Logic resources)
-Module.Initialized (Logic)
+Http.Server:Api.Initialized
+JavaScript.Script.MyHandler.Initialized
 Runtime.Started
 ```
 
-Notice:
+For a runtime with nested resource dependencies (created across multiple passes):
 
+```
+Resource.Registered (Data.Type.User)
+Resource.Registered (Http.Server.api)
+Resource.Registered (Http.Route.GetUser)
+Runtime.Starting
 
-- Modules are registered before resources are initialized
-- `Module.Initialized` comes **after** all resources of that module are initialized
-- This dependency order ensures resources can properly access their dependencies
+# Pass 1
+Data.Type.User instance created
+Data.Type.User.Initialized
+Http.Server.api instance created
+Http.Server.api.Initialized
+
+# Pass 2
+Http.Route.GetUser instance created
+Http.Route.GetUser.Initialized
+
+Runtime.Started
+```
+
+#### Error Scenarios (All Halt Bootstrap)
+
+1. **Compilation Error:** CEL expression fails to evaluate, assertion fails, schema validation fails
+2. **Duplicate Resource:** Two resources with same (kind, name) pair
+3. **Unhandled Resource:** After 10 passes, resource kind has no controller
+4. **Creation Failure:** controller.create() throws error
+5. **Initialization Failure:** instance.init() throws error
+6. **Parse Error:** YAML parsing fails, manifest missing required fields
+
+#### Key Invariants
+
+- All modules registered before boot sequence starts
+- Compilation must succeed for all manifests before any registration
+- Registration must succeed for all manifests before controller discovery
+- Controller discovery runs in passes until no new resources are created
+- Each resource is created and initialized exactly once
+- No resource proceeds without a valid controller
+- Bootstrap halts immediately on first error with context
 
 ## 5. Module Entry Point
 
 Modules export a single `register` function and may export a `create` function for per-resource instances.
 
 ```typescript
-export function register(ctx: ModuleContext): void | Promise<void>;
+export function register(ctx: ControllerContext): void | Promise<void>;
 export function create(
   resource: RuntimeResource,
   ctx: ModuleCreateContext,
@@ -397,7 +493,7 @@ When a `Runtime.KindDefinition` resource is registered:
 
 ```yaml
 # Module defines Data.Type
-kind: ResourceDefinition
+kind: Runtime.Definition
 metadata:
   name: DataTypeDefinition
   resourceKind: Type
@@ -550,11 +646,11 @@ importEntrypoints: # Optional: Override entrypoints for imports
 
 ### 10.2 Resource Definitions
 
-Each module can define the kinds of resources it handles using ResourceDefinition files:
+Each module can define the kinds of resources it handles using Runtime.Definition files:
 
 ```typescript
 interface ResourceDefinition {
-  kind: 'ResourceDefinition';
+  kind: 'Runtime.Definition';
   metadata: {
     name: string; // Definition name
     resourceKind: string; // The local Kind this module handles (runtime scopes to ModuleName.Kind)
@@ -585,7 +681,7 @@ definitions:
 Controllers may export any of:
 
 ```typescript
-export function register(ctx: ModuleContext): void | Promise<void>;
+export function register(ctx: ControllerContext): void | Promise<void>;
 export function create(
   resource: RuntimeResource,
   ctx: ModuleCreateContext,
@@ -597,22 +693,7 @@ When a controller is defined for a Kind, it is used instead of the module-level 
 
 ### 10.4 Module Discovery and Import
 
-The Runtime supports module imports, allowing modules to depend on other modules:
-
-```typescript
-interface ModuleDiscoveryResult {
-  mainModule: {
-    manifest: ModuleManifest;
-    resourceDefinitions: ResourceDefinition[];
-  };
-  importedModules: Array<{
-    path: string;
-    manifest: ModuleManifest;
-    resourceDefinitions: ResourceDefinition[];
-  }>;
-}
-```
-
+The Runtime supports module imports, allowing modules to depend on other modules.
 When a module imports another module, both are registered separately in the kernel, maintaining isolation between their resource kinds and execution contexts.
 
 ## 11. Debugging and Observability

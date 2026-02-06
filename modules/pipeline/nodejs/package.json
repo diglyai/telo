@@ -1,0 +1,14 @@
+{
+  "name": "@diglyai/pipeline",
+  "type": "module",
+  "main": "./src/job.ts",
+  "module": "./src/job.ts",
+  "exports": {
+    ".": "./src/job.ts"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.48",
+    "@diglyai/sdk": "workspace:*",
+    "ajv": "^8.17.1"
+  }
+}

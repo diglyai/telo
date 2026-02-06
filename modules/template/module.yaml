@@ -1,5 +1,6 @@
-kind: ModuleDefinition
-name: 'Template'
-version: '1.0.0'
+kind: Runtime.Module
+metadata:
+  name: Template
+  version: '1.0.0'
 definitions:
   - 'template.yaml'
