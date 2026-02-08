@@ -20,7 +20,21 @@ class Flow {
   ) {}
 
   async init(): Promise<void> {
-    this.ctx.on(this.resource.trigger.event, async (event) => {
+    for (const step of this.resource.steps) {
+      if (step.invoke.kind && !step.invoke.name) {
+        const name = 'Unnamed';
+        this.ctx.registerManifest({
+          ...step.invoke,
+          metadata: {
+            name,
+            module: this.resource.metadata.module,
+            ...step.invoke.metadata,
+          },
+        });
+        step.invoke = { kind: step.invoke.kind, name };
+      }
+    }
+    this.ctx.on(this.resource.trigger.event, async () => {
       // Trigger execution when the specified event occurs
       await this.executeSteps();
     });

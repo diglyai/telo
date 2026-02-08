@@ -1,6 +1,7 @@
 import type {
   ControllerContext,
   ResourceContext,
+  ResourceManifest,
   RuntimeResource,
 } from '@diglyai/sdk';
 
@@ -16,23 +17,26 @@ class ConsoleWriteLineResource implements RuntimeResource {
       module: string;
       uri: string;
     },
+    readonly inputSchema: any,
     readonly text: string,
   ) {}
 
   invoke(input: any) {
+    this.ctx.validateSchema(input, this.inputSchema);
     process.stdout.write(this.ctx.expandValue(this.text, input));
     process.stdout.write('\n');
   }
 }
 
 export async function create(
-  resource: ConsoleWriteLineResource,
+  resource: ResourceManifest,
   ctx: ResourceContext,
 ): Promise<ConsoleWriteLineResource> {
   return new ConsoleWriteLineResource(
     ctx,
     resource.kind,
     resource.metadata,
+    resource.inputSchema,
     resource.text,
   );
 }

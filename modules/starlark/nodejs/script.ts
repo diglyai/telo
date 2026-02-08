@@ -2,6 +2,7 @@ import type {
   ControllerContext,
   ResourceContext,
   ResourceInstance,
+  ResourceManifest,
   RuntimeResource,
 } from '@diglyai/sdk';
 import Ajv, { ErrorObject, ValidateFunction } from 'ajv';
@@ -39,14 +40,13 @@ export async function register(ctx: ControllerContext): Promise<void> {
 class StarlarkScript implements ResourceInstance {
   private name: string;
   private code: string;
-  private inputSchema?: Record<string, any>;
-  private outputSchema?: Record<string, any>;
 
-  constructor(resource: StarlarkScriptResource) {
-    this.name = resource.metadata.name;
-    this.code = resource.code || '';
-    this.inputSchema = resource.inputSchema;
-    this.outputSchema = resource.outputSchema;
+  constructor(
+    readonly ctx: ResourceContext,
+    readonly manifest: ResourceManifest,
+  ) {
+    this.name = manifest.metadata.name;
+    this.code = manifest.code || '';
   }
 
   async init(): Promise<void> {
@@ -54,7 +54,9 @@ class StarlarkScript implements ResourceInstance {
   }
 
   async invoke(input: Record<string, any>): Promise<any> {
+    this.ctx.validateSchema(input, this.manifest.inputSchema);
     const result = await executeStarlark(this.code, input);
+    this.ctx.validateSchema(result, this.manifest.outputSchema);
     return result;
   }
 
@@ -66,37 +68,32 @@ class StarlarkScript implements ResourceInstance {
 
 export async function create(
   resource: StarlarkScriptResource,
-  _ctx: ResourceContext,
+  ctx: ResourceContext,
 ): Promise<ResourceInstance> {
   const name = resource.metadata.name;
   if (!resource.code) {
     throw new Error(`StarlarkScript "${name}" is missing code`);
   }
 
-  const instance = new StarlarkScript(resource);
+  const instance = new StarlarkScript(ctx, resource);
   await instance.init();
   return instance;
 }
 
 async function executeStarlark(code: string, input: any): Promise<any> {
   try {
-    // Execute the Starlark code
-    // @ts-ignore
-    const result = globalThis.run_starlark_code(`${code}\nprint(main())`);
+    const result = globalThis.run_starlark_code(
+      `${code}\ndef main():\n  return run(${JSON.stringify(input)})\nmain()`,
+    );
+    if (result.error) {
+      throw new Error(result.error);
+    }
 
     let cleanJson = result.message
       .replace(/'/g, '"')
       .replace(/True/g, 'true')
       .replace(/False/g, 'false')
       .replace(/None/g, 'null');
-    // Extract the result
-    if (result && typeof result === 'object' && '__result' in result) {
-      return result['__result'];
-    }
-    if (result.error) {
-      throw new Error(result.error);
-    }
-
     const trimmed = cleanJson.trim();
     if (
       (trimmed.startsWith('{') && trimmed.endsWith('}')) ||

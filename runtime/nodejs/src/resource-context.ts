@@ -1,12 +1,60 @@
 import { ResourceContext, RuntimeResource } from '@diglyai/sdk';
+import Ajv from 'ajv';
 import { expandValue } from './expressions';
 import { Kernel } from './kernel';
+import { formatAjvErrors } from './manifest-schemas';
+import { DiglyRuntimeError } from './types';
 
 export class ResourceContextImpl implements ResourceContext {
   constructor(
     readonly kernel: Kernel,
     private readonly metadata: Record<string, any>,
   ) {}
+
+  createSchemaValidator(schema: any) {
+    const ajv = new Ajv();
+    const validate = ajv.compile(
+      'type' in schema && typeof schema.type === 'string'
+        ? schema
+        : {
+            type: 'object',
+            properties: schema,
+            required: Object.keys(schema),
+            additionalProperties: false,
+          },
+    );
+
+    return (data: any) => {
+      const isValid = validate(data);
+      if (!isValid) {
+        throw new DiglyRuntimeError(
+          'ERR_RESOURCE_NOT_FOUND',
+          `Invalid value passed: ${JSON.stringify(data)}. Error: ${formatAjvErrors(validate.errors)}`,
+        );
+      }
+    };
+  }
+
+  validateSchema(value: any, schema: any) {
+    const ajv = new Ajv();
+    const validate = ajv.compile(
+      'type' in schema && typeof schema.type === 'string'
+        ? schema
+        : {
+            type: 'object',
+            properties: schema,
+            required: Object.keys(schema),
+            additionalProperties: false,
+          },
+    );
+    const isValid = validate(value);
+    if (!isValid) {
+      throw new DiglyRuntimeError(
+        'ERR_INVALID_VALUE',
+        `Invalid value passed: ${JSON.stringify(value)}. Error: ${formatAjvErrors(validate.errors)}`,
+      );
+    }
+  }
 
   invoke(kind: string, name: string, ...args: any[]): Promise<any> {
     return this.kernel.invoke(this.metadata.module, kind, name, ...args);

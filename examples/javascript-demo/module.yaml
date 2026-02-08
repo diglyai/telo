@@ -1,0 +1,50 @@
+kind: Runtime.Module
+metadata:
+  name: JavaScriptDemo
+  version: 1.0.0
+  description: A demo module showcasing JavaScript scripts
+imports:
+  - ../../modules/flow
+  - ../../modules/javascript
+  - ../../modules/console
+---
+kind: JavaScript.Script
+metadata:
+  name: ExampleJavaScriptScript
+  module: JavaScriptDemo
+code: |
+  function main({ value }) {
+    return { result: value * 2 }
+  }
+inputSchema:
+  value:
+    type: number
+outputSchema:
+  result:
+    type: number
+---
+kind: Runtime.Flow
+metadata:
+  name: RunScriptOnEvent
+  module: JavaScriptDemo
+trigger:
+  event: Runtime.Started
+  once: true
+  filter: 'true'
+steps:
+  - name: Step1
+    input:
+      value: 42
+    invoke:
+      kind: JavaScript.Script
+      name: ExampleJavaScriptScript
+  - input:
+      result: ${{ Step1.output.result }}
+    invoke:
+      kind: Console.WriteLine
+      inputSchema:
+        result:
+          type: number
+      text: |
+        Evaluated JavaScript code.
+        Result is: ${{ result }}

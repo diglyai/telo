@@ -2,27 +2,16 @@ import type {
   ControllerContext,
   ResourceContext,
   ResourceInstance,
+  ResourceManifest,
   RuntimeErrorCode,
   RuntimeResource,
 } from '@diglyai/sdk';
 export type {
   ControllerContext,
   ResourceContext,
-  ResourceInstance
+  ResourceInstance,
+  ResourceManifest
 } from '@diglyai/sdk';
-
-/**
- * Type for resource manifest defined in YAML files
- */
-export interface ResourceManifest {
-  kind: string;
-  metadata: {
-    name: string;
-    module: string;
-    [key: string]: any;
-  };
-  [key: string]: any;
-}
 
 export interface KernelContext {
   kernel: Kernel;
