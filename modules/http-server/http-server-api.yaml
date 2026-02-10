@@ -5,18 +5,12 @@ metadata:
   module: 'Http'
 controllers:
   - runtime: 'node@>=20'
-    entrypoint: './nodejs/http-api-controller.ts'
+    entrypoint: './nodejs/src/http-api-controller.ts'
   - runtime: 'bun@>=1.1'
-    entrypoint: './nodejs/http-api-controller.ts'
+    entrypoint: './nodejs/src/http-api-controller.ts'
 schema:
   type: 'object'
   properties:
-    metadata:
-      type: 'object'
-      properties:
-        name:
-          type: 'string'
-      required: ['name']
     routes:
       type: 'array'
       items:
@@ -83,4 +77,4 @@ schema:
                           type: 'string'
                       body:
                         type: 'string'
-  required: ['metadata', 'routes']
+  required: ['routes']

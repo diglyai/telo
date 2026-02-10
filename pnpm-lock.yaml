@@ -13,21 +13,13 @@ importers:
       '@diglyai/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.6.1
-      '@scalar/fastify-api-reference':
-        specifier: ^1.44.6
-        version: 1.44.6
-      '@sinclair/typebox':
-        specifier: ^0.34.48
-        version: 0.34.48
-      ajv:
-        specifier: ^8.17.1
-        version: 8.17.1
-      fastify:
-        specifier: ^5.7.2
-        version: 5.7.2
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.30
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
 
   modules/data/nodejs:
     dependencies:
@@ -43,12 +35,13 @@ importers:
       '@diglyai/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
-      '@sinclair/typebox':
-        specifier: ^0.34.48
-        version: 0.34.48
-      ajv:
-        specifier: ^8.17.1
-        version: 8.17.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.30
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
 
   modules/http-server/nodejs:
     dependencies:
@@ -70,6 +63,13 @@ importers:
       fastify:
         specifier: ^5.7.2
         version: 5.7.2
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.30
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
 
   modules/http-server/openapi/nodejs:
     dependencies:

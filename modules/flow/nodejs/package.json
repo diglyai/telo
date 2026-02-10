@@ -3,12 +3,17 @@
   "type": "module",
   "main": "./src/flow.ts",
   "module": "./src/flow.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json"
+  },
   "exports": {
     ".": "./src/flow.ts"
   },
   "dependencies": {
-    "@sinclair/typebox": "^0.34.48",
-    "@diglyai/sdk": "workspace:*",
-    "ajv": "^8.17.1"
+    "@diglyai/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   }
 }

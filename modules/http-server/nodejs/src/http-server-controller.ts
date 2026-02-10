@@ -1,11 +1,12 @@
 import type {
-    ControllerContext,
-    ResourceContext,
-    ResourceInstance,
-    RuntimeResource,
+  ResourceContext,
+  ResourceInstance,
+  RuntimeResource,
 } from '@diglyai/sdk';
-import Ajv, { ValidateFunction } from 'ajv';
+import swagger from '@fastify/swagger';
+import apiReference from '@scalar/fastify-api-reference';
 import Fastify, { FastifyInstance } from 'fastify';
+import { HttpServerApi } from './http-api-controller.js';
 
 type HttpRouteResource = RuntimeResource & {
   metadata?: { path?: string; method?: string };
@@ -24,6 +25,12 @@ type HttpServerResource = RuntimeResource & {
   host?: string;
   port?: number;
   baseUrl?: string;
+  openapi?: {
+    info: {
+      title: string;
+      version: string;
+    };
+  };
   mounts?: Array<{
     path?: string;
     type?: string;
@@ -51,10 +58,6 @@ type HttpApiResource = RuntimeResource & {
   >;
 };
 
-export function register(ctx: ControllerContext): void {
-  ctx.on('Runtime.Starting', () => {});
-}
-
 type HttpHandlerSpec =
   | string
   | {
@@ -67,11 +70,6 @@ type HttpRequestSchema = {
   body?: Record<string, any>;
   headers?: Record<string, any>;
 };
-
-const ajv = new Ajv({ allErrors: true, strict: false });
-const requestValidators = new Map<string, ValidateFunction>();
-
-type SchemaResolver = (ref: string) => Record<string, any> | null;
 
 class HttpServer implements ResourceInstance {
   private releaseHold: (() => void) | null = null;
@@ -92,55 +90,59 @@ class HttpServer implements ResourceInstance {
     if (!this.port) {
       throw new Error('Http.Server port is required');
     }
+    this.app = Fastify({ logger: true });
+  }
 
-    this.app = Fastify();
+  async init() {
+    this.setupPlugins();
     this.setupRoutes();
+  }
+
+  private async setupPlugins() {
+    if (this.resource.openapi) {
+      await this.app.register(swagger, {
+        openapi: {
+          openapi: '3.0.0',
+          info: this.resource.openapi.info,
+          servers: [{ url: this.baseUrl }],
+        },
+      });
+      await this.app.register(apiReference, {
+        routePrefix: '/reference',
+      });
+    }
   }
 
   private setupRoutes(): void {
     // const routesByName = new Map<string, HttpRouteResource>();
     const mounts = this.resource.mounts || [];
     // const resolveSchema = createSchemaResolver(this.ctx);
-
     for (const mount of mounts) {
       const type = mount.type || '';
       const { kind, name } = parseType(type);
       const prefix = mount.path || '';
 
-      const api = this.ctx.getResourcesByName('Http.Api', name);
+      const api: HttpServerApi = this.ctx.getResourcesByName(kind, name) as any;
+
       if (!api) {
         throw new Error(
           `Failed to mount Http.Api at "${prefix}": ${type} not found`,
         );
       }
-      // registerHttpApi(
-      //   this.app,
-      //   api,
-      //   routesByName,
-      //   this.ctx,
-      //   prefix,
-      //   resolveSchema,
-      // );
+      api.register(this.app);
     }
   }
 
-  async init(): Promise<void> {
+  async run(): Promise<void> {
     this.releaseHold = this.ctx.acquireHold();
     try {
-      // console.log(
-      //   `Http.Server:${this.resource.metadata.name} starting on ${this.baseUrl}...`,
-      // );
       await this.app.listen({ host: this.host, port: this.port });
-      // console.log(`Http.Server listening on ${this.baseUrl}`);
-      await this.ctx.emitEvent('Listening', {
-        resource: {
-          kind: this.resource.kind,
-          name: this.resource.metadata.name,
-          port: this.port,
-          host: this.host,
-          baseUrl: this.baseUrl,
-          mounts: this.resource.mounts,
-        },
+      await this.ctx.emitEvent(`${this.resource.metadata.name}.Listening`, {
+        port: this.port,
+        host: this.host,
+        baseUrl: this.baseUrl,
+        mounts: this.resource.mounts,
+        openapi: this.resource.openapi,
       });
     } catch (error) {
       await this.app.close();

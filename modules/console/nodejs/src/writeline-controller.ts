@@ -1,13 +1,13 @@
 import type {
   ControllerContext,
   ResourceContext,
-  ResourceManifest,
-  RuntimeResource,
+  ResourceInstance,
+  ResourceManifest
 } from '@diglyai/sdk';
 
 export function register(ctx: ControllerContext): void {}
 
-class ConsoleWriteLineResource implements RuntimeResource {
+class ConsoleWriteLineResource implements ResourceInstance {
   constructor(
     readonly ctx: ResourceContext,
     readonly kind: string,
@@ -15,7 +15,6 @@ class ConsoleWriteLineResource implements RuntimeResource {
       [key: string]: any;
       name: string;
       module: string;
-      uri: string;
     },
     readonly inputSchema: any,
     readonly text: string,

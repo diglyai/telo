@@ -1,7 +1,0 @@
-kind: Runtime.Module
-metadata:
-  name: Observe
-  version: 1.0.0
-  description: Event observation and waiting for async operations
-definitions:
-  - event.yaml

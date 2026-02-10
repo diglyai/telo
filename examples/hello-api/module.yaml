@@ -13,47 +13,13 @@ metadata:
   module: Example
 baseUrl: http://localhost:8844
 port: 8844
+openapi:
+  info:
+    title: Hello server
+    version: 1.0.0
 mounts:
   - path: /v1
     type: Http.Api.HelloApi
----
-kind: OpenApi.Spec
-metadata:
-  name: HelloApiSpec
-  module: Example
-path: '/reference'
-apis:
-  - Http.Api.HelloApi
-info:
-  title: Example API
-  version: 1.0.0
-  description: An example API that greets users.
-  baseUrl: 'http://localhost:${{ Http.Server.Example.port }}/v1' # Reference to Http.Server port
----
-kind: Data.Type
-metadata:
-  name: HelloQuery
-  module: Example
-schema:
-  properties:
-    name:
-      type: string
-      default: 'World'
-  required: ['name']
-  additionalProperties: false
----
-kind: Data.Type
-metadata:
-  name: HelloResponse
-  module: Example
-schema:
-  type: object
-  properties:
-    greeting:
-      type: string
-    nice:
-      type: string
-  required: ['greeting', 'nice']
 ---
 kind: Http.Api
 metadata:
@@ -63,18 +29,37 @@ routes:
   - request:
       path: /hello
       method: GET
-      query: '#/HelloQuery' # Reference to Data.Type
+      schema:
+        query:
+          type: object
+          properties:
+            name:
+              type: string
+          required: ['name']
     handler:
+      kind: JavaScript.Script
       name: SayHello
       inputs:
         name: '${{ request.query.name }}' # CEL expression
     response:
-      schema:
-        body: '#/HelloResponse' # Reference to Data.Type
       status: 200
-      body:
-        greeting: '${{ result.message }}!'
-        nice: 'WOW'
+      statuses:
+        '200':
+          schema:
+            body:
+              type: object
+              properties:
+                greeting:
+                  type: string
+                nice:
+                  type: string
+              required: ['greeting', 'nice']
+              additionalProperties: false
+          headers:
+            Content-Type: application/json
+          body:
+            greeting: '${{ result.message }}!'
+            nice: 'WOW'
 ---
 kind: JavaScript.Script
 metadata:
@@ -87,14 +72,8 @@ code: |
     }
   };
 inputSchema:
-  type: object
-  properties:
-    name:
-      type: string
-  required: ['name']
+  name:
+    type: string
 outputSchema:
-  type: object
-  properties:
-    message:
-      type: string
-  required: ['message']
+  message:
+    type: string

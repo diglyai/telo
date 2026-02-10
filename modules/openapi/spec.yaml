@@ -4,7 +4,7 @@ metadata:
   resourceKind: 'Spec'
   module: 'OpenApi'
 controllers:
-  - runtime: 'node@>=20 <23'
+  - runtime: 'node@>=20'
     entrypoint: './nodejs/index.ts'
   - runtime: 'bun@>=1.1'
     entrypoint: './nodejs/index.ts'

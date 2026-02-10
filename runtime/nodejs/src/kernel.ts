@@ -148,20 +148,18 @@ export class Kernel implements IKernel {
     }
 
     // Initialize resources
-    await this.initializeResources();
-    await this.eventBus.emit('Runtime.Initialized', {});
-
-    await this.eventBus.emit('Runtime.Starting', {});
-
-    await this.runInstances();
-
-    await this.eventBus.emit('Runtime.Started', {});
-
-    await this.waitForIdle();
-
-    await this.eventBus.emit('Runtime.Stopping', {});
-    await this.teardownResources();
-    await this.eventBus.emit('Runtime.Stopped', {});
+    try {
+      await this.initializeResources();
+      await this.eventBus.emit('Runtime.Initialized', {});
+      await this.eventBus.emit('Runtime.Starting', {});
+      await this.runInstances();
+      await this.eventBus.emit('Runtime.Started', {});
+      await this.waitForIdle();
+    } finally {
+      await this.eventBus.emit('Runtime.Stopping', {});
+      await this.teardownResources();
+      await this.eventBus.emit('Runtime.Stopped', {});
+    }
   }
 
   async runInstances(): Promise<void> {
@@ -307,8 +305,6 @@ export class Kernel implements IKernel {
     if (entry) {
       return entry.instance as any;
     }
-    console.log('key not found:', key);
-    console.log('existing keys:', Array.from(this.resourceInstances.keys()));
     return null;
   }
 

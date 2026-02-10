@@ -3,7 +3,7 @@ import { ResourceContext } from './resource-context.js';
 export type ResourceInstance = {
   init?(ctx?: ResourceContext): Promise<void>;
   run?(): void | Promise<void>;
-  invoke?(...args: any[]): Promise<any>;
+  invoke?(input: any): any | Promise<any>;
   teardown?(): void | Promise<void>;
 
   /**
