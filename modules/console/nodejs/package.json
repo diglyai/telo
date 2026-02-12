@@ -7,7 +7,7 @@
     "./writeline": "./dist/writeline-controller.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.lib.json && cp ../*.yaml dist/"
+    "build": "tsc -p tsconfig.lib.json"
   },
   "files": [
     "dist/**"

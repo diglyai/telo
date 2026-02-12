@@ -1,6 +1,7 @@
 import type {
   ControllerContext,
   ResourceContext,
+  ResourceInstance,
   RuntimeResource,
 } from '@diglyai/sdk';
 import * as path from 'path';
@@ -8,7 +9,6 @@ import {
   formatAjvErrors,
   validateResourceDefinition,
 } from '../../manifest-schemas';
-import type { ResourceDefinition as IResourceDefinition } from '../../types';
 
 type ResourceDefinitionResource = RuntimeResource & {
   kind: 'Definition';
@@ -30,44 +30,34 @@ type ResourceDefinitionResource = RuntimeResource & {
  * ResourceDefinition resource - acts as metadata holder for resource type definitions
  * Validates incoming definitions against schema and maintains definition metadata
  */
-class ResourceDefinition implements RuntimeResource, IResourceDefinition {
+class ResourceDefinition implements ResourceInstance {
   readonly kind: 'ResourceDefinition' = 'ResourceDefinition';
 
-  constructor(
-    readonly metadata: {
-      name: string;
-      resourceKind: string;
-      module: string;
-      [key: string]: any;
-    },
-    readonly schema: Record<string, any>,
-    readonly events?: string[],
-    readonly controllers?: Array<{
-      runtime: string;
-      entry: string;
-    }>,
-  ) {}
+  constructor(readonly resource: ResourceDefinitionResource) {}
 
   async init(ctx: ResourceContext) {
     // Load first controller for now
-    const controller = this.controllers?.[0];
+    const controller = this.resource.controllers?.[0];
     if (controller) {
       // Dynamically import controller module and register it
       const controllerInstance = await import(
-        path.resolve(path.dirname(this.metadata.source), controller.entry)
+        path.resolve(
+          path.dirname(this.resource.metadata.source),
+          controller.entry,
+        )
       );
       if (
         !controllerInstance ||
         (!controllerInstance.create && !controllerInstance.register)
       ) {
         throw new Error(
-          `Invalid controller module for ResourceDefinition "${this.metadata.name}": missing create or register function`,
+          `Invalid controller module for ResourceDefinition "${this.resource.metadata.name}": missing create or register function`,
         );
       }
-
+      ctx.registerDefinition(this.resource);
       await ctx.registerController(
-        this.metadata.module,
-        this.metadata.resourceKind,
+        this.resource.metadata.module,
+        this.resource.metadata.resourceKind,
         controllerInstance,
       );
     }
@@ -91,10 +81,10 @@ export async function create(
 
   // Return a fully-formed ResourceDefinition instance
   const definition = resource as ResourceDefinitionResource;
-  return new ResourceDefinition(
-    definition.metadata,
-    definition.schema,
-    definition.events,
-    definition.controllers,
-  );
+  return new ResourceDefinition(definition);
 }
+
+export const schema = {
+  type: 'object',
+  additionalProperties: true,
+};

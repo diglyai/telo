@@ -1,7 +1,7 @@
 import type {
-    ControllerContext,
-    ResourceContext,
-    RuntimeResource,
+  ControllerContext,
+  ResourceContext,
+  RuntimeResource,
 } from '@diglyai/sdk';
 import * as path from 'path';
 import { Loader } from '../../loader';
@@ -103,3 +103,8 @@ function getModuleBasePath(uri?: string): string {
     return process.cwd();
   }
 }
+
+export const schema = {
+  type: 'object',
+  additionalProperties: true,
+};

@@ -3,36 +3,18 @@ import Ajv from 'ajv';
 import { expandValue } from './expressions';
 import { Kernel } from './kernel';
 import { formatAjvErrors } from './manifest-schemas';
+import { SchemaValidator } from './schema-valiator';
 import { DiglyRuntimeError } from './types';
 
 export class ResourceContextImpl implements ResourceContext {
   constructor(
     readonly kernel: Kernel,
     private readonly metadata: Record<string, any>,
+    private readonly validator: SchemaValidator = new SchemaValidator(),
   ) {}
 
   createSchemaValidator(schema: any) {
-    const ajv = new Ajv();
-    const validate = ajv.compile(
-      'type' in schema && typeof schema.type === 'string'
-        ? schema
-        : {
-            type: 'object',
-            properties: schema,
-            required: Object.keys(schema),
-            additionalProperties: false,
-          },
-    );
-
-    return (data: any) => {
-      const isValid = validate(data);
-      if (!isValid) {
-        throw new DiglyRuntimeError(
-          'ERR_RESOURCE_NOT_FOUND',
-          `Invalid value passed: ${JSON.stringify(data)}. Error: ${formatAjvErrors(validate.errors)}`,
-        );
-      }
-    };
+    return this.validator.compile(schema);
   }
 
   validateSchema(value: any, schema: any) {
@@ -84,6 +66,10 @@ export class ResourceContextImpl implements ResourceContext {
     );
   }
 
+  registerDefinition(def: any) {
+    this.kernel.registerResourceDefinition(def);
+  }
+
   on(event: string, handler: (payload?: any) => void | Promise<void>): void {
     this.kernel.on(event, handler);
   }
@@ -96,8 +82,8 @@ export class ResourceContextImpl implements ResourceContext {
     throw new Error('Method off not implemented.');
   }
 
-  emit(event: string, payload?: any): void {
-    throw new Error('Method emit not implemented.');
+  async emit(event: string, payload?: any) {
+    await this.kernel.emitRuntimeEvent(event, payload);
   }
 
   acquireHold(reason?: string): () => void {
@@ -113,6 +99,6 @@ export class ResourceContextImpl implements ResourceContext {
   }
 
   async emitEvent(event: string, payload?: any) {
-    this.kernel.emitRuntimeEvent(event, payload);
+    await this.kernel.emitRuntimeEvent(event, payload);
   }
 }

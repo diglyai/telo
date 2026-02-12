@@ -18,67 +18,64 @@ schema:
     routes:
       type: 'array'
       items:
-        oneOf:
-          - type: 'string'
-          - type: 'object'
+        type: 'object'
+        properties:
+          request:
+            type: 'object'
             properties:
-              request:
-                type: 'object'
-                properties:
-                  path:
-                    type: 'string'
-                  method:
-                    type: 'string'
-                    enum:
-                      [
-                        'GET',
-                        'POST',
-                        'PUT',
-                        'DELETE',
-                        'PATCH',
-                        'HEAD',
-                        'OPTIONS',
-                      ]
-                  query:
-                    type: 'object'
-                  body:
-                    type: 'object'
-                  headers:
-                    type: 'object'
-                required: ['path', 'method']
-              handler:
+              path:
                 type: 'string'
-              response:
+              method:
+                type: 'string'
+                enum:
+                  ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
+              query:
                 type: 'object'
+              body:
+                type: 'object'
+              headers:
+                type: 'object'
+            required: ['path', 'method']
+          handler:
+            oneOf:
+              - type: 'string'
+              - type: 'object'
+                properties:
+                  kind:
+                    type: 'string'
+                  type:
+                    type: 'string'
+          response:
+            type: 'object'
+            properties:
+              status:
+                type: 'integer'
+              headers:
+                type: 'object'
+              body:
+                oneOf:
+                  - type: 'string'
+                  - type: 'object'
+              schema:
+                type: 'object'
+                description: 'Response schema definition'
                 properties:
                   status:
                     type: 'integer'
                   headers:
                     type: 'object'
                   body:
-                    oneOf:
-                      - type: 'string'
-                      - type: 'object'
-                  schema:
                     type: 'object'
-                    description: 'Response schema definition'
-                    properties:
-                      status:
-                        type: 'integer'
-                      headers:
-                        type: 'object'
-                      body:
-                        type: 'object'
-                  mapping:
+              mapping:
+                type: 'object'
+                description: 'Response mapping expressions'
+                properties:
+                  status:
+                    type: 'string'
+                  headers:
                     type: 'object'
-                    description: 'Response mapping expressions'
-                    properties:
-                      status:
-                        type: 'string'
-                      headers:
-                        type: 'object'
-                        additionalProperties:
-                          type: 'string'
-                      body:
-                        type: 'string'
+                    additionalProperties:
+                      type: 'string'
+                  body:
+                    type: 'string'
   required: ['routes']

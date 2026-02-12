@@ -22,9 +22,9 @@ class JavaScript {
   ) {}
 
   async invoke(input: any) {
-    this.inputValidator(input);
+    this.inputValidator.validate(input);
     const output = await this.compiled(input, {});
-    this.outputValidator(output);
+    this.outputValidator.validate(output);
     return output;
   }
 }

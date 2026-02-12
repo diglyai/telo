@@ -62,6 +62,7 @@ export interface ControllerInstance {
     resource: ResourceManifest,
     ctx: ResourceContext,
   ): ResourceInstance | null | Promise<ResourceInstance | null>;
+  schema: any;
 }
 
 export interface Kernel {

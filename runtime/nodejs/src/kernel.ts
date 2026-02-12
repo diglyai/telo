@@ -7,6 +7,7 @@ import { evaluateCel, expandValue } from './expressions';
 import { Loader } from './loader';
 import { ManifestRegistry } from './registry';
 import { ResourceContextImpl } from './resource-context';
+import { SchemaValidator } from './schema-valiator';
 import { SnapshotSerializer } from './snapshot-serializer';
 import {
   ControllerContext,
@@ -69,43 +70,35 @@ export class Kernel implements IKernel {
    */
   registerResourceDefinition(
     definition: ResourceDefinition,
-    basePath?: string,
-    namespace?: string | null,
+    // basePath?: string,
+    // namespace?: string | null,
   ): void {
-    this.controllers.registerDefinition(definition, basePath, namespace);
+    this.controllers.registerDefinition(definition);
   }
 
   /**
    * Load built-in Runtime definitions (e.g., Runtime.Module)
    */
   private async loadBuiltinDefinitions(): Promise<void> {
-    this.controllers.registerDefinition(
-      {
-        kind: 'Runtime.Definition',
-        metadata: {
-          name: 'Definition',
-          resourceKind: 'Definition',
-          module: 'Runtime',
-        },
-        schema: { type: 'object' },
+    this.controllers.registerDefinition({
+      kind: 'Runtime.Definition',
+      metadata: {
+        name: 'Definition',
+        resourceKind: 'Definition',
+        module: 'Runtime',
       },
-      'runtime',
-      'Runtime',
-    );
+      schema: { type: 'object' },
+    });
     this.controllers.registerController(
       'Runtime.Definition',
       await import('./controllers/resource-definition/resource-definition-controller'),
     );
     const moduleSchema = await import('./controllers/module/module.json');
-    this.controllers.registerDefinition(
-      {
-        kind: 'Runtime.Definition',
-        metadata: { name: 'Module', resourceKind: 'Module', module: 'Runtime' },
-        schema: moduleSchema,
-      },
-      'runtime',
-      'Runtime',
-    );
+    this.controllers.registerDefinition({
+      kind: 'Runtime.Definition',
+      metadata: { name: 'Module', resourceKind: 'Module', module: 'Runtime' },
+      schema: moduleSchema,
+    });
     this.controllers.registerController(
       'Runtime.Module',
       await import('./controllers/module/module-controller'),
@@ -269,12 +262,6 @@ export class Kernel implements IKernel {
   }
 
   private createResourceContext(resource: ResourceManifest): ResourceContext {
-    return this.createResourceContextWithNamespace(resource);
-  }
-
-  private createResourceContextWithNamespace(
-    resource: ResourceManifest,
-  ): ResourceContext {
     return new ResourceContextImpl(
       this,
       resource.metadata,
@@ -330,7 +317,7 @@ export class Kernel implements IKernel {
     }> = [];
     // Track latest error for each resource
     const resourceErrors: Map<string, string> = new Map();
-
+    const schemaValidator = new SchemaValidator();
     // Multi-pass loop
     do {
       handledThisPass = [];
@@ -369,6 +356,7 @@ export class Kernel implements IKernel {
         }
 
         try {
+          schemaValidator.compile(controller.schema).validate(resource);
           // Create resource instance
           const instance = await controller.create(
             resource,

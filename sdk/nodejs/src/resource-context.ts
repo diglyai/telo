@@ -1,7 +1,10 @@
 import { ControllerContext } from './controller-context.js';
 import { RuntimeResource } from './runtime-resource.js';
 
-export type DataValidator = (data: any) => void;
+export interface DataValidator {
+  validate(data: any): void;
+  isValid(data: any): boolean;
+}
 
 export interface ResourceContext extends ControllerContext {
   acquireHold(reason?: string): () => void;
@@ -17,4 +20,5 @@ export interface ResourceContext extends ControllerContext {
     resourceKind: string,
     controllerInstance: any,
   ): Promise<void>;
+  registerDefinition(definition: any): void;
 }

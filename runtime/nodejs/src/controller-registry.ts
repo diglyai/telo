@@ -17,11 +17,13 @@ export class ControllerRegistry {
    */
   registerDefinition(
     definition: ResourceDefinition,
-    baseDir?: string,
-    namespace?: string | null,
+    // baseDir?: string,
+    // namespace?: string | null,
   ): void {
     // Construct fully qualified kind: Namespace.ResourceKind
     // Only add namespace if resourceKind is not already qualified (doesn't contain a dot)
+    const namespace = definition.metadata.module;
+    const baseDir = null;
     const resourceKind = definition.metadata.resourceKind;
     const kind =
       namespace && !resourceKind.includes('.')
@@ -162,7 +164,7 @@ export class ControllerRegistry {
     resource: RuntimeResource,
     ctx: any,
   ): Promise<any | null> {
-    const controller = await this.getController(kind);
+    const controller = this.getController(kind);
     if (!controller || !controller.create) {
       return null;
     }
@@ -173,7 +175,23 @@ export class ControllerRegistry {
    * Register a controller for a kind
    */
   registerController(kind: string, controller: ControllerInstance): void {
-    this.controllersByKind.set(kind, controller);
+    if (!this.definitionsByKind.has(kind)) {
+      throw new Error(
+        `Cannot register controller for kind ${kind} without definition`,
+      );
+    }
+    // Ensure controller has schema from definition
+    const definition = this.definitionsByKind.get(kind);
+    if (definition?.schema && !controller.schema) {
+      // Wrap controller to add schema without mutating the original
+      const wrappedController: ControllerInstance = {
+        ...controller,
+        schema: definition.schema,
+      };
+      this.controllersByKind.set(kind, wrappedController);
+    } else {
+      this.controllersByKind.set(kind, controller);
+    }
   }
 
   /**
@@ -225,11 +243,16 @@ export class ControllerRegistry {
         throw new Error(`Controller for "${kind}" exports no usable handlers`);
       }
 
+      if (!definition.schema) {
+        throw new Error(`Definition for "${kind}" does not have schema`);
+      }
+
       return {
         register: registerFn ?? undefined,
         create: createFn ?? undefined,
         execute: executeFn ?? undefined,
         compile: compileFn ?? undefined,
+        schema: definition.schema,
       };
     });
   }

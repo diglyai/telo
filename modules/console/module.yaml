@@ -20,6 +20,6 @@ controllers:
 schema:
   type: object
   properties:
-    text:
+    output:
       type: string
-  required: ['text']
+  required: ['output']

@@ -45,6 +45,6 @@ steps:
       inputSchema:
         result:
           type: number
-      text: |
+      output: |
         Evaluated JavaScript code.
         Result is: ${{ result }}
