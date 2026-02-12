@@ -4,7 +4,17 @@ import Ajv, { ErrorObject } from 'ajv';
 const EntrypointSchema = Type.Object(
   {
     runtime: Type.String(),
-    entrypoint: Type.String(),
+    entry: Type.String(),
+  },
+  { additionalProperties: false },
+);
+
+const PackageControllerSchema = Type.Object(
+  {
+    runtime: Type.String(),
+    registry: Type.Optional(Type.String()),
+    package: Type.String(),
+    entry: Type.String(),
   },
   { additionalProperties: false },
 );
@@ -16,9 +26,9 @@ export const ModuleManifestSchema = Type.Object(
     version: Type.String(),
     imports: Type.Optional(Type.Array(Type.String())),
     definitions: Type.Optional(Type.Array(Type.String())),
-    entrypoint: Type.Optional(Type.String()),
-    entrypoints: Type.Optional(Type.Array(EntrypointSchema)),
-    importEntrypoints: Type.Optional(
+    entry: Type.Optional(Type.String()),
+    entries: Type.Optional(Type.Array(EntrypointSchema)),
+    importEntries: Type.Optional(
       Type.Record(Type.String(), Type.Array(EntrypointSchema)),
     ),
   },
@@ -49,7 +59,9 @@ export const ResourceDefinitionSchema = Type.Object(
     ),
     schema: Type.Object({}, { additionalProperties: true }),
     events: Type.Optional(Type.Array(Type.String())),
-    controllers: Type.Optional(Type.Array(EntrypointSchema)),
+    controllers: Type.Optional(
+      Type.Array(Type.Union([EntrypointSchema, PackageControllerSchema])),
+    ),
   },
   { additionalProperties: true },
 );

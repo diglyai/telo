@@ -1,10 +1,8 @@
-import type {
-  ControllerContext,
-  RuntimeResource
-} from '@diglyai/sdk';
-import Ajv, { ErrorObject, ValidateFunction } from 'ajv';
+import type { ControllerContext, RuntimeResource } from '@diglyai/sdk';
+import type { ErrorObject, ValidateFunction } from 'ajv';
+import { Ajv } from 'ajv';
 
-type LogicResource = RuntimeResource & {
+type InlineFunctionResource = RuntimeResource & {
   code?: string;
   inputSchema?: Record<string, any>;
   outputSchema?: Record<string, any>;
@@ -19,15 +17,15 @@ export function register(ctx: ControllerContext): void {}
 export async function execute(
   name: string,
   input: any,
-  ctx: { resource?: LogicResource },
+  ctx: { resource?: InlineFunctionResource },
 ): Promise<any> {
   const resource = ctx?.resource;
-  if (!resource || resource.kind !== 'Logic.Logic') {
-    throw new Error(`Logic not found: ${name}`);
+  if (!resource || resource.kind !== 'Logic.InlineFunction') {
+    throw new Error(`InlineFunction not found: ${name}`);
   }
 
   if (!resource.code) {
-    throw new Error(`Logic "${name}" is missing code`);
+    throw new Error(`InlineFunction "${name}" is missing code`);
   }
 
   if (resource.inputSchema) {

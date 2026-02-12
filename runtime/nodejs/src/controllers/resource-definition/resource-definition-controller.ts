@@ -1,12 +1,12 @@
 import type {
-    ControllerContext,
-    ResourceContext,
-    RuntimeResource,
+  ControllerContext,
+  ResourceContext,
+  RuntimeResource,
 } from '@diglyai/sdk';
 import * as path from 'path';
 import {
-    formatAjvErrors,
-    validateResourceDefinition,
+  formatAjvErrors,
+  validateResourceDefinition,
 } from '../../manifest-schemas';
 import type { ResourceDefinition as IResourceDefinition } from '../../types';
 
@@ -22,7 +22,7 @@ type ResourceDefinitionResource = RuntimeResource & {
   events?: string[];
   controllers?: Array<{
     runtime: string;
-    entrypoint: string;
+    entry: string;
   }>;
 };
 
@@ -38,14 +38,13 @@ class ResourceDefinition implements RuntimeResource, IResourceDefinition {
       name: string;
       resourceKind: string;
       module: string;
-      uri: string;
       [key: string]: any;
     },
     readonly schema: Record<string, any>,
     readonly events?: string[],
     readonly controllers?: Array<{
       runtime: string;
-      entrypoint: string;
+      entry: string;
     }>,
   ) {}
 
@@ -55,7 +54,7 @@ class ResourceDefinition implements RuntimeResource, IResourceDefinition {
     if (controller) {
       // Dynamically import controller module and register it
       const controllerInstance = await import(
-        path.resolve(path.dirname(this.metadata.source), controller.entrypoint)
+        path.resolve(path.dirname(this.metadata.source), controller.entry)
       );
       if (
         !controllerInstance ||

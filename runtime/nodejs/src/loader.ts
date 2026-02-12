@@ -1,8 +1,11 @@
 import { RuntimeResource } from '@diglyai/sdk';
 import { evaluate } from 'cel-js';
+import { execFile } from 'child_process';
+import { createHash } from 'crypto';
 import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
+import { promisify } from 'util';
 import { formatAjvErrors, validateRuntimeResource } from './manifest-schemas';
 import { ResourceURI } from './resource-uri';
 import { isTemplateDefinition } from './template-definition';
@@ -13,7 +16,23 @@ import { ResourceManifest } from './types';
  * Loader: Ingests resolved YAML manifests from disk into memory
  */
 export class Loader {
+  private static projectRoot: string | null = null;
+  private static npmCacheRoot: string | null = null;
+
+  private static ensureProjectRoot(baseDir: string): void {
+    if (!Loader.projectRoot) {
+      Loader.projectRoot = path.resolve(baseDir);
+      Loader.npmCacheRoot = path.join(
+        Loader.projectRoot,
+        '.cache',
+        'digly',
+        'npm',
+      );
+    }
+  }
+
   async loadDirectory(dirPath: string): Promise<ResourceManifest[]> {
+    Loader.ensureProjectRoot(dirPath);
     const resources: RuntimeResource[] = [];
     await this.walkDirectory(dirPath, resources);
     const ordered = this.orderResourcesByKindDependencies(resources);
@@ -21,25 +40,22 @@ export class Loader {
   }
 
   async loadManifest(runtimeYamlPath: string): Promise<ResourceManifest[]> {
+    Loader.ensureProjectRoot(path.dirname(runtimeYamlPath));
     const content = await fs.readFile(runtimeYamlPath, 'utf-8');
     const config = yaml.loadAll(content) as ResourceManifest[];
 
-    // if (!validateModuleManifest(config)) {
-    //   throw new Error(
-    //     `Invalid runtime.yaml format: ${formatAjvErrors(validateModuleManifest.errors)}`,
-    //   );
-    // }
-
-    // Store namespace for template resolution
-    // this.namespace = config.name || null;
-
-    return config.map((m) => ({
-      ...m,
-      metadata: {
-        ...m.metadata,
-        source: runtimeYamlPath,
-      },
-    }));
+    const resolved: ResourceManifest[] = [];
+    for (const manifest of config) {
+      const resource: ResourceManifest = {
+        ...manifest,
+        metadata: {
+          ...manifest.metadata,
+          source: runtimeYamlPath,
+        },
+      };
+      resolved.push(await this.resolveControllers(resource));
+    }
+    return resolved;
   }
 
   private async walkDirectory(
@@ -98,7 +114,7 @@ export class Loader {
       ).toString();
       resource.metadata.generationDepth = 0;
 
-      resources.push(resource);
+      resources.push(await this.resolveControllers(resource));
     }
   }
 
@@ -117,6 +133,365 @@ export class Loader {
     }
 
     return null;
+  }
+
+  private async resolveControllers(
+    resource: RuntimeResource,
+  ): Promise<RuntimeResource> {
+    const controllers = (resource as any).controllers;
+    if (!Array.isArray(controllers) || controllers.length === 0) {
+      return resource;
+    }
+
+    const sourcePath = (resource as any).metadata?.source;
+    const baseDir = sourcePath ? path.dirname(sourcePath) : process.cwd();
+    const controllersByRuntime = new Map<string, any[]>();
+    for (const controller of controllers) {
+      const runtime =
+        typeof controller.runtime === 'string' ? controller.runtime : '';
+      const group = controllersByRuntime.get(runtime);
+      if (group) {
+        group.push(controller);
+      } else {
+        controllersByRuntime.set(runtime, [controller]);
+      }
+    }
+
+    const resolvedControllers = [];
+    for (const [, group] of controllersByRuntime.entries()) {
+      const hasLocal = group.some(
+        (controller) =>
+          controller.registry === 'local' ||
+          (controller.registry && controller.registry.startsWith('file://')),
+      );
+      const candidates = hasLocal
+        ? group.filter(
+            (controller) =>
+              controller.registry === 'local' ||
+              (controller.registry && controller.registry.startsWith('file://')),
+          )
+        : group;
+
+      const sorted = [...candidates].sort((a, b) => {
+        const rank = (controller: any) => {
+          if (controller.entry && !controller.package && !controller.registry) {
+            return 0;
+          }
+          const registry = controller.registry;
+          if (
+            registry === 'local' ||
+            (registry && registry.startsWith('file://'))
+          ) {
+            return 1;
+          }
+          return 2;
+        };
+        return rank(a) - rank(b);
+      });
+
+      let resolved = false;
+      let lastError: unknown = null;
+      for (const controller of sorted) {
+        const packageSpec = controller.package;
+        const entry = controller.entry;
+        if (!packageSpec || !entry) {
+          lastError = new Error(
+            `Controller is missing package or entry (runtime=${controller.runtime ?? 'unknown'}, registry=${controller.registry ?? 'default'})`,
+          );
+          break;
+        }
+
+        try {
+          const resolvedEntry = await this.resolveControllerEntrypoint(
+            controller.registry,
+            packageSpec,
+            entry,
+            baseDir,
+          );
+          resolvedControllers.push({ ...controller, entry: resolvedEntry });
+          resolved = true;
+          break;
+        } catch (error) {
+          const context = `Failed to resolve controller (runtime=${controller.runtime ?? 'unknown'}, registry=${controller.registry ?? 'default'}, package=${packageSpec}, entry=${entry})`;
+          const message =
+            error instanceof Error ? `${context}: ${error.message}` : context;
+          lastError = new Error(message);
+        }
+      }
+
+      if (!resolved && lastError) {
+        throw lastError;
+      }
+    }
+
+    return {
+      ...resource,
+      controllers: resolvedControllers,
+    } as RuntimeResource;
+  }
+
+  private async resolveControllerEntrypoint(
+    registry: string | undefined,
+    packageSpec: string,
+    entry: string,
+    baseDir: string,
+  ): Promise<string> {
+    const npmCacheRoot = Loader.npmCacheRoot;
+    if (!npmCacheRoot) {
+      throw new Error('NPM cache root is not initialized');
+    }
+
+    const isLocal =
+      !registry || registry === 'local' || registry.startsWith('file://');
+    const resolvedPackageSpec = isLocal
+      ? this.resolveLocalPackageSpec(registry, packageSpec, baseDir)
+      : packageSpec;
+    const registryKey = isLocal
+      ? 'local'
+      : registry === 'npm'
+        ? 'npm'
+        : registry;
+    const cacheKey = createHash('sha256')
+      .update(`${registryKey}|${resolvedPackageSpec}`)
+      .digest('hex')
+      .slice(0, 12);
+    const installDir = path.join(npmCacheRoot, cacheKey);
+
+    const packageName = isLocal
+      ? await this.getLocalPackageName(resolvedPackageSpec)
+      : this.getPackageName(resolvedPackageSpec);
+
+    await this.ensureNpmPackageInstalled(
+      installDir,
+      resolvedPackageSpec,
+      registryKey,
+    );
+
+    const packageRoot = this.getInstalledPackageRoot(installDir, packageName);
+    return this.resolvePackageEntry(packageRoot, entry, packageName);
+  }
+
+  private resolveLocalPackageSpec(
+    registry: string | undefined,
+    packageSpec: string,
+    baseDir: string,
+  ): string {
+    if (registry && registry.startsWith('file://')) {
+      const registryPath = registry.slice('file://'.length);
+      const basePath = path.isAbsolute(registryPath)
+        ? registryPath
+        : path.resolve(baseDir, registryPath);
+      const resolvedPackage = path.isAbsolute(packageSpec)
+        ? packageSpec
+        : path.resolve(baseDir, packageSpec);
+      if (resolvedPackage === basePath) {
+        return basePath;
+      }
+      return path.resolve(basePath, packageSpec);
+    }
+
+    return path.resolve(baseDir, packageSpec);
+  }
+
+  private async ensureNpmPackageInstalled(
+    installDir: string,
+    packageSpec: string,
+    registry: string,
+  ): Promise<void> {
+    const packageName = this.getPackageName(
+      packageSpec.startsWith('.') || path.isAbsolute(packageSpec)
+        ? await this.getLocalPackageName(packageSpec)
+        : packageSpec,
+    );
+    const packageRoot = this.getInstalledPackageRoot(installDir, packageName);
+    const packageJsonPath = path.join(packageRoot, 'package.json');
+    if (await this.pathExists(packageJsonPath)) {
+      return;
+    }
+
+    await fs.mkdir(installDir, { recursive: true });
+    const rootPackageJson = path.join(installDir, 'package.json');
+    if (!(await this.pathExists(rootPackageJson))) {
+      await fs.writeFile(
+        rootPackageJson,
+        JSON.stringify({ name: 'digly-cache', private: true }, null, 2),
+      );
+    }
+
+    const execFileAsync = promisify(execFile);
+    const args = [
+      'install',
+      '--no-audit',
+      '--no-fund',
+      '--silent',
+      '--prefix',
+      installDir,
+      packageSpec,
+    ];
+    if (registry !== 'npm' && registry !== 'local') {
+      args.push('--registry', registry);
+    }
+    await execFileAsync('npm', args);
+  }
+
+  private getPackageName(packageSpec: string): string {
+    if (packageSpec.startsWith('@')) {
+      const lastAt = packageSpec.lastIndexOf('@');
+      return lastAt > 0 ? packageSpec.slice(0, lastAt) : packageSpec;
+    }
+    const [name] = packageSpec.split('@');
+    return name;
+  }
+
+  private getInstalledPackageRoot(
+    installDir: string,
+    packageName: string,
+  ): string {
+    const nameParts = packageName.split('/');
+    return path.join(installDir, 'node_modules', ...nameParts);
+  }
+
+  private async getLocalPackageName(packagePath: string): Promise<string> {
+    const packageJsonPath = path.join(packagePath, 'package.json');
+    if (!(await this.pathExists(packageJsonPath))) {
+      throw new Error(`Local package missing package.json: ${packagePath}`);
+    }
+    const content = await fs.readFile(packageJsonPath, 'utf8');
+    const parsed = JSON.parse(content);
+    if (!parsed?.name) {
+      throw new Error(
+        `Local package missing name in package.json: ${packagePath}`,
+      );
+    }
+    return parsed.name;
+  }
+
+  private async resolvePackageEntry(
+    packageRoot: string,
+    entry: string,
+    packageName?: string,
+  ): Promise<string> {
+    const packageJsonPath = path.join(packageRoot, 'package.json');
+    let resolvedPackageName = packageName;
+    let packageJson: any = null;
+    if (!resolvedPackageName && (await this.pathExists(packageJsonPath))) {
+      const content = await fs.readFile(packageJsonPath, 'utf8');
+      try {
+        packageJson = JSON.parse(content);
+        resolvedPackageName = packageJson?.name;
+      } catch {
+        resolvedPackageName = packageName;
+      }
+    } else if (await this.pathExists(packageJsonPath)) {
+      try {
+        packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
+      } catch {
+        packageJson = null;
+      }
+    }
+
+    const entryValue = entry.trim();
+    const exportTarget = this.resolvePackageExportTarget(
+      packageJson?.exports,
+      entryValue,
+    );
+    if (exportTarget) {
+      const resolved = path.resolve(packageRoot, exportTarget);
+      if (await this.pathExists(resolved)) {
+        return resolved;
+      }
+      if (!path.extname(resolved)) {
+        const withJs = `${resolved}.js`;
+        if (await this.pathExists(withJs)) {
+          return withJs;
+        }
+      }
+    }
+    if ((entryValue === '.' || entryValue === './') && packageJson) {
+      const mainFields = ['module', 'main'];
+      for (const field of mainFields) {
+        const target = packageJson[field];
+        if (typeof target === 'string') {
+          const resolved = path.resolve(packageRoot, target);
+          if (await this.pathExists(resolved)) {
+            return resolved;
+          }
+          if (!path.extname(resolved)) {
+            const withJs = `${resolved}.js`;
+            if (await this.pathExists(withJs)) {
+              return withJs;
+            }
+          }
+        }
+      }
+    }
+
+    const directPath = path.resolve(packageRoot, entryValue);
+    if (await this.pathExists(directPath)) {
+      return directPath;
+    }
+    if (!path.extname(directPath)) {
+      const withJs = `${directPath}.js`;
+      if (await this.pathExists(withJs)) {
+        return withJs;
+      }
+    }
+
+    throw new Error(
+      `Controller entry "${entryValue}" could not be resolved in ${packageRoot}`,
+    );
+  }
+
+  private resolvePackageExportTarget(
+    exportsField: any,
+    entry: string,
+  ): string | null {
+    if (!exportsField) {
+      return null;
+    }
+
+    const key = entry === '.' || entry === './' ? '.' : entry;
+    const target = exportsField[key];
+    return this.resolveExportTargetValue(target);
+  }
+
+  private resolveExportTargetValue(target: any): string | null {
+    if (!target) {
+      return null;
+    }
+    if (typeof target === 'string') {
+      return target;
+    }
+    if (Array.isArray(target)) {
+      for (const item of target) {
+        const resolved = this.resolveExportTargetValue(item);
+        if (resolved) {
+          return resolved;
+        }
+      }
+      return null;
+    }
+    if (typeof target === 'object') {
+      const preferredKeys = ['import', 'default', 'require'];
+      for (const key of preferredKeys) {
+        if (target[key]) {
+          const resolved = this.resolveExportTargetValue(target[key]);
+          if (resolved) {
+            return resolved;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  private async pathExists(filePath: string): Promise<boolean> {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // Validation handled by TypeBox + Ajv schemas.

@@ -62,7 +62,20 @@ export class HttpServerApi implements ResourceInstance {
 
   async init() {}
 
-  register(app: FastifyInstance) {
+  register(app: FastifyInstance, prefix = '') {
+    if (prefix) {
+      app.register(
+        async (scoped) => {
+          this.registerRoutes(scoped);
+        },
+        { prefix },
+      );
+    } else {
+      this.registerRoutes(app);
+    }
+  }
+
+  private registerRoutes(app: FastifyInstance) {
     const routes = this.manifest.routes || [];
     for (const route of routes) {
       this.registerRoute(app, route);
@@ -78,8 +91,12 @@ export class HttpServerApi implements ResourceInstance {
     if (route.request.schema?.params) {
       schema.params = route.request.schema?.params;
     }
-    schema.body = route.request.schema?.body;
-    schema.headers = route.request.schema?.headers;
+    if (route.request.schema?.body) {
+      schema.body = route.request.schema?.body;
+    }
+    if (route.request.schema?.headers) {
+      schema.headers = route.request.schema?.headers;
+    }
     schema.response = Object.keys(route.response.statuses).reduce(
       (acc, status) => {
         const statusConfig = route.response.statuses[status];

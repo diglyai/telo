@@ -4,7 +4,11 @@
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    "./script": "./dist/script.js",
+    "./inline": "./dist/inline.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json"
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.48",
@@ -13,5 +17,9 @@
     "fastify": "^5.7.2",
     "@fastify/swagger": "^9.6.1",
     "@scalar/fastify-api-reference": "^1.44.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   }
 }

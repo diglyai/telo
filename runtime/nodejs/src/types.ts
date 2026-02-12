@@ -33,7 +33,7 @@ export interface ResourceDefinition {
   events?: string[];
   controllers?: Array<{
     runtime: string;
-    entrypoint: string;
+    entry: string;
   }>;
 }
 
@@ -44,7 +44,7 @@ export interface ResourceDefinition {
 export interface ControllerDefinition {
   kind: string; // Fully-qualified kind (e.g., "Http.Route")
   runtime: string; // Runtime selector (e.g., "node@>=20")
-  entrypoint: string; // Path to controller implementation
+  entry: string; // Path to controller implementation
   controller?: any; // Lazy-loaded controller code
 }
 

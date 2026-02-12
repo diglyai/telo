@@ -4,7 +4,8 @@
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    "./http-server": "./dist/http-server-controller.js",
+    "./http-server-api": "./dist/http-api-controller.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json"

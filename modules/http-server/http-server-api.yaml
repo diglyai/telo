@@ -4,10 +4,14 @@ metadata:
   resourceKind: 'Api'
   module: 'Http'
 controllers:
-  - runtime: 'node@>=20'
-    entrypoint: './nodejs/src/http-api-controller.ts'
-  - runtime: 'bun@>=1.1'
-    entrypoint: './nodejs/src/http-api-controller.ts'
+  - runtime: nodejs
+    registry: npm
+    package: '@diglyai/http-server@1.0.0'
+    entry: './http-server-api'
+  - runtime: nodejs
+    registry: local
+    package: './nodejs'
+    entry: './http-server-api'
 schema:
   type: 'object'
   properties:

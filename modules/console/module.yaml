@@ -10,7 +10,13 @@ metadata:
   module: Console
 controllers:
   - runtime: nodejs
-    entrypoint: ./nodejs/src/writeline-controller.ts
+    registry: npm
+    package: '@diglyai/console@1.0.0'
+    entry: './writeline'
+  - runtime: nodejs
+    registry: local
+    package: './nodejs'
+    entry: './writeline'
 schema:
   type: object
   properties:

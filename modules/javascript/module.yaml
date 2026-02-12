@@ -9,10 +9,14 @@ metadata:
   resourceKind: 'Script'
   module: 'JavaScript'
 controllers:
-  - runtime: 'node@>=20 <23'
-    entrypoint: './nodejs/javascript.ts'
-  - runtime: 'bun@>=1.1'
-    entrypoint: './nodejs/javascript.ts'
+  - runtime: nodejs
+    registry: npm
+    package: '@diglyai/javascript@1.0.0'
+    entry: './script'
+  - runtime: nodejs
+    registry: local
+    package: './nodejs'
+    entry: './script'
 schema:
   type: 'object'
   properties:
@@ -36,10 +40,14 @@ metadata:
   resourceKind: 'InlineScript'
   module: 'JavaScript'
 controllers:
-  - runtime: 'node@>=20 <23'
-    entrypoint: './nodejs/inline-function.ts'
-  - runtime: 'bun@>=1.1'
-    entrypoint: './nodejs/inline-function.ts'
+  - runtime: nodejs
+    registry: npm
+    package: '@diglyai/javascript@1.0.0'
+    entry: './inline'
+  - runtime: nodejs
+    registry: local
+    package: './nodejs'
+    entry: './inline'
 schema:
   type: 'object'
   properties:

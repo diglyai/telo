@@ -188,7 +188,7 @@ export class ControllerRegistry {
     if (!controllerDef) return;
 
     this.controllerLoaders.set(kind, async () => {
-      const modulePath = path.resolve(moduleDir, controllerDef.entrypoint);
+      const modulePath = path.resolve(moduleDir, controllerDef.entry);
       const moduleRuntime = await import(modulePath);
       const exported =
         moduleRuntime.default || moduleRuntime.Module || moduleRuntime;

@@ -3,11 +3,11 @@
   "type": "module",
   "main": "./src/flow.ts",
   "module": "./src/flow.ts",
+  "exports": {
+    "./flow": "./dist/flow.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json"
-  },
-  "exports": {
-    ".": "./src/flow.ts"
   },
   "dependencies": {
     "@diglyai/sdk": "workspace:*"

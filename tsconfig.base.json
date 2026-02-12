@@ -3,6 +3,7 @@
     "lib": ["ES2022", "DOM"],
     "target": "es2024",
     "module": "nodenext",
+    "allowSyntheticDefaultImports": true,
     "types": ["node"]
   }
 }

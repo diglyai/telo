@@ -13,6 +13,7 @@ metadata:
   module: Example
 baseUrl: http://localhost:8844
 port: 8844
+logger: true
 openapi:
   info:
     title: Hello server

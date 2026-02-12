@@ -4,10 +4,14 @@ metadata:
   resourceKind: Flow
   module: Runtime
 controllers:
-  - runtime: 'node@>=20'
-    entrypoint: './nodejs/src/flow.ts'
-  - runtime: 'bun@>=1.1'
-    entrypoint: './nodejs/src/flow.ts'
+  - runtime: nodejs
+    registry: npm
+    package: '@diglyai/flow@1.0.0'
+    entry: './flow'
+  - runtime: nodejs
+    registry: local
+    package: './nodejs'
+    entry: './flow'
 schema:
   type: object
   properties:

@@ -100,11 +100,21 @@ class HttpServer implements ResourceInstance {
 
   private async setupPlugins() {
     if (this.resource.openapi) {
+      const servers = [];
+      // const routesByName = new Map<string, HttpRouteResource>();
+      const mounts = this.resource.mounts || [];
+      const prefixes = new Set();
+      for (const mount of mounts) {
+        prefixes.add(mount.path || '');
+      }
+      for (const prefix of prefixes) {
+        servers.push({ url: this.baseUrl + prefix });
+      }
       await this.app.register(swagger, {
         openapi: {
           openapi: '3.0.0',
           info: this.resource.openapi.info,
-          servers: [{ url: this.baseUrl }],
+          servers,
         },
       });
       await this.app.register(apiReference, {
@@ -129,7 +139,7 @@ class HttpServer implements ResourceInstance {
           `Failed to mount Http.Api at "${prefix}": ${type} not found`,
         );
       }
-      api.register(this.app);
+      api.register(this.app, prefix);
     }
   }
 

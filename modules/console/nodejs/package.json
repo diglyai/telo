@@ -1,19 +1,30 @@
 {
   "name": "@diglyai/console",
   "type": "module",
-  "main": "./src/index.ts",
-  "module": "./src/index.ts",
+  "main": "./dist/writeline-controller.js",
+  "module": "./dist/writeline-controller.js",
   "exports": {
-    ".": "./src/index.ts"
+    "./writeline": "./dist/writeline-controller.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.lib.json"
+    "build": "tsc -p tsconfig.lib.json && cp ../*.yaml dist/"
   },
+  "files": [
+    "dist/**"
+  ],
   "dependencies": {
     "@diglyai/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"
+  },
+  "digly": {
+    "controllers": [
+      {
+        "engine": "nodejs",
+        "entry": "./dist/writeline-controller.js"
+      }
+    ]
   }
 }

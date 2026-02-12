@@ -2,7 +2,7 @@
 .DS_Store
 Thumbs.db
 .digly-debug/
-
+.cache
 
 # NodeJS
 node_modules/

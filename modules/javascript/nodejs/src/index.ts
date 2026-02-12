@@ -1,8 +1,18 @@
-import type {
-  ControllerContext,
-  RuntimeResource
-} from '@diglyai/sdk';
-import Ajv, { ErrorObject, ValidateFunction } from 'ajv';
+import type { ControllerContext, RuntimeResource } from '@diglyai/sdk';
+import type { ErrorObject, ValidateFunction } from 'ajv';
+import { Ajv } from 'ajv';
+
+type LogicResource = RuntimeResource & {
+  code?: string;
+  inputSchema?: Record<string, any>;
+  outputSchema?: Record<string, any>;
+};
+
+type JavaScriptResource = RuntimeResource & {
+  code?: string;
+  inputSchema?: Record<string, any>;
+  outputSchema?: Record<string, any>;
+};
 
 type InlineFunctionResource = RuntimeResource & {
   code?: string;
@@ -19,15 +29,22 @@ export function register(ctx: ControllerContext): void {}
 export async function execute(
   name: string,
   input: any,
-  ctx: { resource?: InlineFunctionResource },
+  ctx: {
+    resource?: LogicResource | JavaScriptResource | InlineFunctionResource;
+  },
 ): Promise<any> {
   const resource = ctx?.resource;
-  if (!resource || resource.kind !== 'Logic.InlineFunction') {
-    throw new Error(`InlineFunction not found: ${name}`);
+  if (
+    !resource ||
+    (resource.kind !== 'Logic.Logic' &&
+      resource.kind !== 'Logic.JavaScript' &&
+      resource.kind !== 'Logic.InlineFunction')
+  ) {
+    throw new Error(`Logic/JavaScript/InlineFunction not found: ${name}`);
   }
 
   if (!resource.code) {
-    throw new Error(`InlineFunction "${name}" is missing code`);
+    throw new Error(`${resource.kind} "${name}" is missing code`);
   }
 
   if (resource.inputSchema) {
@@ -41,7 +58,10 @@ export async function execute(
     }
   }
 
-  const fn = compileLogic(resource.code);
+  const fn =
+    resource.kind === 'Logic.JavaScript'
+      ? compileJavaScriptModule(resource.code)
+      : compileLogic(resource.code);
   const result = await fn(input, ctx);
 
   if (resource.outputSchema) {
@@ -60,6 +80,20 @@ export async function execute(
 
 function compileLogic(code: string): (input: any, ctx: any) => Promise<any> {
   const wrapped = `"use strict";\nreturn (async () => {\n${code}\n})();`;
+  const fn = new Function('input', 'ctx', wrapped) as (
+    input: any,
+    ctx: any,
+  ) => Promise<any>;
+  return fn;
+}
+
+function compileJavaScriptModule(
+  code: string,
+): (input: any, ctx: any) => Promise<any> {
+  const wrapped =
+    `"use strict";\n${code}\n` +
+    `if (typeof main !== "function") { throw new Error("JavaScript resource must export main(input, ctx)"); }\n` +
+    `return main(input, ctx);`;
   const fn = new Function('input', 'ctx', wrapped) as (
     input: any,
     ctx: any,
