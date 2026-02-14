@@ -4,4 +4,4 @@ metadata:
   version: 1.0.0
   description: Assertion and value verification for testing
 definitions:
-  - value.yaml
+  - schema.yaml

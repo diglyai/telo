@@ -63,6 +63,9 @@ async function main() {
     }
 
     await kernel.start();
+    if (kernel.exitCode !== 0) {
+      process.exit(kernel.exitCode);
+    }
   } catch (error) {
     console.error(
       'Error loading runtime:',

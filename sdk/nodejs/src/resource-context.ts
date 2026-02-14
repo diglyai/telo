@@ -1,9 +1,19 @@
-import { ControllerContext } from './controller-context.js';
-import { RuntimeResource } from './runtime-resource.js';
+import { ControllerContext } from "./controller-context.js";
+import { RuntimeResource } from "./runtime-resource.js";
 
 export interface DataValidator {
   validate(data: any): void;
   isValid(data: any): boolean;
+}
+
+export class NoopValidator implements DataValidator {
+  isValid() {
+    return true;
+  }
+
+  validate() {
+    // noop
+  }
 }
 
 export interface ResourceContext extends ControllerContext {

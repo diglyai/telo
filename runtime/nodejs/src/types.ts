@@ -5,13 +5,13 @@ import type {
   ResourceManifest,
   RuntimeErrorCode,
   RuntimeResource,
-} from '@diglyai/sdk';
+} from "@diglyai/sdk";
 export type {
   ControllerContext,
   ResourceContext,
   ResourceInstance,
   ResourceManifest
-} from '@diglyai/sdk';
+} from "@diglyai/sdk";
 
 export interface KernelContext {
   kernel: Kernel;
@@ -68,9 +68,10 @@ export interface ControllerInstance {
 export interface Kernel {
   loadFromConfig(runtimeYamlPath: string): Promise<void>;
   start(): Promise<void>;
-  execute(urn: string, input: any, ctx?: any): Promise<any>;
   acquireHold(reason?: string): () => void;
   waitForIdle(): Promise<void>;
+  requestExit(code: number): void;
+  readonly exitCode: number;
 }
 
 export class DiglyRuntimeError extends Error {
@@ -79,6 +80,6 @@ export class DiglyRuntimeError extends Error {
     message: string,
   ) {
     super(message);
-    this.name = 'DiglyRuntimeError';
+    this.name = "DiglyRuntimeError";
   }
 }

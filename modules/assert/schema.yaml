@@ -1,13 +1,17 @@
 kind: Runtime.Definition
 metadata:
-  name: ValueDefinition
-  resourceKind: Value
+  name: SchemaDefinition
+  resourceKind: Schema
   module: Assert
 controllers:
-  - runtime: 'node@>=20 <23'
-    entrypoint: './nodejs/value.ts'
-  - runtime: 'bun@>=1.1'
-    entrypoint: './nodejs/value.ts'
+  - runtime: nodejs
+    registry: npm
+    package: "@diglyai/assert@1.0.0"
+    entry: "./schema"
+  - runtime: nodejs
+    registry: local
+    package: "./nodejs"
+    entry: "./schema"
 schema:
   type: object
   properties:
@@ -18,13 +22,8 @@ schema:
           type: string
       required:
         - name
-    value:
+    schema:
       description: Value to assert (can be any type or expression)
-    assertions:
-      type: array
-      items:
-        type: string
-      description: Array of CEL expressions that must evaluate to true
   required:
     - metadata
     - assertions

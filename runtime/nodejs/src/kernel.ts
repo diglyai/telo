@@ -1,23 +1,20 @@
-import { ResourceContext, RuntimeEvent, RuntimeResource } from '@diglyai/sdk';
-import * as path from 'path';
-import { ControllerRegistry } from './controller-registry';
-import { EventStream } from './event-stream';
-import { EventBus } from './events';
-import { evaluateCel, expandValue } from './expressions';
-import { Loader } from './loader';
-import { ManifestRegistry } from './registry';
-import { ResourceContextImpl } from './resource-context';
-import { SchemaValidator } from './schema-valiator';
-import { SnapshotSerializer } from './snapshot-serializer';
+import { ResourceContext, RuntimeEvent, RuntimeResource } from "@diglyai/sdk";
+import * as path from "path";
+import { ControllerRegistry } from "./controller-registry";
+import { EventStream } from "./event-stream";
+import { EventBus } from "./events";
+import { evaluateCel, expandValue } from "./expressions";
+import { Loader } from "./loader";
+import { ResourceContextImpl } from "./resource-context";
+import { SchemaValidator } from "./schema-valiator";
 import {
   ControllerContext,
   DiglyRuntimeError,
-  ExecContext,
   Kernel as IKernel,
   ResourceDefinition,
   ResourceInstance,
   ResourceManifest,
-} from './types';
+} from "./types";
 
 /**
  * Kernel: Central orchestrator managing lifecycle and message bus
@@ -25,13 +22,13 @@ import {
  */
 export class Kernel implements IKernel {
   private loader: Loader = new Loader();
-  private manifests: ManifestRegistry = new ManifestRegistry();
+  // private manifests: ManifestRegistry = new ManifestRegistry();
   private initializationQueue: ResourceManifest[] = [];
   private controllers: ControllerRegistry = new ControllerRegistry();
   private eventBus: EventBus = new EventBus();
   private eventStream: EventStream = new EventStream();
-  private snapshotSerializer: SnapshotSerializer = new SnapshotSerializer();
-  private runtimeManifests: ResourceManifest[] | null = null;
+  // private snapshotSerializer: SnapshotSerializer = new SnapshotSerializer();
+  // private runtimeManifests: ResourceManifest[] | null = null;
   private resourceInstances: Map<
     string,
     { resource: ResourceManifest; instance: ResourceInstance }
@@ -39,6 +36,7 @@ export class Kernel implements IKernel {
   private resourceEventBuses: Map<string, EventBus> = new Map();
   private holdCount = 0;
   private idleResolvers: Array<() => void> = [];
+  private _exitCode = 0;
 
   constructor() {
     this.setupEventStreaming();
@@ -56,10 +54,7 @@ export class Kernel implements IKernel {
     resourceKind: string,
     controllerInstance: any,
   ): Promise<void> {
-    this.controllers.registerController(
-      `${moduleName}.${resourceKind}`,
-      controllerInstance,
-    );
+    this.controllers.registerController(`${moduleName}.${resourceKind}`, controllerInstance);
     await controllerInstance.register?.(
       this.createControllerContext(`${moduleName}.${resourceKind}`),
     );
@@ -81,27 +76,27 @@ export class Kernel implements IKernel {
    */
   private async loadBuiltinDefinitions(): Promise<void> {
     this.controllers.registerDefinition({
-      kind: 'Runtime.Definition',
+      kind: "Runtime.Definition",
       metadata: {
-        name: 'Definition',
-        resourceKind: 'Definition',
-        module: 'Runtime',
+        name: "Definition",
+        resourceKind: "Definition",
+        module: "Runtime",
       },
-      schema: { type: 'object' },
+      schema: { type: "object" },
     });
     this.controllers.registerController(
-      'Runtime.Definition',
-      await import('./controllers/resource-definition/resource-definition-controller'),
+      "Runtime.Definition",
+      await import("./controllers/resource-definition/resource-definition-controller"),
     );
-    const moduleSchema = await import('./controllers/module/module.json');
+    const moduleSchema = await import("./controllers/module/module.json");
     this.controllers.registerDefinition({
-      kind: 'Runtime.Definition',
-      metadata: { name: 'Module', resourceKind: 'Module', module: 'Runtime' },
+      kind: "Runtime.Definition",
+      metadata: { name: "Module", resourceKind: "Module", module: "Runtime" },
       schema: moduleSchema,
     });
     this.controllers.registerController(
-      'Runtime.Module',
-      await import('./controllers/module/module-controller'),
+      "Runtime.Module",
+      await import("./controllers/module/module-controller"),
     );
   }
 
@@ -121,7 +116,7 @@ export class Kernel implements IKernel {
    * @deprecated Use loadFromConfig instead
    */
   async loadDirectory(dirPath: string): Promise<void> {
-    const configYamlPath = path.join(dirPath, 'module.yaml');
+    const configYamlPath = path.join(dirPath, "module.yaml");
 
     await this.loadFromConfig(configYamlPath);
   }
@@ -134,24 +129,22 @@ export class Kernel implements IKernel {
     for (const kind of this.controllers.getKinds()) {
       const controller = await this.controllers.getController(kind);
       if (controller?.register) {
-        await controller.register(
-          this.createControllerContext(`controller:${kind}`),
-        );
+        await controller.register(this.createControllerContext(`controller:${kind}`));
       }
     }
 
     // Initialize resources
     try {
       await this.initializeResources();
-      await this.eventBus.emit('Runtime.Initialized', {});
-      await this.eventBus.emit('Runtime.Starting', {});
+      await this.eventBus.emit("Runtime.Initialized", {});
+      await this.eventBus.emit("Runtime.Starting", {});
       await this.runInstances();
-      await this.eventBus.emit('Runtime.Started', {});
+      await this.eventBus.emit("Runtime.Started", {});
       await this.waitForIdle();
     } finally {
-      await this.eventBus.emit('Runtime.Stopping', {});
+      await this.eventBus.emit("Runtime.Stopping", {});
       await this.teardownResources();
-      await this.eventBus.emit('Runtime.Stopped', {});
+      await this.eventBus.emit("Runtime.Stopped", { exitCode: this._exitCode });
     }
   }
 
@@ -168,10 +161,18 @@ export class Kernel implements IKernel {
     await this.eventBus.emit(event, payload);
   }
 
+  get exitCode(): number {
+    return this._exitCode;
+  }
+
+  requestExit(code: number): void {
+    this._exitCode = Math.max(this._exitCode, code);
+  }
+
   acquireHold(reason?: string): () => void {
     this.holdCount += 1;
     if (this.holdCount === 1) {
-      void this.eventBus.emit('Runtime.Blocked', {
+      void this.eventBus.emit("Runtime.Blocked", {
         reason,
         count: this.holdCount,
       });
@@ -188,7 +189,7 @@ export class Kernel implements IKernel {
         for (const resolve of resolvers) {
           resolve();
         }
-        void this.eventBus.emit('Runtime.Unblocked', { count: this.holdCount });
+        void this.eventBus.emit("Runtime.Unblocked", { count: this.holdCount });
       }
     };
   }
@@ -216,48 +217,35 @@ export class Kernel implements IKernel {
       const { resource, instance } = entry;
       if (instance.teardown) {
         await instance.teardown();
-      }
-      await this.eventBus.emit(
-        `${resource.metadata.module}.${resource.metadata.name}.Teardown`,
-        {
+        await this.eventBus.emit(`${resource.metadata.module}.${resource.metadata.name}.Teardown`, {
           resource: { kind: resource.kind, name: resource.metadata.name },
-        },
-      );
+        });
+      }
       this.resourceInstances.delete(key);
       this.resourceEventBuses.delete(key);
     }
   }
 
-  on(
-    event: string,
-    handler: (event: RuntimeEvent) => void | Promise<void>,
-  ): void {
+  on(event: string, handler: (event: RuntimeEvent) => void | Promise<void>): void {
     this.eventBus.on(event, handler);
   }
 
   private createControllerContext(kind: string): ControllerContext {
     return {
-      on: (
-        event: string,
-        handler: (event: RuntimeEvent) => void | Promise<void>,
-      ) => this.eventBus.on(event, handler),
-      once: (
-        event: string,
-        handler: (event: RuntimeEvent) => void | Promise<void>,
-      ) => this.eventBus.once(event, handler),
-      off: (
-        event: string,
-        handler: (event: RuntimeEvent) => void | Promise<void>,
-      ) => this.eventBus.off(event, handler),
+      on: (event: string, handler: (event: RuntimeEvent) => void | Promise<void>) =>
+        this.eventBus.on(event, handler),
+      once: (event: string, handler: (event: RuntimeEvent) => void | Promise<void>) =>
+        this.eventBus.once(event, handler),
+      off: (event: string, handler: (event: RuntimeEvent) => void | Promise<void>) =>
+        this.eventBus.off(event, handler),
       emit: (event: string, payload?: any) => {
-        const namespaced = event.includes('.') ? event : `${kind}.${event}`;
+        const namespaced = event.includes(".") ? event : `${kind}.${event}`;
         void this.eventBus.emit(namespaced, payload);
       },
       acquireHold: (reason?: string) => this.acquireHold(reason),
       evaluateCel: (expression: string, context: Record<string, any>) =>
         evaluateCel(expression, context),
-      expandValue: (value: any, context: Record<string, any>) =>
-        expandValue(value, context),
+      expandValue: (value: any, context: Record<string, any>) => expandValue(value, context),
     };
   }
 
@@ -279,11 +267,7 @@ export class Kernel implements IKernel {
     return resources;
   }
 
-  getResourceByName(
-    module: string,
-    kind: string,
-    name: string,
-  ): RuntimeResource | null {
+  getResourceByName(module: string, kind: string, name: string): RuntimeResource | null {
     // const [declarationModule, knd] = kind.includes('.')
     //   ? kind.split('.', 2)
     //   : ['Runtime', kind];
@@ -324,11 +308,7 @@ export class Kernel implements IKernel {
 
       for (const resource of this.initializationQueue) {
         const kind = resource.kind;
-        const key = this.getResourceKey(
-          resource.metadata.module,
-          kind,
-          resource.metadata.name,
-        );
+        const key = this.getResourceKey(resource.metadata.module, kind, resource.metadata.name);
         const resourceId = `${kind}:${resource.metadata.name}`;
 
         // Skip if already created
@@ -340,28 +320,25 @@ export class Kernel implements IKernel {
 
         if (!controller) {
           // No controller and no definition - track error and skip for now
-          resourceErrors.set(
-            resourceId,
-            `No controller registered for kind: ${kind}`,
-          );
+          resourceErrors.set(resourceId, `No controller registered for kind: ${kind}`);
           continue;
         }
 
         if (!controller.create) {
           // Controller exists but has no create method, skip
           throw new DiglyRuntimeError(
-            'ERR_CONTROLLER_INVALID',
+            "ERR_CONTROLLER_INVALID",
             `Controller for ${kind} does not implement create method`,
           );
         }
 
         try {
+          if (!controller.schema || !controller.schema.type) {
+            throw new Error(`No schema defined for ${kind} controller`);
+          }
           schemaValidator.compile(controller.schema).validate(resource);
           // Create resource instance
-          const instance = await controller.create(
-            resource,
-            this.createResourceContext(resource),
-          );
+          const instance = await controller.create(resource, this.createResourceContext(resource));
 
           if (instance) {
             if (instance.init) {
@@ -382,7 +359,7 @@ export class Kernel implements IKernel {
           // Creation failed - track latest error and retry later
           resourceErrors.set(
             resourceId,
-            error instanceof Error ? error.message : String(error),
+            error instanceof Error ? (error.stack ?? error.message) : String(error),
           );
         }
       }
@@ -397,7 +374,7 @@ export class Kernel implements IKernel {
       const key = this.getResourceKey(metadata.module, kind, metadata.name);
       if (!this.resourceInstances.has(key)) {
         const resourceId = `${kind}:${metadata.name}`;
-        const errorMessage = resourceErrors.get(resourceId) || 'Unknown error';
+        const errorMessage = resourceErrors.get(resourceId) || "Unknown error";
         unhandledResources.set(resourceId, errorMessage);
       }
     }
@@ -406,118 +383,108 @@ export class Kernel implements IKernel {
     if (unhandledResources.size > 0) {
       const unhandledList = Array.from(unhandledResources.entries())
         .map(([resource, error]) => `- ${resource}: ${error}`)
-        .join('\n');
+        .join("\n");
       throw new DiglyRuntimeError(
-        'ERR_CONTROLLER_NOT_FOUND',
+        "ERR_CONTROLLER_NOT_FOUND",
         `Unable to process resources:\n\n${unhandledList}`,
       );
     }
   }
 
-  /**
-   * Execute - Dispatch execution request to appropriate controller
-   */
-  async execute(urn: string, input: any, ctx?: any): Promise<any> {
-    const [kind, name] = this.parseUrn(urn);
+  // /**
+  //  * Execute - Dispatch execution request to appropriate controller
+  //  */
+  // async execute(urn: string, input: any, ctx?: any): Promise<any> {
+  //   const [kind, name] = this.parseUrn(urn);
 
-    // Lookup resource
-    const resource = this.manifests.get(kind, name);
-    if (!resource) {
-      throw new DiglyRuntimeError(
-        'ERR_RESOURCE_NOT_FOUND',
-        `Resource not found: ${urn}`,
-      );
-    }
+  //   // Lookup resource
+  //   const resource = this.manifests.get(kind, name);
+  //   if (!resource) {
+  //     throw new DiglyRuntimeError("ERR_RESOURCE_NOT_FOUND", `Resource not found: ${urn}`);
+  //   }
 
-    // Find controller for this Kind
-    const controller = await this.controllers.getController(kind);
-    if (!controller) {
-      throw new DiglyRuntimeError(
-        'ERR_CONTROLLER_NOT_FOUND',
-        `No controller registered for Kind: ${kind}`,
-      );
-    }
+  //   // Find controller for this Kind
+  //   const controller = await this.controllers.getController(kind);
+  //   if (!controller) {
+  //     throw new DiglyRuntimeError(
+  //       "ERR_CONTROLLER_NOT_FOUND",
+  //       `No controller registered for Kind: ${kind}`,
+  //     );
+  //   }
 
-    // Create execution context with recursive execute capability
-    const execContext: ExecContext = {
-      execute: (nestedUrn: string, nestedInput: any) =>
-        this.execute(nestedUrn, nestedInput, ctx),
-      ...ctx,
-    };
+  //   // Create execution context with recursive execute capability
+  //   const execContext: ExecContext = {
+  //     execute: (nestedUrn: string, nestedInput: any) => this.execute(nestedUrn, nestedInput, ctx),
+  //     ...ctx,
+  //   };
 
-    try {
-      await this.eventBus.emit(`${name}.ExecutionStarted`, { urn });
-      const result = await controller.execute?.(name, input, {
-        ...execContext,
-        resource,
-      });
-      await this.eventBus.emit(`${name}.ExecutionCompleted`, { urn });
-      return result;
-    } catch (error) {
-      await this.eventBus.emit(`${name}.ExecutionFailed`, {
-        urn,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw new DiglyRuntimeError(
-        'ERR_EXECUTION_FAILED',
-        `Execution failed for ${urn}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
+  //   try {
+  //     await this.eventBus.emit(`${name}.ExecutionStarted`, { urn });
+  //     const result = await controller.execute?.(name, input, {
+  //       ...execContext,
+  //       resource,
+  //     });
+  //     await this.eventBus.emit(`${name}.ExecutionCompleted`, { urn });
+  //     return result;
+  //   } catch (error) {
+  //     await this.eventBus.emit(`${name}.ExecutionFailed`, {
+  //       urn,
+  //       error: error instanceof Error ? error.message : String(error),
+  //     });
+  //     throw new DiglyRuntimeError(
+  //       "ERR_EXECUTION_FAILED",
+  //       `Execution failed for ${urn}: ${error instanceof Error ? error.message : String(error)}`,
+  //     );
+  //   }
+  // }
 
-  private parseUrn(urn: string): [string, string] {
-    const separator = urn.lastIndexOf('.');
-    if (separator <= 0 || separator === urn.length - 1) {
-      throw new Error(
-        `Invalid URN format: ${urn}. Expected "Kind.Name" where Kind can include dots`,
-      );
-    }
-    const kind = urn.slice(0, separator);
-    const name = urn.slice(separator + 1);
-    return [kind, name];
-  }
+  // private parseUrn(urn: string): [string, string] {
+  //   const separator = urn.lastIndexOf(".");
+  //   if (separator <= 0 || separator === urn.length - 1) {
+  //     throw new Error(
+  //       `Invalid URN format: ${urn}. Expected "Kind.Name" where Kind can include dots`,
+  //     );
+  //   }
+  //   const kind = urn.slice(0, separator);
+  //   const name = urn.slice(separator + 1);
+  //   return [kind, name];
+  // }
 
-  async invoke(
-    module: string,
-    kind: string,
-    name: string,
-    ...args: any[]
-  ): Promise<any> {
+  async invoke(module: string, kind: string, name: string, ...args: any[]): Promise<any> {
     const instance: any = this.getResourceByName(module, kind, name);
     if (!instance) {
       throw new DiglyRuntimeError(
-        'ERR_RESOURCE_NOT_FOUND',
+        "ERR_RESOURCE_NOT_FOUND",
         `Resource not found for invocation: ${module}.${kind}.${name}`,
       );
     }
-    if (
-      typeof instance !== 'object' ||
-      typeof instance['invoke'] !== 'function'
-    ) {
+    if (typeof instance !== "object" || typeof instance["invoke"] !== "function") {
       throw new DiglyRuntimeError(
-        'ERR_RESOURCE_NOT_INVOKABLE',
+        "ERR_RESOURCE_NOT_INVOKABLE",
         `Resource ${kind}.${name} does not have an invoke method`,
       );
     }
-    return instance['invoke'](...args);
+    const result = await instance["invoke"](...args);
+    this.emitRuntimeEvent(`${kind}.${name}.Invoked`, {
+      result,
+    });
+    return result;
   }
 
   private getResourceKey(module: string, kind: string, name: string): string {
-    if (!kind.includes('.')) {
+    if (!kind.includes(".")) {
       throw new Error(`Resource kind must include module prefix: ${kind}`);
     }
     return `${module}.${kind}.${name}`;
   }
 
-  private assertResourceEventAllowed(event: string): void {
-    const parts = event.split('.');
-    const leaf = parts[parts.length - 1];
-    if (leaf === 'Initialized' || leaf === 'Teardown') {
-      throw new Error(
-        `Resource events cannot use reserved lifecycle event: ${leaf}`,
-      );
-    }
-  }
+  // private assertResourceEventAllowed(event: string): void {
+  //   const parts = event.split(".");
+  //   const leaf = parts[parts.length - 1];
+  //   if (leaf === "Initialized" || leaf === "Teardown") {
+  //     throw new Error(`Resource events cannot use reserved lifecycle event: ${leaf}`);
+  //   }
+  // }
 
   /**
    * Enable event streaming to a file (JSONL format)

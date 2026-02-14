@@ -1,0 +1,30 @@
+{
+  "name": "@diglyai/assert",
+  "type": "module",
+  "exports": {
+    "./schema": "./src/schema.ts",
+    "./events": "./src/events.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json"
+  },
+  "files": [
+    "dist/**"
+  ],
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.48",
+    "@diglyai/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "digly": {
+    "controllers": [
+      {
+        "engine": "nodejs",
+        "entry": "./dist/writeline-controller.js"
+      }
+    ]
+  }
+}

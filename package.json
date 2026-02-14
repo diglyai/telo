@@ -2,6 +2,8 @@
   "name": "@diglyai/diglyai",
   "version": "1.0.0",
   "description": "Digly Runtime: A lightweight, polyglot execution host for Digly distributions.",
-  "scripts": {},
+  "scripts": {
+    "digly": "bun ./runtime/nodejs/bin/digly.ts"
+  },
   "packageManager": "pnpm@10.28.2"
 }

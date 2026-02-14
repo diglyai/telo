@@ -1,0 +1,42 @@
+kind: Runtime.Definition
+metadata:
+  name: EventsDefinition
+  resourceKind: Events
+  module: Assert
+controllers:
+  - runtime: nodejs
+    registry: npm
+    package: "@diglyai/assert@1.0.0"
+    entry: "./events"
+  - runtime: nodejs
+    registry: local
+    package: "./nodejs"
+    entry: "./events"
+schema:
+  type: object
+  properties:
+    filter:
+      type: array
+      items:
+        type: object
+        properties:
+          type:
+            type: string
+        required:
+          - type
+    expect:
+      type: array
+      description: Ordered sequence of events to assert
+      items:
+        type: object
+        properties:
+          event:
+            type: string
+            description: Event name or wildcard pattern (e.g. "JavaScript.Script.*.Invoked")
+          payload:
+            type: object
+            description: Partial payload to match against (only declared fields are checked)
+        required:
+          - event
+  required:
+    - expect

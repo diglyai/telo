@@ -168,7 +168,8 @@ export class Loader {
         ? group.filter(
             (controller) =>
               controller.registry === 'local' ||
-              (controller.registry && controller.registry.startsWith('file://')),
+              (controller.registry &&
+                controller.registry.startsWith('file://')),
           )
         : group;
 
@@ -195,6 +196,7 @@ export class Loader {
         const packageSpec = controller.package;
         const entry = controller.entry;
         if (!packageSpec || !entry) {
+          console.log('controller', controller);
           lastError = new Error(
             `Controller is missing package or entry (runtime=${controller.runtime ?? 'unknown'}, registry=${controller.registry ?? 'default'})`,
           );

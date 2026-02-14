@@ -15,6 +15,7 @@ export interface ControllerContext {
   ): void;
   emit(event: string, payload?: any, metadata?: Record<string, any>): void;
   acquireHold(reason?: string): () => void;
+  requestExit(code: number): void;
   evaluateCel(expression: string, context: Record<string, any>): unknown;
   expandValue(value: any, context: Record<string, any>): any;
 }

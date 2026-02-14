@@ -4,10 +4,14 @@ metadata:
   resourceKind: Script
   module: Starlark
 controllers:
-  - runtime: 'node@>=20 <23'
-    entrypoint: './nodejs/script.ts'
-  - runtime: 'bun@>=1.1'
-    entrypoint: './nodejs/script.ts'
+  - runtime: nodejs
+    registry: npm
+    package: '@diglyai/starlark@1.0.0'
+    entry: './script'
+  - runtime: nodejs
+    registry: local
+    package: './nodejs'
+    entry: './script'
 schema:
   type: object
   properties:

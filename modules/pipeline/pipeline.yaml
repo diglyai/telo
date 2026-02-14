@@ -4,10 +4,14 @@ metadata:
   resourceKind: Job
   module: Pipeline
 controllers:
-  - runtime: 'node@>=20 <23'
-    entrypoint: './nodejs/job.ts'
-  - runtime: 'bun@>=1.1'
-    entrypoint: './nodejs/job.ts'
+  - runtime: nodejs
+    registry: npm
+    package: '@diglyai/pipeline@1.0.0'
+    entry: './job'
+  - runtime: nodejs
+    registry: local
+    package: './nodejs'
+    entry: './job'
 schema:
   type: object
   properties:

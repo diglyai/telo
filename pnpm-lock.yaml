@@ -8,6 +8,22 @@ importers:
 
   .: {}
 
+  modules/assert/nodejs:
+    dependencies:
+      '@diglyai/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
+      '@sinclair/typebox':
+        specifier: ^0.34.48
+        version: 0.34.48
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.30
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
   modules/console/nodejs:
     dependencies:
       '@diglyai/sdk':
@@ -107,9 +123,6 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
-      ajv:
-        specifier: ^8.17.1
-        version: 8.17.1
 
   modules/starlark/nodejs:
     dependencies:

@@ -1,9 +1,10 @@
-import type {
-  ControllerContext,
-  DataValidator,
-  ResourceContext,
-  RuntimeResource,
-} from '@diglyai/sdk';
+import {
+  NoopValidator,
+  type ControllerContext,
+  type DataValidator,
+  type ResourceContext,
+  type RuntimeResource,
+} from "@diglyai/sdk";
 
 type JavaScriptResource = RuntimeResource & {
   code?: string;
@@ -40,22 +41,17 @@ export async function create(
   const compiled = compileJavaScriptModule(resource.code);
   return new JavaScript(
     ctx,
-    ctx.createSchemaValidator(resource.inputSchema),
-    ctx.createSchemaValidator(resource.outputSchema),
+    resource.inputSchema ? ctx.createSchemaValidator(resource.inputSchema) : new NoopValidator(),
+    resource.outputSchema ? ctx.createSchemaValidator(resource.outputSchema) : new NoopValidator(),
     compiled,
   );
 }
 
-function compileJavaScriptModule(
-  code: string,
-): (input: any, ctx: any) => Promise<any> {
+function compileJavaScriptModule(code: string): (input: any, ctx: any) => Promise<any> {
   const wrapped =
     `"use strict";\n${code}\n` +
     `if (typeof main !== "function") { throw new Error("JavaScript resource must export main(input)"); }\n` +
     `return main(input);`;
-  const fn = new Function('input', wrapped) as (
-    input: any,
-    ctx: any,
-  ) => Promise<any>;
+  const fn = new Function("input", wrapped) as (input: any, ctx: any) => Promise<any>;
   return fn;
 }

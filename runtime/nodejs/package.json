@@ -3,11 +3,6 @@
   "version": "1.0.0",
   "description": "Digly Runtime - Read-Only Execution Host for Resolved Distribution Directories",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": {
-    "digly": "./bin/digly.js"
-  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch"
