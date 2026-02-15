@@ -217,7 +217,7 @@ export class Kernel implements IKernel {
       const { resource, instance } = entry;
       if (instance.teardown) {
         await instance.teardown();
-        await this.eventBus.emit(`${resource.metadata.module}.${resource.metadata.name}.Teardown`, {
+        await this.eventBus.emit(`${resource.metadata.module}.${resource.kind}.${resource.metadata.name}.Teardown`, {
           resource: { kind: resource.kind, name: resource.metadata.name },
         });
       }
@@ -465,7 +465,7 @@ export class Kernel implements IKernel {
       );
     }
     const result = await instance["invoke"](...args);
-    this.emitRuntimeEvent(`${kind}.${name}.Invoked`, {
+    this.emitRuntimeEvent(`${module}.${kind}.${name}.Invoked`, {
       result,
     });
     return result;

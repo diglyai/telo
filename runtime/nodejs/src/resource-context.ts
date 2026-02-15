@@ -42,6 +42,10 @@ export class ResourceContextImpl implements ResourceContext {
   }
 
   invoke(kind: string, name: string, ...args: any[]): Promise<any> {
+    const parts = kind.split(".");
+    if (parts.length > 2) {
+      return this.kernel.invoke(parts[0], parts.slice(1).join("."), name, ...args);
+    }
     return this.kernel.invoke(this.metadata.module, kind, name, ...args);
   }
 

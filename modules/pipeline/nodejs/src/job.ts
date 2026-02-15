@@ -49,12 +49,9 @@ class PipelineJob {
     const context: any = {};
     for (const step of this.resource.steps) {
       try {
-        const id =
-          typeof step.invoke === "string" ? step.invoke : `${step.invoke.kind}.${step.invoke.name}`;
-        const [module, kind, name] = id.split(".");
         const result = await this.ctx.invoke(
-          `${module}.${kind}`,
-          name,
+          step.invoke.kind,
+          step.invoke.name ?? step.name,
           this.ctx.expandValue(step.input || {}, context),
         );
         context[step.name] = {

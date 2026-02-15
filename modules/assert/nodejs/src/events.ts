@@ -11,6 +11,9 @@ const ExpectEntry = Type.Object({
 });
 
 export const schema = Type.Object({
+  metadata: Type.Object({
+    name: Type.String(),
+  }),
   filter: Type.Optional(Type.Array(FilterEntry)),
   expect: Type.Array(ExpectEntry),
 });
@@ -37,16 +40,12 @@ function matchesPattern(pattern: string, eventName: string): boolean {
   const eventParts = eventName.split(".");
   if (patternParts.length !== eventParts.length) return false;
   for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i] !== "*" && patternParts[i] !== eventParts[i])
-      return false;
+    if (patternParts[i] !== "*" && patternParts[i] !== eventParts[i]) return false;
   }
   return true;
 }
 
-function matchesPayload(
-  actual: any,
-  expected: Record<string, any>,
-): boolean {
+function matchesPayload(actual: any, expected: Record<string, any>): boolean {
   for (const [key, value] of Object.entries(expected)) {
     if (actual == null) return false;
     if (typeof value === "object" && value !== null) {
@@ -59,18 +58,14 @@ function matchesPayload(
 }
 
 const useColor = process.stderr.isTTY;
-const c = (code: string, text: string) =>
-  useColor ? `\x1b[${code}m${text}\x1b[0m` : text;
+const c = (code: string, text: string) => (useColor ? `\x1b[${code}m${text}\x1b[0m` : text);
 const bold = (t: string) => c("1", t);
 const red = (t: string) => c("31", t);
 const green = (t: string) => c("32", t);
 const yellow = (t: string) => c("33", t);
 const dim = (t: string) => c("2", t);
 
-function buildReport(
-  captured: CapturedEvent[],
-  expect: ExpectEntry[],
-): string | null {
+function buildReport(name: string, captured: CapturedEvent[], expect: ExpectEntry[]) {
   const results: MatchResult[] = [];
   let pos = 0;
 
@@ -94,11 +89,16 @@ function buildReport(
   }
 
   const failures = results.filter((r) => r.status !== "matched");
-  if (failures.length === 0) {
-    return null;
-  }
+  // if (failures.length === 0) {
+  //   return null;
+  // }
 
-  let report = bold(red("Assert.Events: assertion failed")) + "\n";
+  let report =
+    bold(
+      failures.length > 0
+        ? red(`Assert.Events.${name}: assertion failed`)
+        : green(`Assert.Events.${name}: assertion passed`),
+    ) + "\n";
   for (const result of results) {
     if (result.status === "matched") {
       report += `  ${green("✓")} ${dim(result.actual.name)}\n`;
@@ -114,7 +114,7 @@ function buildReport(
     }
   }
 
-  return report;
+  return { report, passed: failures.length === 0 };
 }
 
 export async function create(manifest: AssertManifest, ctx: ResourceContext) {
@@ -128,10 +128,14 @@ export async function create(manifest: AssertManifest, ctx: ResourceContext) {
   });
 
   ctx.on("Runtime.Stopping", () => {
-    const report = buildReport(captured, manifest.expect);
+    const report = buildReport(manifest.metadata.name, captured, manifest.expect);
     if (report) {
-      process.stderr.write(report);
-      ctx.requestExit(1);
+      if (report.passed) {
+        process.stdout.write(report.report);
+      } else {
+        process.stderr.write(report.report);
+        ctx.requestExit(1);
+      }
     }
   });
 
