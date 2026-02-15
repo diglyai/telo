@@ -1,18 +1,18 @@
 import { compile } from './index';
 
 describe('CEL-YAML Templating Engine', () => {
-  describe('Basic Interpolation', () => {
-    it('should handle simple variable interpolation', () => {
+  describe('$eval Directive', () => {
+    it('should evaluate simple variable', () => {
       const result = compile(
-        { message: '${greeting}' },
+        { message: { $eval: '${{greeting}}' } },
         { context: { greeting: 'Hello' } },
       );
       expect(result).toEqual({ message: 'Hello' });
     });
 
-    it('should handle mixed string interpolation', () => {
+    it('should evaluate mixed string interpolation', () => {
       const result = compile(
-        { host: 'server-${region}' },
+        { host: { $eval: 'server-${{region}}' } },
         { context: { region: 'us-east-1' } },
       );
       expect(result).toEqual({ host: 'server-us-east-1' });
@@ -20,7 +20,7 @@ describe('CEL-YAML Templating Engine', () => {
 
     it('should preserve type with exact match interpolation', () => {
       const result = compile(
-        { port: '${port_number}' },
+        { port: { $eval: '${{port_number}}' } },
         { context: { port_number: 8080 } },
       );
       expect(result).toEqual({ port: 8080 });
@@ -29,7 +29,7 @@ describe('CEL-YAML Templating Engine', () => {
 
     it('should preserve boolean type with exact match', () => {
       const result = compile(
-        { enabled: '${is_enabled}' },
+        { enabled: { $eval: '${{is_enabled}}' } },
         { context: { is_enabled: true } },
       );
       expect(result).toEqual({ enabled: true });
@@ -38,10 +38,42 @@ describe('CEL-YAML Templating Engine', () => {
 
     it('should handle multiple interpolations in one string', () => {
       const result = compile(
-        { url: '${protocol}://${host}:${port}' },
+        { url: { $eval: '${{protocol}}://${{host}}:${{port}}' } },
         { context: { protocol: 'https', host: 'api.example.com', port: 443 } },
       );
       expect(result).toEqual({ url: 'https://api.example.com:443' });
+    });
+  });
+
+  describe('${{ }} passthrough', () => {
+    it('should pass through ${{ }} in regular data values', () => {
+      const result = compile(
+        { handler: '${{ request.path }}' },
+        { context: { someVar: 'value' } },
+      );
+      expect(result).toEqual({ handler: '${{ request.path }}' });
+    });
+
+    it('should pass through runtime expressions untouched', () => {
+      const result = compile({
+        input: {
+          sum: '${{ AddTwoNumbers.output }}',
+        },
+      });
+      expect(result).toEqual({
+        input: {
+          sum: '${{ AddTwoNumbers.output }}',
+        },
+      });
+    });
+
+    it('should pass through mixed runtime expressions', () => {
+      const result = compile({
+        message: 'Hello ${{ request.query.name }}, result: ${{ result.value }}',
+      });
+      expect(result).toEqual({
+        message: 'Hello ${{ request.query.name }}, result: ${{ result.value }}',
+      });
     });
   });
 
@@ -52,8 +84,8 @@ describe('CEL-YAML Templating Engine', () => {
           name: "'John'",
           age: '30',
         },
-        greeting: '${name}',
-        years: '${age}',
+        greeting: { $eval: '${{name}}' },
+        years: { $eval: '${{age}}' },
       });
       expect(result).toEqual({ greeting: 'John', years: 30 });
     });
@@ -61,12 +93,12 @@ describe('CEL-YAML Templating Engine', () => {
     it('should shadow parent variables', () => {
       const result = compile(
         {
-          outer: '${value}',
+          outer: { $eval: '${{value}}' },
           nested: {
             $let: {
               value: "'local'",
             },
-            inner: '${value}',
+            inner: { $eval: '${{value}}' },
           },
         },
         { context: { value: 'global' } },
@@ -83,12 +115,25 @@ describe('CEL-YAML Templating Engine', () => {
           base_url: "'https://api.example.com'",
         },
         service: {
-          endpoint: '${base_url}/users',
+          endpoint: { $eval: '${{base_url}}/users' },
         },
       });
       expect(result).toEqual({
         service: { endpoint: 'https://api.example.com/users' },
       });
+    });
+
+    it('should support $eval in $let values', () => {
+      const result = compile(
+        {
+          $let: {
+            full_name: { $eval: '${{first}}-${{last}}' },
+          },
+          name: { $eval: '${{full_name}}' },
+        },
+        { context: { first: 'John', last: 'Doe' } },
+      );
+      expect(result).toEqual({ name: 'John-Doe' });
     });
   });
 
@@ -150,13 +195,16 @@ describe('CEL-YAML Templating Engine', () => {
   });
 
   describe('$for/$do Directive', () => {
-    it('should iterate over array items', () => {
+    it('should iterate over array items with $eval', () => {
       const result = compile(
         {
           servers: [
             {
               $for: 'host in hosts',
-              $do: { name: '${host}', url: 'https://${host}.example.com' },
+              $do: {
+                name: { $eval: '${{host}}' },
+                url: { $eval: 'https://${{host}}.example.com' },
+              },
             },
           ],
         },
@@ -169,12 +217,15 @@ describe('CEL-YAML Templating Engine', () => {
       ]);
     });
 
-    it('should iterate over object map with key-value pairs', () => {
+    it('should iterate over object map with $key/$value', () => {
       const result = compile(
         {
           labels: {
             $for: 'k, v in tags',
-            $do: { 'tag-${k}': '${v}' },
+            $do: {
+              $key: { $eval: 'tag-${{k}}' },
+              $value: { $eval: '${{v}}' },
+            },
           },
         },
         { context: { tags: { env: 'prod', team: 'platform' } } },
@@ -193,13 +244,13 @@ describe('CEL-YAML Templating Engine', () => {
               $for: 'env in envs',
               $do: {
                 $let: {
-                  environment: '${env}',
+                  environment: 'env',
                 },
-                name: '${environment}',
+                name: { $eval: '${{environment}}' },
                 regions: [
                   {
                     $for: 'region in regions_list',
-                    $do: { location: '${region}' },
+                    $do: { location: { $eval: '${{region}}' } },
                   },
                 ],
               },
@@ -273,8 +324,8 @@ describe('CEL-YAML Templating Engine', () => {
             replicas: { type: 'integer' },
           },
           config: {
-            location: '${region}',
-            count: '${replicas}',
+            location: { $eval: '${{region}}' },
+            count: { $eval: '${{replicas}}' },
           },
         },
         { context: { region: 'us-east-1', replicas: 3 } },
@@ -291,7 +342,7 @@ describe('CEL-YAML Templating Engine', () => {
           $schema: {
             env: { type: 'string' },
           },
-          environment: '${env}',
+          environment: { $eval: '${{env}}' },
         },
       });
       expect(result.service).toEqual({ environment: 'prod' });
@@ -305,7 +356,7 @@ describe('CEL-YAML Templating Engine', () => {
               port: { type: 'integer' },
             },
             config: {
-              port_value: '${port}',
+              port_value: { $eval: '${{port}}' },
             },
           },
           { context: { port: 'invalid' } },
@@ -320,7 +371,7 @@ describe('CEL-YAML Templating Engine', () => {
             cpu: { type: 'string', pattern: '^\\d+m$' },
           },
           resources: {
-            limit: '${cpu}',
+            limit: { $eval: '${{cpu}}' },
           },
         },
         { context: { cpu: '500m' } },
@@ -342,7 +393,7 @@ describe('CEL-YAML Templating Engine', () => {
             items: [
               {
                 $for: 'i in numbers',
-                $do: { value: '${i * multiplier}' },
+                $do: { value: { $eval: '${{i * multiplier}}' } },
               },
             ],
           },
@@ -367,18 +418,18 @@ describe('CEL-YAML Templating Engine', () => {
             $for: 'svc in services',
             $do: {
               $let: {
-                full_name: "'${svc.name}-${region}'",
+                full_name: "svc.name + '-' + region",
               },
               kind: 'Service',
               metadata: {
-                name: '${full_name}',
+                name: { $eval: '${{full_name}}' },
                 annotations: {
-                  owner: '${owner}',
+                  owner: { $eval: '${{owner}}' },
                 },
               },
               spec: {
                 type: 'LoadBalancer',
-                replicas: '${svc.ha ? 3 : 1}',
+                replicas: { $eval: '${{svc.ha ? 3 : 1}}' },
               },
             },
           },
@@ -409,7 +460,7 @@ describe('CEL-YAML Templating Engine', () => {
           {
             $for: 'env in envs',
             $do: {
-              name: '${env}',
+              name: { $eval: '${{env}}' },
               $if: "env == 'prod'",
               $then: {
                 replicas: 3,
@@ -479,6 +530,14 @@ describe('CEL-YAML Templating Engine', () => {
       });
     });
 
+    it('should not expand single-brace syntax', () => {
+      const result = compile(
+        { value: '${greeting}' },
+        { context: { greeting: 'Hello' } },
+      );
+      expect(result).toEqual({ value: '${greeting}' });
+    });
+
     it('should handle numeric and boolean primitives', () => {
       const result = compile({
         number: 42,
@@ -496,16 +555,16 @@ describe('CEL-YAML Templating Engine', () => {
   });
 
   describe('Error Handling', () => {
-    it('should throw on undefined variable in interpolation', () => {
+    it('should throw on undefined variable in $eval', () => {
       expect(() => {
-        compile({ message: '${undefined_var}' });
+        compile({ message: { $eval: '${{undefined_var}}' } });
       }).toThrow();
     });
 
-    it('should throw on invalid CEL expression', () => {
+    it('should throw on invalid CEL expression in $eval', () => {
       expect(() => {
         compile(
-          { value: '${invalid syntax here}' },
+          { value: { $eval: '${{invalid syntax here}}' } },
           { context: { something: 'value' } },
         );
       }).toThrow();
@@ -529,7 +588,7 @@ describe('CEL-YAML Templating Engine', () => {
         compile({
           service: {
             config: {
-              endpoint: '${undefined}',
+              endpoint: { $eval: '${{undefined}}' },
             },
           },
         });

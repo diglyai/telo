@@ -43,10 +43,7 @@ function compileValue(value: any, context: CompileContext): any {
     return compileObject(value, context);
   }
 
-  if (typeof value === 'string') {
-    return compileString(value, context);
-  }
-
+  // Strings and other primitives pass through — ${{ }} is runtime-only syntax
   return value;
 }
 
@@ -169,7 +166,26 @@ function compileObject(obj: any, parentContext: CompileContext): any {
     return handleForDirective(obj, context, 'object');
   }
 
-  // Step 6: Process $include/$with
+  // Step 6: Process $eval — explicit compile-time evaluation
+  if ('$eval' in obj) {
+    const evalValue = obj['$eval'];
+    if (typeof evalValue === 'string') {
+      return compileString(evalValue, context);
+    }
+    return evalValue;
+  }
+
+  // Step 6b: Process $key/$value (used in $for/$do for dynamic keys)
+  if ('$key' in obj && '$value' in obj) {
+    const keyContext: CompileContext = { ...context, parentPath: `${context.parentPath}.$key` };
+    const valueContext: CompileContext = { ...context, parentPath: `${context.parentPath}.$value` };
+    return {
+      $key: compileValue(obj['$key'], keyContext),
+      $value: compileValue(obj['$value'], valueContext),
+    };
+  }
+
+  // Step 7: Process $include/$with
   if ('$include' in obj) {
     // Include requires file system access - stub for now
     throw new Error('$include directive not yet implemented');
@@ -183,8 +199,7 @@ function compileObject(obj: any, parentContext: CompileContext): any {
       continue;
     }
 
-    const renderedKey =
-      key.includes('${') ? String(compileString(key, context)) : key;
+    const renderedKey = key;
     const childPath = `${context.parentPath}.${renderedKey}`;
     const childContext: CompileContext = {
       ...context,
@@ -201,7 +216,7 @@ function compileObject(obj: any, parentContext: CompileContext): any {
  * Compile string with interpolation support
  */
 function compileString(str: string, context: CompileContext): any {
-  const matches = Array.from(str.matchAll(/\$\{\{([^}]+)\}\}|\$\{([^}]+)\}/g));
+  const matches = Array.from(str.matchAll(/\$\{\{([^}]+)\}\}/g));
 
   if (matches.length === 0) {
     return str;
@@ -209,7 +224,7 @@ function compileString(str: string, context: CompileContext): any {
 
   // If the entire string is a single interpolation, return the value type
   if (matches.length === 1 && matches[0][0] === str) {
-    const expr = (matches[0][1] ?? matches[0][2]) as string;
+    const expr = matches[0][1] as string;
     try {
       const value = evaluateCEL(expr, Object.fromEntries(context.variables));
       if (value === undefined) {
@@ -226,7 +241,7 @@ function compileString(str: string, context: CompileContext): any {
   // Otherwise, concatenate all parts as strings
   let result = str;
   for (const match of matches) {
-    const expr = (match[1] ?? match[2]) as string;
+    const expr = match[1] as string;
     try {
       const value = evaluateCEL(expr, Object.fromEntries(context.variables));
       if (value === undefined) {
@@ -348,12 +363,15 @@ function handleForDirective(
 
     const merged: Record<string, any> = {};
     for (const item of results) {
-      if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+      if (item && typeof item === 'object' && '$key' in item && '$value' in item) {
+        merged[item['$key']] = item['$value'];
+      } else if (typeof item !== 'object' || item === null || Array.isArray(item)) {
         throw new Error(
           `Object-mode $for must produce objects at "${context.parentPath}"`,
         );
+      } else {
+        Object.assign(merged, item);
       }
-      Object.assign(merged, item);
     }
     return merged;
   } catch (error) {
@@ -428,6 +446,15 @@ function isDirectiveObject(obj: any): boolean {
 }
 
 function evaluateExpression(expr: any, context: CompileContext): any {
+  // Handle $eval objects (e.g. from $let values)
+  if (typeof expr === 'object' && expr !== null && '$eval' in expr) {
+    const evalValue = expr['$eval'];
+    if (typeof evalValue === 'string') {
+      return compileString(evalValue, context);
+    }
+    return evalValue;
+  }
+
   if (typeof expr !== 'string') {
     return expr;
   }
@@ -438,12 +465,6 @@ function evaluateExpression(expr: any, context: CompileContext): any {
   const isDoubleQuoted =
     trimmed.startsWith('"') && trimmed.endsWith('"');
   const isQuoted = isSingleQuoted || isDoubleQuoted;
-  const containsInterpolation = expr.includes('${');
-
-  if (containsInterpolation) {
-    const stripped = isQuoted ? trimmed.slice(1, -1) : expr;
-    return compileString(stripped, context);
-  }
 
   if (isQuoted) {
     return trimmed.slice(1, -1);
