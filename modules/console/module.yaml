@@ -11,15 +11,15 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: '@diglyai/console@1.0.0'
-    entry: './writeline'
+    package: "@vokerun/console@1.0.0"
+    entry: "./writeline"
   - runtime: nodejs
     registry: local
-    package: './nodejs'
-    entry: './writeline'
+    package: "./nodejs"
+    entry: "./writeline"
 schema:
   type: object
   properties:
     output:
       type: string
-  required: ['output']
+  required: ["output"]

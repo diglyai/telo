@@ -6,12 +6,12 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: '@diglyai/data@1.0.0'
-    entry: './type'
+    package: "@vokerun/data@1.0.0"
+    entry: "./type"
   - runtime: nodejs
     registry: local
-    package: './nodejs'
-    entry: './type'
+    package: "./nodejs"
+    entry: "./type"
 schema:
   type: object
   properties:
@@ -20,10 +20,10 @@ schema:
       properties:
         name:
           type: string
-      required: ['name']
+      required: ["name"]
     schema:
       type: object
-  required: ['metadata', 'schema']
+  required: ["metadata", "schema"]
 ---
 kind: Runtime.Definition
 metadata:

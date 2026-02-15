@@ -3,10 +3,10 @@ EXAMPLE_NAME := $(word 1,$(filter-out example example-debug test,$(MAKECMDGOALS)
 EXTRA_ARGS := $(wordlist 2,$(words $(filter-out example example-debug test,$(MAKECMDGOALS))),$(filter-out example example-debug test,$(MAKECMDGOALS)))
 
 example:
-	pnpm run --filter='*' build && bun runtime/nodejs/bin/digly.cjs $(EXTRA_ARGS) examples/$(EXAMPLE_NAME)
+	pnpm run --filter='*' build && bun runtime/nodejs/bin/voke.cjs $(EXTRA_ARGS) examples/$(EXAMPLE_NAME)
 
 test:
-	pnpm run --filter='*' build && bun runtime/nodejs/bin/digly.cjs $(EXTRA_ARGS) tests/$(EXAMPLE_NAME)
+	pnpm run --filter='*' build && bun runtime/nodejs/bin/voke.cjs $(EXTRA_ARGS) tests/$(EXAMPLE_NAME)
 
 %:
 	@:

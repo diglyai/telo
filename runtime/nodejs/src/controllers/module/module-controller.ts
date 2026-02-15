@@ -1,10 +1,6 @@
-import type {
-  ControllerContext,
-  ResourceContext,
-  RuntimeResource,
-} from '@diglyai/sdk';
-import * as path from 'path';
-import { Loader } from '../../loader';
+import type { ControllerContext, ResourceContext, RuntimeResource } from "@vokerun/sdk";
+import * as path from "path";
+import { Loader } from "../../loader";
 
 type ModuleResource = RuntimeResource & {
   source?: string;
@@ -18,10 +14,7 @@ export function register(ctx: ControllerContext): void {
   // Processing happens during create phase
 }
 
-export async function create(
-  resource: ModuleResource,
-  ctx: ResourceContext,
-): Promise<null> {
+export async function create(resource: ModuleResource, ctx: ResourceContext): Promise<null> {
   // Get the module base path from the resource's URI or source
   const moduleBasePath = resource.metadata.source
     ? path.dirname(resource.metadata.source)
@@ -31,9 +24,7 @@ export async function create(
     // Load and register resource definitions from imports
     if (resource.imports && Array.isArray(resource.imports)) {
       for (const importPath of resource.imports) {
-        const defResources = await loader.loadDirectory(
-          path.resolve(moduleBasePath, importPath),
-        );
+        const defResources = await loader.loadDirectory(path.resolve(moduleBasePath, importPath));
         for (const defResource of defResources) {
           ctx.registerManifest(defResource);
         }
@@ -42,9 +33,7 @@ export async function create(
     // Load and register resources from definitions and resources paths
     if (resource.definitions && Array.isArray(resource.definitions)) {
       for (const defPath of resource.definitions) {
-        const defResources = await loader.loadManifest(
-          path.resolve(moduleBasePath, defPath),
-        );
+        const defResources = await loader.loadManifest(path.resolve(moduleBasePath, defPath));
         for (const defResource of defResources) {
           ctx.registerManifest(defResource);
         }
@@ -54,10 +43,7 @@ export async function create(
     if (resource.resources && Array.isArray(resource.resources)) {
       for (const defPath of resource.resources) {
         const defResources = await loader.loadManifest(
-          path.resolve(
-            moduleBasePath,
-            typeof defPath === 'string' ? defPath : defPath.path,
-          ),
+          path.resolve(moduleBasePath, typeof defPath === "string" ? defPath : defPath.path),
         );
         for (const defResource of defResources) {
           ctx.registerManifest(defResource);
@@ -82,17 +68,17 @@ function getModuleBasePath(uri?: string): string {
   try {
     // URI format: file://localhost/path/to/file.yaml#kind.name
     // Extract the file path part (before the #)
-    const hashIndex = uri.indexOf('#');
+    const hashIndex = uri.indexOf("#");
     const filePath = hashIndex > 0 ? uri.substring(0, hashIndex) : uri;
 
     // Parse as URL to handle file:// scheme
-    if (filePath.startsWith('file://')) {
+    if (filePath.startsWith("file://")) {
       // Remove 'file://localhost' and get the path
-      let pathPart = filePath.substring('file://'.length);
-      if (pathPart.startsWith('localhost/')) {
-        pathPart = pathPart.substring('localhost'.length);
-      } else if (pathPart.startsWith('localhost\\')) {
-        pathPart = pathPart.substring('localhost'.length);
+      let pathPart = filePath.substring("file://".length);
+      if (pathPart.startsWith("localhost/")) {
+        pathPart = pathPart.substring("localhost".length);
+      } else if (pathPart.startsWith("localhost\\")) {
+        pathPart = pathPart.substring("localhost".length);
       }
       return path.dirname(pathPart);
     }
@@ -105,6 +91,6 @@ function getModuleBasePath(uri?: string): string {
 }
 
 export const schema = {
-  type: 'object',
+  type: "object",
   additionalProperties: true,
 };

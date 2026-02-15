@@ -1,6 +1,6 @@
-# Digly Modules
+# Voke Modules
 
-This directory contains Digly modules packaged for use by the runtime. Each module is self‑contained and declared by its own manifest, resources, and definitions.
+This directory contains Voke modules packaged for use by the runtime. Each module is self‑contained and declared by its own manifest, resources, and definitions.
 
 ## How Modules Fit Together
 
@@ -8,4 +8,4 @@ Modules own specific **resource kinds**. A runtime manifest composes multiple mo
 
 ## Included Modules
 
-- **core/**: foundational kinds and shared building blocks.
+- **http-server/**: provides Http.Server resources to define and run HTTP APIs.

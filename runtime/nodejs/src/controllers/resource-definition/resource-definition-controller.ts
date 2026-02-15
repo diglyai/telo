@@ -1,17 +1,14 @@
 import type {
-  ControllerContext,
-  ResourceContext,
-  ResourceInstance,
-  RuntimeResource,
-} from '@diglyai/sdk';
-import * as path from 'path';
-import {
-  formatAjvErrors,
-  validateResourceDefinition,
-} from '../../manifest-schemas';
+    ControllerContext,
+    ResourceContext,
+    ResourceInstance,
+    RuntimeResource,
+} from "@vokerun/sdk";
+import * as path from "path";
+import { formatAjvErrors, validateResourceDefinition } from "../../manifest-schemas";
 
 type ResourceDefinitionResource = RuntimeResource & {
-  kind: 'Definition';
+  kind: "Definition";
   metadata: {
     [key: string]: any;
     name: string;
@@ -31,7 +28,7 @@ type ResourceDefinitionResource = RuntimeResource & {
  * Validates incoming definitions against schema and maintains definition metadata
  */
 class ResourceDefinition implements ResourceInstance {
-  readonly kind: 'ResourceDefinition' = 'ResourceDefinition';
+  readonly kind: "ResourceDefinition" = "ResourceDefinition";
 
   constructor(readonly resource: ResourceDefinitionResource) {}
 
@@ -41,15 +38,9 @@ class ResourceDefinition implements ResourceInstance {
     if (controller) {
       // Dynamically import controller module and register it
       const controllerInstance = await import(
-        path.resolve(
-          path.dirname(this.resource.metadata.source),
-          controller.entry,
-        )
+        path.resolve(path.dirname(this.resource.metadata.source), controller.entry)
       );
-      if (
-        !controllerInstance ||
-        (!controllerInstance.create && !controllerInstance.register)
-      ) {
+      if (!controllerInstance || (!controllerInstance.create && !controllerInstance.register)) {
         throw new Error(
           `Invalid controller module for ResourceDefinition "${this.resource.metadata.name}": missing create or register function`,
         );
@@ -68,10 +59,7 @@ export function register(ctx: ControllerContext): void {
   // ResourceDefinition is a passive resource - no registration needed
 }
 
-export async function create(
-  resource: any,
-  ctx: ResourceContext,
-): Promise<ResourceDefinition> {
+export async function create(resource: any, ctx: ResourceContext): Promise<ResourceDefinition> {
   // Validate incoming resource definition against schema
   if (!validateResourceDefinition(resource)) {
     throw new Error(
@@ -85,6 +73,6 @@ export async function create(
 }
 
 export const schema = {
-  type: 'object',
+  type: "object",
   additionalProperties: true,
 };

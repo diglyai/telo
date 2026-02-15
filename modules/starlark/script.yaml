@@ -6,12 +6,12 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: '@diglyai/starlark@1.0.0'
-    entry: './script'
+    package: "@vokerun/starlark@1.0.0"
+    entry: "./script"
   - runtime: nodejs
     registry: local
-    package: './nodejs'
-    entry: './script'
+    package: "./nodejs"
+    entry: "./script"
 schema:
   type: object
   properties:

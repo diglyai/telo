@@ -1,4 +1,4 @@
-import type { ResourceContext } from '@diglyai/sdk';
+import type { ResourceContext } from "@vokerun/sdk";
 
 interface Flow {
   metadata: {
@@ -22,7 +22,7 @@ class Flow {
   async init(): Promise<void> {
     for (const step of this.resource.steps) {
       if (step.invoke.kind && !step.invoke.name) {
-        const name = 'Unnamed';
+        const name = "Unnamed";
         this.ctx.registerManifest({
           ...step.invoke,
           metadata: {
@@ -45,10 +45,8 @@ class Flow {
     for (const step of this.resource.steps) {
       try {
         const id =
-          typeof step.invoke === 'string'
-            ? step.invoke
-            : `${step.invoke.kind}.${step.invoke.name}`;
-        const [module, kind, name] = id.split('.');
+          typeof step.invoke === "string" ? step.invoke : `${step.invoke.kind}.${step.invoke.name}`;
+        const [module, kind, name] = id.split(".");
         const result = await this.ctx.invoke(
           `${module}.${kind}`,
           name,

@@ -1,16 +1,16 @@
-import { RuntimeResource } from '@diglyai/sdk';
-import { evaluate } from 'cel-js';
-import { execFile } from 'child_process';
-import { createHash } from 'crypto';
-import * as fs from 'fs/promises';
-import * as yaml from 'js-yaml';
-import * as path from 'path';
-import { promisify } from 'util';
-import { formatAjvErrors, validateRuntimeResource } from './manifest-schemas';
-import { ResourceURI } from './resource-uri';
-import { isTemplateDefinition } from './template-definition';
-import { instantiateTemplate } from './template-expander';
-import { ResourceManifest } from './types';
+import { RuntimeResource } from "@vokerun/sdk";
+import { evaluate } from "cel-js";
+import { execFile } from "child_process";
+import { createHash } from "crypto";
+import * as fs from "fs/promises";
+import * as yaml from "js-yaml";
+import * as path from "path";
+import { promisify } from "util";
+import { formatAjvErrors, validateRuntimeResource } from "./manifest-schemas";
+import { ResourceURI } from "./resource-uri";
+import { isTemplateDefinition } from "./template-definition";
+import { instantiateTemplate } from "./template-expander";
+import { ResourceManifest } from "./types";
 
 /**
  * Loader: Ingests resolved YAML manifests from disk into memory
@@ -22,12 +22,7 @@ export class Loader {
   private static ensureProjectRoot(baseDir: string): void {
     if (!Loader.projectRoot) {
       Loader.projectRoot = path.resolve(baseDir);
-      Loader.npmCacheRoot = path.join(
-        Loader.projectRoot,
-        '.cache',
-        'digly',
-        'npm',
-      );
+      Loader.npmCacheRoot = path.join(Loader.projectRoot, ".cache", "digly", "npm");
     }
   }
 
@@ -41,7 +36,7 @@ export class Loader {
 
   async loadManifest(runtimeYamlPath: string): Promise<ResourceManifest[]> {
     Loader.ensureProjectRoot(path.dirname(runtimeYamlPath));
-    const content = await fs.readFile(runtimeYamlPath, 'utf-8');
+    const content = await fs.readFile(runtimeYamlPath, "utf-8");
     const config = yaml.loadAll(content) as ResourceManifest[];
 
     const resolved: ResourceManifest[] = [];
@@ -58,10 +53,7 @@ export class Loader {
     return resolved;
   }
 
-  private async walkDirectory(
-    dirPath: string,
-    resources: RuntimeResource[],
-  ): Promise<void> {
+  private async walkDirectory(dirPath: string, resources: RuntimeResource[]): Promise<void> {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
     for (const entry of entries) {
@@ -71,7 +63,7 @@ export class Loader {
         await this.walkDirectory(fullPath, resources);
       } else if (entry.isFile() && this.isYamlFile(entry.name)) {
         // Skip runtime.yaml as it's reserved for host configuration
-        if (entry.name === 'runtime.yaml') {
+        if (entry.name === "runtime.yaml") {
           continue;
         }
         await this.loadYamlFile(fullPath, resources);
@@ -80,14 +72,11 @@ export class Loader {
   }
 
   private isYamlFile(filename: string): boolean {
-    return filename.endsWith('.yaml') || filename.endsWith('.yml');
+    return filename.endsWith(".yaml") || filename.endsWith(".yml");
   }
 
-  private async loadYamlFile(
-    filePath: string,
-    resources: RuntimeResource[],
-  ): Promise<void> {
-    const content = await fs.readFile(filePath, 'utf-8');
+  private async loadYamlFile(filePath: string, resources: RuntimeResource[]): Promise<void> {
+    const content = await fs.readFile(filePath, "utf-8");
     const documents = yaml.loadAll(content);
     const absolutePath = path.resolve(filePath);
 
@@ -107,11 +96,7 @@ export class Loader {
       // Assign URI based on file source
       const { kind, name } = resource.metadata;
       resource.metadata.source = filePath;
-      resource.metadata.uri = ResourceURI.fromFile(
-        absolutePath,
-        kind,
-        name,
-      ).toString();
+      resource.metadata.uri = ResourceURI.fromFile(absolutePath, kind, name).toString();
       resource.metadata.generationDepth = 0;
 
       resources.push(await this.resolveControllers(resource));
@@ -119,25 +104,19 @@ export class Loader {
   }
 
   private normalizeResource(doc: any): RuntimeResource | null {
-    if (!doc || typeof doc !== 'object' || typeof doc.kind !== 'string') {
+    if (!doc || typeof doc !== "object" || typeof doc.kind !== "string") {
       return null;
     }
 
     // Already in correct format
-    if (
-      doc.metadata &&
-      typeof doc.metadata === 'object' &&
-      typeof doc.metadata.name === 'string'
-    ) {
+    if (doc.metadata && typeof doc.metadata === "object" && typeof doc.metadata.name === "string") {
       return doc as RuntimeResource;
     }
 
     return null;
   }
 
-  private async resolveControllers(
-    resource: RuntimeResource,
-  ): Promise<RuntimeResource> {
+  private async resolveControllers(resource: RuntimeResource): Promise<RuntimeResource> {
     const controllers = (resource as any).controllers;
     if (!Array.isArray(controllers) || controllers.length === 0) {
       return resource;
@@ -147,8 +126,7 @@ export class Loader {
     const baseDir = sourcePath ? path.dirname(sourcePath) : process.cwd();
     const controllersByRuntime = new Map<string, any[]>();
     for (const controller of controllers) {
-      const runtime =
-        typeof controller.runtime === 'string' ? controller.runtime : '';
+      const runtime = typeof controller.runtime === "string" ? controller.runtime : "";
       const group = controllersByRuntime.get(runtime);
       if (group) {
         group.push(controller);
@@ -161,15 +139,14 @@ export class Loader {
     for (const [, group] of controllersByRuntime.entries()) {
       const hasLocal = group.some(
         (controller) =>
-          controller.registry === 'local' ||
-          (controller.registry && controller.registry.startsWith('file://')),
+          controller.registry === "local" ||
+          (controller.registry && controller.registry.startsWith("file://")),
       );
       const candidates = hasLocal
         ? group.filter(
             (controller) =>
-              controller.registry === 'local' ||
-              (controller.registry &&
-                controller.registry.startsWith('file://')),
+              controller.registry === "local" ||
+              (controller.registry && controller.registry.startsWith("file://")),
           )
         : group;
 
@@ -179,10 +156,7 @@ export class Loader {
             return 0;
           }
           const registry = controller.registry;
-          if (
-            registry === 'local' ||
-            (registry && registry.startsWith('file://'))
-          ) {
+          if (registry === "local" || (registry && registry.startsWith("file://"))) {
             return 1;
           }
           return 2;
@@ -196,9 +170,9 @@ export class Loader {
         const packageSpec = controller.package;
         const entry = controller.entry;
         if (!packageSpec || !entry) {
-          console.log('controller', controller);
+          console.log("controller", controller);
           lastError = new Error(
-            `Controller is missing package or entry (runtime=${controller.runtime ?? 'unknown'}, registry=${controller.registry ?? 'default'})`,
+            `Controller is missing package or entry (runtime=${controller.runtime ?? "unknown"}, registry=${controller.registry ?? "default"})`,
           );
           break;
         }
@@ -214,9 +188,8 @@ export class Loader {
           resolved = true;
           break;
         } catch (error) {
-          const context = `Failed to resolve controller (runtime=${controller.runtime ?? 'unknown'}, registry=${controller.registry ?? 'default'}, package=${packageSpec}, entry=${entry})`;
-          const message =
-            error instanceof Error ? `${context}: ${error.message}` : context;
+          const context = `Failed to resolve controller (runtime=${controller.runtime ?? "unknown"}, registry=${controller.registry ?? "default"}, package=${packageSpec}, entry=${entry})`;
+          const message = error instanceof Error ? `${context}: ${error.message}` : context;
           lastError = new Error(message);
         }
       }
@@ -240,22 +213,17 @@ export class Loader {
   ): Promise<string> {
     const npmCacheRoot = Loader.npmCacheRoot;
     if (!npmCacheRoot) {
-      throw new Error('NPM cache root is not initialized');
+      throw new Error("NPM cache root is not initialized");
     }
 
-    const isLocal =
-      !registry || registry === 'local' || registry.startsWith('file://');
+    const isLocal = !registry || registry === "local" || registry.startsWith("file://");
     const resolvedPackageSpec = isLocal
       ? this.resolveLocalPackageSpec(registry, packageSpec, baseDir)
       : packageSpec;
-    const registryKey = isLocal
-      ? 'local'
-      : registry === 'npm'
-        ? 'npm'
-        : registry;
-    const cacheKey = createHash('sha256')
+    const registryKey = isLocal ? "local" : registry === "npm" ? "npm" : registry;
+    const cacheKey = createHash("sha256")
       .update(`${registryKey}|${resolvedPackageSpec}`)
-      .digest('hex')
+      .digest("hex")
       .slice(0, 12);
     const installDir = path.join(npmCacheRoot, cacheKey);
 
@@ -263,11 +231,7 @@ export class Loader {
       ? await this.getLocalPackageName(resolvedPackageSpec)
       : this.getPackageName(resolvedPackageSpec);
 
-    await this.ensureNpmPackageInstalled(
-      installDir,
-      resolvedPackageSpec,
-      registryKey,
-    );
+    await this.ensureNpmPackageInstalled(installDir, resolvedPackageSpec, registryKey);
 
     const packageRoot = this.getInstalledPackageRoot(installDir, packageName);
     return this.resolvePackageEntry(packageRoot, entry, packageName);
@@ -278,8 +242,8 @@ export class Loader {
     packageSpec: string,
     baseDir: string,
   ): string {
-    if (registry && registry.startsWith('file://')) {
-      const registryPath = registry.slice('file://'.length);
+    if (registry && registry.startsWith("file://")) {
+      const registryPath = registry.slice("file://".length);
       const basePath = path.isAbsolute(registryPath)
         ? registryPath
         : path.resolve(baseDir, registryPath);
@@ -301,69 +265,64 @@ export class Loader {
     registry: string,
   ): Promise<void> {
     const packageName = this.getPackageName(
-      packageSpec.startsWith('.') || path.isAbsolute(packageSpec)
+      packageSpec.startsWith(".") || path.isAbsolute(packageSpec)
         ? await this.getLocalPackageName(packageSpec)
         : packageSpec,
     );
     const packageRoot = this.getInstalledPackageRoot(installDir, packageName);
-    const packageJsonPath = path.join(packageRoot, 'package.json');
+    const packageJsonPath = path.join(packageRoot, "package.json");
     if (await this.pathExists(packageJsonPath)) {
       return;
     }
 
     await fs.mkdir(installDir, { recursive: true });
-    const rootPackageJson = path.join(installDir, 'package.json');
+    const rootPackageJson = path.join(installDir, "package.json");
     if (!(await this.pathExists(rootPackageJson))) {
       await fs.writeFile(
         rootPackageJson,
-        JSON.stringify({ name: 'digly-cache', private: true }, null, 2),
+        JSON.stringify({ name: "digly-cache", private: true }, null, 2),
       );
     }
 
     const execFileAsync = promisify(execFile);
     const args = [
-      'install',
-      '--no-audit',
-      '--no-fund',
-      '--silent',
-      '--prefix',
+      "install",
+      "--no-audit",
+      "--no-fund",
+      "--silent",
+      "--prefix",
       installDir,
       packageSpec,
     ];
-    if (registry !== 'npm' && registry !== 'local') {
-      args.push('--registry', registry);
+    if (registry !== "npm" && registry !== "local") {
+      args.push("--registry", registry);
     }
-    await execFileAsync('npm', args);
+    await execFileAsync("npm", args);
   }
 
   private getPackageName(packageSpec: string): string {
-    if (packageSpec.startsWith('@')) {
-      const lastAt = packageSpec.lastIndexOf('@');
+    if (packageSpec.startsWith("@")) {
+      const lastAt = packageSpec.lastIndexOf("@");
       return lastAt > 0 ? packageSpec.slice(0, lastAt) : packageSpec;
     }
-    const [name] = packageSpec.split('@');
+    const [name] = packageSpec.split("@");
     return name;
   }
 
-  private getInstalledPackageRoot(
-    installDir: string,
-    packageName: string,
-  ): string {
-    const nameParts = packageName.split('/');
-    return path.join(installDir, 'node_modules', ...nameParts);
+  private getInstalledPackageRoot(installDir: string, packageName: string): string {
+    const nameParts = packageName.split("/");
+    return path.join(installDir, "node_modules", ...nameParts);
   }
 
   private async getLocalPackageName(packagePath: string): Promise<string> {
-    const packageJsonPath = path.join(packagePath, 'package.json');
+    const packageJsonPath = path.join(packagePath, "package.json");
     if (!(await this.pathExists(packageJsonPath))) {
       throw new Error(`Local package missing package.json: ${packagePath}`);
     }
-    const content = await fs.readFile(packageJsonPath, 'utf8');
+    const content = await fs.readFile(packageJsonPath, "utf8");
     const parsed = JSON.parse(content);
     if (!parsed?.name) {
-      throw new Error(
-        `Local package missing name in package.json: ${packagePath}`,
-      );
+      throw new Error(`Local package missing name in package.json: ${packagePath}`);
     }
     return parsed.name;
   }
@@ -373,11 +332,11 @@ export class Loader {
     entry: string,
     packageName?: string,
   ): Promise<string> {
-    const packageJsonPath = path.join(packageRoot, 'package.json');
+    const packageJsonPath = path.join(packageRoot, "package.json");
     let resolvedPackageName = packageName;
     let packageJson: any = null;
     if (!resolvedPackageName && (await this.pathExists(packageJsonPath))) {
-      const content = await fs.readFile(packageJsonPath, 'utf8');
+      const content = await fs.readFile(packageJsonPath, "utf8");
       try {
         packageJson = JSON.parse(content);
         resolvedPackageName = packageJson?.name;
@@ -386,17 +345,14 @@ export class Loader {
       }
     } else if (await this.pathExists(packageJsonPath)) {
       try {
-        packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
+        packageJson = JSON.parse(await fs.readFile(packageJsonPath, "utf8"));
       } catch {
         packageJson = null;
       }
     }
 
     const entryValue = entry.trim();
-    const exportTarget = this.resolvePackageExportTarget(
-      packageJson?.exports,
-      entryValue,
-    );
+    const exportTarget = this.resolvePackageExportTarget(packageJson?.exports, entryValue);
     if (exportTarget) {
       const resolved = path.resolve(packageRoot, exportTarget);
       if (await this.pathExists(resolved)) {
@@ -409,11 +365,11 @@ export class Loader {
         }
       }
     }
-    if ((entryValue === '.' || entryValue === './') && packageJson) {
-      const mainFields = ['module', 'main'];
+    if ((entryValue === "." || entryValue === "./") && packageJson) {
+      const mainFields = ["module", "main"];
       for (const field of mainFields) {
         const target = packageJson[field];
-        if (typeof target === 'string') {
+        if (typeof target === "string") {
           const resolved = path.resolve(packageRoot, target);
           if (await this.pathExists(resolved)) {
             return resolved;
@@ -439,20 +395,15 @@ export class Loader {
       }
     }
 
-    throw new Error(
-      `Controller entry "${entryValue}" could not be resolved in ${packageRoot}`,
-    );
+    throw new Error(`Controller entry "${entryValue}" could not be resolved in ${packageRoot}`);
   }
 
-  private resolvePackageExportTarget(
-    exportsField: any,
-    entry: string,
-  ): string | null {
+  private resolvePackageExportTarget(exportsField: any, entry: string): string | null {
     if (!exportsField) {
       return null;
     }
 
-    const key = entry === '.' || entry === './' ? '.' : entry;
+    const key = entry === "." || entry === "./" ? "." : entry;
     const target = exportsField[key];
     return this.resolveExportTargetValue(target);
   }
@@ -461,7 +412,7 @@ export class Loader {
     if (!target) {
       return null;
     }
-    if (typeof target === 'string') {
+    if (typeof target === "string") {
       return target;
     }
     if (Array.isArray(target)) {
@@ -473,8 +424,8 @@ export class Loader {
       }
       return null;
     }
-    if (typeof target === 'object') {
-      const preferredKeys = ['import', 'default', 'require'];
+    if (typeof target === "object") {
+      const preferredKeys = ["import", "default", "require"];
       for (const key of preferredKeys) {
         if (target[key]) {
           const resolved = this.resolveExportTargetValue(target[key]);
@@ -498,9 +449,7 @@ export class Loader {
 
   // Validation handled by TypeBox + Ajv schemas.
 
-  private orderResourcesByKindDependencies(
-    resources: RuntimeResource[],
-  ): RuntimeResource[] {
+  private orderResourcesByKindDependencies(resources: RuntimeResource[]): RuntimeResource[] {
     if (resources.length <= 1) {
       return resources;
     }
@@ -579,7 +528,7 @@ export class Loader {
     }
 
     if (ordered.length !== resources.length) {
-      throw new Error('Resource dependency cycle detected');
+      throw new Error("Resource dependency cycle detected");
     }
 
     return ordered;
@@ -589,9 +538,7 @@ export class Loader {
    * Expands template instances (resources with kind "Template.<Name>")
    * Recursively expands templates that generate other templates
    */
-  private expandTemplateInstances(
-    resources: RuntimeResource[],
-  ): RuntimeResource[] {
+  private expandTemplateInstances(resources: RuntimeResource[]): RuntimeResource[] {
     const templates = new Map<string, RuntimeResource>();
     const regularResources: RuntimeResource[] = [];
     const instancesMap = new Map<string, RuntimeResource>();
@@ -611,11 +558,7 @@ export class Loader {
     const maxIterations = 10; // Prevent infinite recursion
     let currentInstances = Array.from(instancesMap.values());
 
-    for (
-      let iteration = 0;
-      iteration < maxIterations && currentInstances.length > 0;
-      iteration++
-    ) {
+    for (let iteration = 0; iteration < maxIterations && currentInstances.length > 0; iteration++) {
       const newInstances: RuntimeResource[] = [];
 
       for (const instance of currentInstances) {
@@ -630,15 +573,13 @@ export class Loader {
         }
 
         if (!isTemplateDefinition(template)) {
-          throw new Error(
-            `Resource "${templateName}" is not a TemplateDefinition`,
-          );
+          throw new Error(`Resource "${templateName}" is not a TemplateDefinition`);
         }
 
         // Extract parameters from the instance (all properties except kind/metadata)
         const parameters: Record<string, any> = {};
         for (const [key, value] of Object.entries(instance)) {
-          if (key !== 'kind' && key !== 'metadata') {
+          if (key !== "kind" && key !== "metadata") {
             parameters[key] = value;
           }
         }
@@ -658,7 +599,7 @@ export class Loader {
 
         // Check if any of the instantiated resources are also template instances
         for (const resource of instantiated) {
-          if (resource.kind.startsWith('Template.')) {
+          if (resource.kind.startsWith("Template.")) {
             newInstances.push(resource);
           } else {
             expanded.push(resource);
@@ -682,14 +623,12 @@ export class Loader {
    * Expands expressions in template instantiation parameters
    * This allows parameters to reference each other (e.g., baseUrl: http://localhost:${{ basePort }})
    */
-  private expandParameterExpressions(
-    parameters: Record<string, any>,
-  ): Record<string, any> {
+  private expandParameterExpressions(parameters: Record<string, any>): Record<string, any> {
     const TEMPLATE_REGEX = /\$\{\{\s*([^}]+?)\s*\}\}/g;
     const EXACT_TEMPLATE_REGEX = /^\s*\$\{\{\s*([^}]+?)\s*\}\}\s*$/;
 
     const expandValue = (value: any): any => {
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         const exactMatch = value.match(EXACT_TEMPLATE_REGEX);
         if (exactMatch) {
           // Entire string is a single expression - evaluate and return typed result
@@ -720,7 +659,7 @@ export class Loader {
         return value;
       } else if (Array.isArray(value)) {
         return value.map(expandValue);
-      } else if (value && typeof value === 'object') {
+      } else if (value && typeof value === "object") {
         const expanded: Record<string, any> = {};
         for (const [k, v] of Object.entries(value)) {
           expanded[k] = expandValue(v);

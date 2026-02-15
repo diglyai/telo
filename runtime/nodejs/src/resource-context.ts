@@ -1,10 +1,10 @@
-import { NoopValidator, ResourceContext, RuntimeResource } from "@diglyai/sdk";
+import { NoopValidator, ResourceContext, RuntimeResource } from "@vokerun/sdk";
 import Ajv from "ajv";
 import { expandValue } from "./expressions";
 import { Kernel } from "./kernel";
 import { formatAjvErrors } from "./manifest-schemas";
 import { SchemaValidator } from "./schema-valiator";
-import { DiglyRuntimeError } from "./types";
+import { VokeRuntimeError } from "./types";
 
 export class ResourceContextImpl implements ResourceContext {
   constructor(
@@ -34,7 +34,7 @@ export class ResourceContextImpl implements ResourceContext {
     );
     const isValid = validate(value);
     if (!isValid) {
-      throw new DiglyRuntimeError(
+      throw new VokeRuntimeError(
         "ERR_INVALID_VALUE",
         `Invalid value passed: ${JSON.stringify(value)}. Error: ${formatAjvErrors(validate.errors)}`,
       );

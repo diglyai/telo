@@ -1,34 +1,34 @@
-kind: 'Runtime.Definition'
+kind: "Runtime.Definition"
 metadata:
-  name: 'HttpServerDefinition'
-  resourceKind: 'Server'
-  module: 'Http'
+  name: "HttpServerDefinition"
+  resourceKind: "Server"
+  module: "Http"
 controllers:
   - runtime: nodejs
     registry: npm
-    package: '@diglyai/http-server@1.0.0'
-    entry: './http-server'
+    package: "@vokerun/http-server@1.0.0"
+    entry: "./http-server"
   - runtime: nodejs
     registry: local
-    package: './nodejs'
-    entry: './http-server'
+    package: "./nodejs"
+    entry: "./http-server"
 schema:
-  type: 'object'
+  type: "object"
   properties:
     host:
-      type: 'string'
-      default: 'localhost'
+      type: "string"
+      default: "localhost"
     port:
-      type: 'integer'
+      type: "integer"
       minimum: 1
       maximum: 65535
     mounts:
-      type: 'array'
+      type: "array"
       items:
-        type: 'object'
+        type: "object"
         properties:
           path:
-            type: 'string'
+            type: "string"
           type:
-            type: 'string'
-  required: ['port', 'mounts']
+            type: "string"
+  required: ["port", "mounts"]

@@ -1,27 +1,24 @@
-import { RuntimeResource } from '@diglyai/sdk';
-import { evaluate } from 'cel-js';
-import type { ResourceManifest } from './types';
+import { RuntimeResource } from "@vokerun/sdk";
+import { evaluate } from "cel-js";
+import type { ResourceManifest } from "./types";
 
 type ResourceId = { kind: string; name: string };
 
 const TEMPLATE_REGEX = /\$\{\{\s*([^}]+?)\s*\}\}/g;
 const EXACT_TEMPLATE_REGEX = /^\s*\$\{\{\s*([^}]+?)\s*\}\}\s*$/;
 
-export function evaluateCel(
-  expression: string,
-  context: Record<string, any>,
-): unknown {
+export function evaluateCel(expression: string, context: Record<string, any>): unknown {
   return evaluate(expression, context);
 }
 
 export function expandValue(value: any, context: Record<string, any>): any {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return expandString(value, context);
   }
   if (Array.isArray(value)) {
     return value.map((entry) => expandValue(entry, context));
   }
-  if (!value || typeof value !== 'object') {
+  if (!value || typeof value !== "object") {
     return value;
   }
   const resolved: Record<string, any> = {};
@@ -64,15 +61,7 @@ function buildEvaluationContext(
   runtimeConfig: ResourceManifest | null,
 ): Record<string, any> {
   // Whitelist environment variables
-  const allowedEnvVars = [
-    'NODE_ENV',
-    'PORT',
-    'HOST',
-    'PATH',
-    'HOME',
-    'USER',
-    'LANG',
-  ];
+  const allowedEnvVars = ["NODE_ENV", "PORT", "HOST", "PATH", "HOME", "USER", "LANG"];
   const env: Record<string, any> = {};
   for (const key of allowedEnvVars) {
     if (process.env[key] !== undefined) {
@@ -101,7 +90,7 @@ function buildEvaluationContext(
     for (const [name, resource] of resourcesByName.entries()) {
       kindBucket[name] = resource;
     }
-    const parts = kind.split('.').filter(Boolean);
+    const parts = kind.split(".").filter(Boolean);
     if (parts.length <= 1) {
       context[kind] = kindBucket;
       continue;
@@ -109,7 +98,7 @@ function buildEvaluationContext(
     let cursor: Record<string, any> = context;
     for (let i = 0; i < parts.length - 1; i += 1) {
       const part = parts[i];
-      if (!cursor[part] || typeof cursor[part] !== 'object') {
+      if (!cursor[part] || typeof cursor[part] !== "object") {
         cursor[part] = {};
       }
       cursor = cursor[part] as Record<string, any>;
@@ -137,7 +126,7 @@ function resolveValue(
   id: ResourceId,
   options?: { isRoot?: boolean; isMetadata?: boolean },
 ): { value: any; updated: boolean } {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return resolveString(value, context, id);
   }
 
@@ -153,28 +142,23 @@ function resolveValue(
     return { value: changed ? resolved : value, updated: changed };
   }
 
-  if (!value || typeof value !== 'object') {
+  if (!value || typeof value !== "object") {
     return { value, updated: false };
   }
 
   let changed = false;
   const resolved: Record<string, any> = {};
   for (const [key, entry] of Object.entries(value)) {
-    if (options?.isRoot && key === 'kind') {
+    if (options?.isRoot && key === "kind") {
       resolved[key] = entry;
       continue;
     }
-    if (options?.isMetadata && key === 'name') {
+    if (options?.isMetadata && key === "name") {
       resolved[key] = entry;
       continue;
     }
 
-    if (
-      options?.isRoot &&
-      key === 'metadata' &&
-      entry &&
-      typeof entry === 'object'
-    ) {
+    if (options?.isRoot && key === "metadata" && entry && typeof entry === "object") {
       const result = resolveValue(entry, context, id, { isMetadata: true });
       resolved[key] = result.value;
       if (result.updated) {
@@ -187,8 +171,8 @@ function resolveValue(
     // These contain template variables that should only be resolved during instantiation
     if (
       options?.isRoot &&
-      id.kind === 'TemplateDefinition' &&
-      (key === 'resources' || key === 'schema')
+      id.kind === "TemplateDefinition" &&
+      (key === "resources" || key === "schema")
     ) {
       resolved[key] = entry;
       continue;
@@ -209,7 +193,7 @@ function resolveString(
   context: Record<string, any>,
   id: ResourceId,
 ): { value: any; updated: boolean } {
-  if (!value.includes('${{')) {
+  if (!value.includes("${{")) {
     return { value, updated: false };
   }
 
@@ -230,7 +214,7 @@ function resolveString(
       return _match;
     }
     if (evaluated.value === null || evaluated.value === undefined) {
-      return '';
+      return "";
     }
     return String(evaluated.value);
   });
@@ -239,25 +223,25 @@ function resolveString(
 }
 
 function expandString(value: string, context: Record<string, any>): any {
-  if (!value.includes('${{')) {
+  if (!value.includes("${{")) {
     return value;
   }
 
   const exact = value.match(EXACT_TEMPLATE_REGEX);
   if (exact) {
     return evaluateCelWithError(exact[1], context, {
-      kind: 'Value',
-      name: 'expand',
+      kind: "Value",
+      name: "expand",
     });
   }
 
   return value.replace(TEMPLATE_REGEX, (_match, expr) => {
     const evaluated = evaluateCelWithError(expr, context, {
-      kind: 'Value',
-      name: 'expand',
+      kind: "Value",
+      name: "expand",
     });
     if (evaluated === null || evaluated === undefined) {
-      return '';
+      return "";
     }
     return String(evaluated);
   });
@@ -275,9 +259,7 @@ function evaluateExpression(
     if (isDeferredExpressionError(message, expr)) {
       return { deferred: true };
     }
-    throw new Error(
-      `CEL evaluation failed for ${id.kind}.${id.name}: "${expr}": ${message}`,
-    );
+    throw new Error(`CEL evaluation failed for ${id.kind}.${id.name}: "${expr}": ${message}`);
   }
 }
 
@@ -290,18 +272,14 @@ function capitalize(value: string): string {
 
 function isDeferredExpressionError(message: string, expr: string): boolean {
   const trimmed = expr.trim();
-  const deferredRoots = ['request.', 'result.'];
+  const deferredRoots = ["request.", "result."];
   if (!deferredRoots.some((root) => trimmed.startsWith(root))) {
     return false;
   }
-  return message.includes('Identifier "') && message.includes('not found');
+  return message.includes('Identifier "') && message.includes("not found");
 }
 
-function evaluateCelWithError(
-  expr: string,
-  context: Record<string, any>,
-  id: ResourceId,
-): unknown {
+function evaluateCelWithError(expr: string, context: Record<string, any>, id: ResourceId): unknown {
   try {
     return evaluateCel(expr, context);
   } catch (error) {
@@ -309,17 +287,15 @@ function evaluateCelWithError(
 
     // Build helpful context information
     const availableVars = Object.keys(context)
-      .filter((k) => k !== 'env')
-      .concat(
-        context.env ? Object.keys(context.env).map((k) => `env.${k}`) : [],
-      )
+      .filter((k) => k !== "env")
+      .concat(context.env ? Object.keys(context.env).map((k) => `env.${k}`) : [])
       .sort();
 
     throw new Error(
       `CEL evaluation failed for resource ${id.kind}.${id.name}\n` +
         `Expression: "${expr}"\n` +
         `Error: ${message}\n` +
-        `Available variables: ${availableVars.slice(0, 20).join(', ')}${availableVars.length > 20 ? '...' : ''}`,
+        `Available variables: ${availableVars.slice(0, 20).join(", ")}${availableVars.length > 20 ? "..." : ""}`,
     );
   }
 }

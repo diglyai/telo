@@ -1,4 +1,4 @@
-import { RuntimeEvent } from '@diglyai/sdk';
+import { RuntimeEvent } from "@vokerun/sdk";
 
 type EventHandler = (payload?: any) => void | Promise<void>;
 
@@ -7,35 +7,31 @@ export class EventBus {
 
   private validateEventName(event: string): void {
     if (
-      event === '' ||
-      !/^(\*|[A-Za-z_][A-Za-z0-9_]*)(\.(\*|[A-Za-z_][A-Za-z0-9_]*))*$/.test(
-        event,
-      )
+      event === "" ||
+      !/^(\*|[A-Za-z_][A-Za-z0-9_]*)(\.(\*|[A-Za-z_][A-Za-z0-9_]*))*$/.test(event)
     ) {
-      throw new Error(
-        `Invalid event name "${event}". Expected format "Text.Text" with no spaces.`,
-      );
+      throw new Error(`Invalid event name "${event}". Expected format "Text.Text" with no spaces.`);
     }
   }
 
   private matchesPattern(pattern: string, event: string): boolean {
-    if (pattern === '*') {
+    if (pattern === "*") {
       return true;
     }
     if (pattern === event) {
       return true;
     }
-    if (!pattern.includes('*')) {
+    if (!pattern.includes("*")) {
       return false;
     }
-    const patternParts = pattern.split('.');
-    const eventParts = event.split('.');
+    const patternParts = pattern.split(".");
+    const eventParts = event.split(".");
     if (patternParts.length !== eventParts.length) {
       return false;
     }
     for (let i = 0; i < patternParts.length; i += 1) {
       const part = patternParts[i];
-      if (part === '*') {
+      if (part === "*") {
         continue;
       }
       if (part !== eventParts[i]) {

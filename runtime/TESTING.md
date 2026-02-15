@@ -1,6 +1,7 @@
-# Testing with Pipeline Jobs
+# Testing
 
-Tests in DiglyAI use `Pipeline.Job` resources to orchestrate execution and verify outputs. Everything is inline—no separate resource definitions.
+Tests for Voke manifests and controllers use Voke resources to orchestrate execution and verify outputs. In other words Voke is used to test Voke.
+This allows tests to be defined once for every runtime implementation.
 
 ## Quick Start
 
@@ -13,7 +14,7 @@ metadata:
 
 steps:
   - name: Add numbers
-    kind: Logic.JavaScript
+    kind: JavaScript.Script
     code: |
       function main({ a, b }) {
         return { result: a + b }
@@ -22,24 +23,24 @@ steps:
       a: 5
       b: 3
     outputs:
-      result: 'payload.result'
+      result: "payload.result"
 
   - name: Assert result
-    kind: Assert.Value
-    value: '${{ result }}'
-    assertions:
-      - 'value == 8'
-      - "typeof(value) == 'number'"
+    kind: Assert.Schema
+    input:
+      sum: "${{ result }}"
+    schema:
+      type: object
+      properties:
+        sum:
+          type: number
+          const: 8
 ```
 
 Run it:
 
 ```bash
-# Via kernel
-kernel.execute("Pipeline.Job.TestAdd", {})
-
-# Or search for tests
-grep -r "kind: Pipeline.Job" .
+voke ./tests/test-add.yaml
 ```
 
 ## Step Types
@@ -50,15 +51,16 @@ Any resource kind can be a step. Define the resource inline:
 
 ```yaml
 - name: Execute logic
-  kind: Logic.JavaScript
+  kind: JavaScript.Script
   code: |
-    function main({ input }) {
-      return { result: input * 2 }
+    function main({ value }) {
+      return { result: value * 2 }
     }
   input:
-    input: 21
-  outputs:
-    result: 'payload.result'
+    value: 21
+  outputSchema:
+    result:
+      type: number
 ```
 
 ### HttpClient.Request
@@ -69,16 +71,16 @@ Make HTTP requests:
 - name: Call API
   kind: HttpClient.Request
   method: POST
-  url: 'http://localhost:3000/api/users'
+  url: "http://localhost:3000/api/users"
   headers:
     Content-Type: application/json
-    Authorization: 'Bearer token'
+    Authorization: "Bearer token"
   body:
     name: Alice
     email: alice@example.com
   outputs:
-    userId: 'payload.id'
-    createdAt: 'payload.created_at'
+    userId: "payload.id"
+    createdAt: "payload.created_at"
 ```
 
 ### Observe.Event
@@ -90,10 +92,10 @@ Wait for and capture async events:
   kind: Observe.Event
   event: ProcessingCompleted
   timeout: 5000
-  filter: 'data.jobId == jobId'
+  filter: "data.jobId == jobId"
   outputs:
-    result: 'data.result'
-    processingTime: 'data.duration'
+    result: "data.result"
+    processingTime: "data.duration"
 ```
 
 ### Assert.Value
@@ -103,10 +105,10 @@ Verify values using CEL expressions:
 ```yaml
 - name: Verify result
   kind: Assert.Value
-  value: '${{ previousStepOutput }}'
+  value: "${{ previousStepOutput }}"
   assertions:
-    - 'value > 100'
-    - 'value < 1000'
+    - "value > 100"
+    - "value < 1000"
 ```
 
 ## Accessing Previous Step Outputs
@@ -124,7 +126,7 @@ steps:
     input:
       userId: 42
     outputs:
-      user: 'payload.user'
+      user: "payload.user"
 
   - name: Get user email
     kind: Logic.JavaScript
@@ -133,23 +135,23 @@ steps:
         return { email: name.toLowerCase() + '@example.com' }
       }
     input:
-      name: '${{ user.name }}'
+      name: "${{ user.name }}"
     outputs:
-      email: 'payload.email'
+      email: "payload.email"
 
   - name: Send notification
     kind: HttpClient.Request
     method: POST
-    url: 'http://api/notify'
+    url: "http://api/notify"
     body:
-      userId: '${{ user.id }}'
-      email: '${{ email }}'
+      userId: "${{ user.id }}"
+      email: "${{ email }}"
 
   - name: Verify email
     kind: Assert.Value
-    value: '${{ email }}'
+    value: "${{ email }}"
     assertions:
-      - 'value != null'
+      - "value != null"
       - "value contains '@'"
 ```
 
@@ -159,12 +161,12 @@ Assertions are CEL expressions in `Assert.Value` steps. The `value` variable con
 
 ```yaml
 assertions:
-  - 'value != null'
+  - "value != null"
   - "typeof(value) == 'object'"
   - "value.status == 'ok'"
-  - 'value.count > 0'
+  - "value.count > 0"
   - "value.name contains 'test'"
-  - 'value in [1, 2, 3]'
+  - "value in [1, 2, 3]"
 ```
 
 ### Common Patterns
@@ -174,20 +176,20 @@ assertions:
 - "value != null && typeof(value) == 'object'"
 
 # Numeric comparisons
-- 'value >= 0 && value <= 100'
+- "value >= 0 && value <= 100"
 
 # String operations
 - "value.startsWith('Error')"
 - "value.endsWith('.json')"
 
 # Collection operations
-- 'value.size() == 3'
-- 'value.map(x, x.id).contains(42)'
+- "value.size() == 3"
+- "value.map(x, x.id).contains(42)"
 ```
 
 ## Complete Example
 
-```yaml
+````yaml
 kind: Pipeline.Job
 metadata:
   name: TestCalculator
@@ -269,7 +271,7 @@ Run the Pipeline.Job to see step outputs:
 
 ```bash
 kernel.execute("Pipeline.Job.TestCalculator", {})
-```
+````
 
 ### Common Issues
 
@@ -280,5 +282,5 @@ kernel.execute("Pipeline.Job.TestCalculator", {})
 ## See Also
 
 - [Examples](../examples/) - Complete working test examples
-- [Runtime Documentation](../runtime/README.md) - How DiglyAI runtime works
+- [Runtime Documentation](../runtime/README.md) - How Voke runtime works
 - [Module Documentation](../modules/README.md) - Module structure and resources

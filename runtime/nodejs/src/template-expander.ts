@@ -1,15 +1,12 @@
-import { RuntimeResource } from '@diglyai/sdk';
-import { evaluate } from 'cel-js';
-import { ResourceURI } from './resource-uri';
+import { RuntimeResource } from "@vokerun/sdk";
+import { evaluate } from "cel-js";
+import { ResourceURI } from "./resource-uri";
 import type {
-  TemplateContext,
-  TemplateDefinition,
-  TemplateResourceBlueprint,
-} from './template-definition';
-import {
-  extractDefaultsFromSchema,
-  isTemplateDefinition,
-} from './template-definition';
+    TemplateContext,
+    TemplateDefinition,
+    TemplateResourceBlueprint,
+} from "./template-definition";
+import { extractDefaultsFromSchema, isTemplateDefinition } from "./template-definition";
 
 const MAX_EXPANSION_DEPTH = 10;
 const TEMPLATE_REGEX = /\$\{\{\s*([^}]+?)\s*\}\}/g;
@@ -19,9 +16,7 @@ const EXACT_TEMPLATE_REGEX = /^\s*\$\{\{\s*([^}]+?)\s*\}\}\s*$/;
  * Expands all TemplateDefinition resources into concrete resources
  * Supports recursive expansion (templates can generate templates)
  */
-export function expandTemplates(
-  resources: RuntimeResource[],
-): RuntimeResource[] {
+export function expandTemplates(resources: RuntimeResource[]): RuntimeResource[] {
   const expanded: RuntimeResource[] = [];
   const nonTemplates: RuntimeResource[] = [];
 
@@ -70,13 +65,7 @@ export function instantiateTemplate(
   const expandedResources: RuntimeResource[] = [];
 
   for (const blueprint of template.resources) {
-    const resources = expandBlueprint(
-      blueprint,
-      context,
-      depth,
-      parentUri,
-      template.metadata.name,
-    );
+    const resources = expandBlueprint(blueprint, context, depth, parentUri, template.metadata.name);
     expandedResources.push(...resources);
   }
 
@@ -105,33 +94,13 @@ function expandBlueprint(
   if (blueprint.for) {
     // Check if it's an array of expressions (nested loops)
     if (Array.isArray(blueprint.for)) {
-      return expandNestedForLoops(
-        blueprint,
-        context,
-        depth,
-        parentUri,
-        templateDefinitionName,
-      );
+      return expandNestedForLoops(blueprint, context, depth, parentUri, templateDefinitionName);
     }
-    return expandForLoop(
-      blueprint,
-      context,
-      depth,
-      parentUri,
-      templateDefinitionName,
-    );
+    return expandForLoop(blueprint, context, depth, parentUri, templateDefinitionName);
   }
 
   // Regular resource expansion
-  return [
-    expandSingleResource(
-      blueprint,
-      context,
-      depth,
-      parentUri,
-      templateDefinitionName,
-    ),
-  ];
+  return [expandSingleResource(blueprint, context, depth, parentUri, templateDefinitionName)];
 }
 
 /**
@@ -152,25 +121,13 @@ function expandNestedForLoops(
     const innerBlueprint = { ...blueprint };
     delete innerBlueprint.for;
     delete innerBlueprint.if; // Already evaluated
-    return expandBlueprint(
-      innerBlueprint,
-      context,
-      depth,
-      parentUri,
-      templateDefinitionName,
-    );
+    return expandBlueprint(innerBlueprint, context, depth, parentUri, templateDefinitionName);
   }
 
   if (forExprs.length === 1) {
     // Single loop, use standard expansion
     const innerBlueprint = { ...blueprint, for: forExprs[0] };
-    return expandBlueprint(
-      innerBlueprint,
-      context,
-      depth,
-      parentUri,
-      templateDefinitionName,
-    );
+    return expandBlueprint(innerBlueprint, context, depth, parentUri, templateDefinitionName);
   }
 
   // Multiple loops - process the first one and recurse with the rest
@@ -220,7 +177,7 @@ function expandNestedForLoops(
     }
   }
   // Handle objects/maps
-  else if (collection && typeof collection === 'object') {
+  else if (collection && typeof collection === "object") {
     for (const [key, value] of Object.entries(collection)) {
       const loopContext: TemplateContext = {
         ...context,
@@ -309,7 +266,7 @@ function expandForLoop(
     }
   }
   // Handle objects/maps
-  else if (collection && typeof collection === 'object') {
+  else if (collection && typeof collection === "object") {
     for (const [key, value] of Object.entries(collection)) {
       const loopContext: TemplateContext = {
         ...context,
@@ -364,15 +321,11 @@ function expandSingleResource(
   const expanded = expandTemplateValue(cleanBlueprint, context);
 
   // Validate basic structure
-  if (!expanded.kind || typeof expanded.kind !== 'string') {
-    throw new Error(
-      `Template resource blueprint missing required 'kind' field`,
-    );
+  if (!expanded.kind || typeof expanded.kind !== "string") {
+    throw new Error(`Template resource blueprint missing required 'kind' field`);
   }
-  if (!expanded.metadata?.name || typeof expanded.metadata.name !== 'string') {
-    throw new Error(
-      `Template resource blueprint missing required 'metadata.name' field`,
-    );
+  if (!expanded.metadata?.name || typeof expanded.metadata.name !== "string") {
+    throw new Error(`Template resource blueprint missing required 'metadata.name' field`);
   }
 
   // Assign URI and generation depth for template-generated resources
@@ -385,15 +338,11 @@ function expandSingleResource(
 
     // If parentUri exists, append to it; otherwise use the created URI
     const finalUri = parentUri
-      ? ResourceURI.parse(parentUri).withChild(
-          expanded.kind,
-          expanded.metadata.name,
-        )
+      ? ResourceURI.parse(parentUri).withChild(expanded.kind, expanded.metadata.name)
       : resourceUri;
 
     expanded.metadata.uri = finalUri.toString();
-    expanded.metadata.generationDepth =
-      (expanded.metadata.generationDepth || 0) + 1;
+    expanded.metadata.generationDepth = (expanded.metadata.generationDepth || 0) + 1;
   }
 
   return expanded as RuntimeResource;
@@ -404,14 +353,14 @@ function expandSingleResource(
  * This is different from the global expandValue which uses registry context
  */
 function expandTemplateValue(value: any, context: TemplateContext): any {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return expandTemplateString(value, context);
   }
   if (Array.isArray(value)) {
     // Check if array contains control flow directives
     const expanded: any[] = [];
     for (const item of value) {
-      if (item && typeof item === 'object' && (item.for || item.if)) {
+      if (item && typeof item === "object" && (item.for || item.if)) {
         // This is a control flow directive - expand it as a property value
         const expandedItems = expandPropertyControlFlow(item, context);
         expanded.push(...expandedItems);
@@ -421,7 +370,7 @@ function expandTemplateValue(value: any, context: TemplateContext): any {
     }
     return expanded;
   }
-  if (!value || typeof value !== 'object') {
+  if (!value || typeof value !== "object") {
     return value;
   }
   const resolved: Record<string, any> = {};
@@ -459,11 +408,7 @@ function expandPropertyControlFlow(item: any, context: TemplateContext): any[] {
 /**
  * Expands for loops for property values
  */
-function expandPropertyForLoop(
-  item: any,
-  forExprs: string[],
-  context: TemplateContext,
-): any[] {
+function expandPropertyForLoop(item: any, forExprs: string[], context: TemplateContext): any[] {
   if (forExprs.length === 0) {
     const cleanItem = { ...item };
     delete cleanItem.for;
@@ -504,11 +449,7 @@ function expandPropertyForLoop(
 
       // If more loops remain, recurse
       if (restExprs.length > 0) {
-        const nestedResults = expandPropertyForLoop(
-          item,
-          restExprs,
-          loopContext,
-        );
+        const nestedResults = expandPropertyForLoop(item, restExprs, loopContext);
         results.push(...nestedResults);
       } else {
         // Last loop - expand the item
@@ -520,7 +461,7 @@ function expandPropertyForLoop(
     }
   }
   // Handle objects/maps
-  else if (collection && typeof collection === 'object') {
+  else if (collection && typeof collection === "object") {
     for (const [key, value] of Object.entries(collection)) {
       const loopContext: TemplateContext = {
         ...context,
@@ -532,11 +473,7 @@ function expandPropertyForLoop(
 
       // If more loops remain, recurse
       if (restExprs.length > 0) {
-        const nestedResults = expandPropertyForLoop(
-          item,
-          restExprs,
-          loopContext,
-        );
+        const nestedResults = expandPropertyForLoop(item, restExprs, loopContext);
         results.push(...nestedResults);
       } else {
         // Last loop - expand the item
@@ -559,7 +496,7 @@ function expandPropertyForLoop(
  * Expands a template string with CEL expressions
  */
 function expandTemplateString(value: string, context: TemplateContext): any {
-  if (!value.includes('${{')) {
+  if (!value.includes("${{")) {
     return value;
   }
 
@@ -571,7 +508,7 @@ function expandTemplateString(value: string, context: TemplateContext): any {
   return value.replace(TEMPLATE_REGEX, (_match, expr) => {
     const evaluated = evaluateCEL(expr, context);
     if (evaluated === null || evaluated === undefined) {
-      return '';
+      return "";
     }
     return String(evaluated);
   });
@@ -593,14 +530,11 @@ function evaluateCEL(expression: string, context: Record<string, any>): any {
  * Example: routes: [{ for: "r in routes", resource: { path: "${{ r }}" } }]
  * Also supports nested loops with array syntax: { for: ["e in endpoints", "m in e.methods"], ... }
  */
-export function expandPropertyWithControlFlow(
-  value: any,
-  context: TemplateContext,
-): any {
+export function expandPropertyWithControlFlow(value: any, context: TemplateContext): any {
   if (Array.isArray(value)) {
     const expanded: any[] = [];
     for (const item of value) {
-      if (item && typeof item === 'object') {
+      if (item && typeof item === "object") {
         // Check if this is a control flow directive
         if (item.for || item.if) {
           const blueprints = expandBlueprint(item, context, 0);
@@ -615,7 +549,7 @@ export function expandPropertyWithControlFlow(
     return expanded;
   }
 
-  if (value && typeof value === 'object') {
+  if (value && typeof value === "object") {
     const expanded: Record<string, any> = {};
     for (const [key, val] of Object.entries(value)) {
       expanded[key] = expandPropertyWithControlFlow(val, context);

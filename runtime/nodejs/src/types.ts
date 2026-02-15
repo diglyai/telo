@@ -1,17 +1,17 @@
 import type {
-  ControllerContext,
-  ResourceContext,
-  ResourceInstance,
-  ResourceManifest,
-  RuntimeErrorCode,
-  RuntimeResource,
-} from "@diglyai/sdk";
+    ControllerContext,
+    ResourceContext,
+    ResourceInstance,
+    ResourceManifest,
+    RuntimeErrorCode,
+    RuntimeResource,
+} from "@vokerun/sdk";
 export type {
-  ControllerContext,
-  ResourceContext,
-  ResourceInstance,
-  ResourceManifest
-} from "@diglyai/sdk";
+    ControllerContext,
+    ResourceContext,
+    ResourceInstance,
+    ResourceManifest
+} from "@vokerun/sdk";
 
 export interface KernelContext {
   kernel: Kernel;
@@ -74,12 +74,12 @@ export interface Kernel {
   readonly exitCode: number;
 }
 
-export class DiglyRuntimeError extends Error {
+export class VokeRuntimeError extends Error {
   constructor(
     public code: RuntimeErrorCode,
     message: string,
   ) {
     super(message);
-    this.name = "DiglyRuntimeError";
+    this.name = "VokeRuntimeError";
   }
 }

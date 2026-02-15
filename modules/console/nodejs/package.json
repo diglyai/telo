@@ -1,5 +1,5 @@
 {
-  "name": "@diglyai/console",
+  "name": "@vokerun/console",
   "type": "module",
   "main": "./dist/writeline-controller.js",
   "module": "./dist/writeline-controller.js",
@@ -13,7 +13,7 @@
     "dist/**"
   ],
   "dependencies": {
-    "@diglyai/sdk": "workspace:*"
+    "@vokerun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

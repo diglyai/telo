@@ -1,21 +1,42 @@
-# DiglyAI Runtime
+# Voke Runtime
 
-DiglyAI Runtime is a lightweight, execution host for DiglyAI applications. The runtime follows a **polyglot architecture**, with compatible implementations across languages.
-It aims to provide a stable, predictable environment for running business logic defined in DiglyAI YAML manifests.
+⚡ Voke
+The open-source runtime for declarative backends.
 
-Planned languages:
+Voke is a lightning-fast, plugin-driven execution engine (Micro-Kernel) that runs logic defined entirely in YAML manifests. Instead of writing imperative backend code, you define your routes, databases, schemas, and AI workflows as atomic, interconnected files. Voke takes those files and runs them.
 
-- [x] NodeJS
-- [ ] Rust
-- [ ] Go
-- [ ] Python
+Built to be language-agnostic and infinitely extensible, Voke is the open-source engine that powers DiglyAI.
 
-## Example
+🔮 The Meaning of Voke
+A design manifest sitting on a hard drive is just a dead text file. It has potential, but no pulse.
 
-Here is an example DiglyAI application that defines a simple HTTP API:
+The name Voke is derived from the Latin root vocare—to call, to invoke, to summon. That is exactly what this runtime does. It acts as the animating force for your architecture. You feed it a directory of static configurations, and Voke summons them into a living, breathing backend system—binding HTTP ports, opening database connection pools, and orchestrating complex workflows.
+
+You write the spell. Voke casts it.
+
+```bash
+# Bring your manifests to life
+$ voke ./manifest.yaml
+
+🚀 Voke Kernel started
+🔌 Loaded Modules: [HttpServer, Postgres, Workflow, AI]
+📡 Listening on http://localhost:3000
+```
+
+## Why use Voke?
+
+Zero Lock-in: Your entire backend is just standard YAML, JSON Schema ($ref), and CEL expressions.
+
+Micro-Kernel Architecture: Voke itself knows nothing about HTTP or SQL. Everything is a plugin, meaning you only load exactly what you need.
+
+Language Agnostic: Available as a Node.js runtime today, with a shared JSON runtime contract that allows for future Rust or Go implementations without changing your manifests.
+
+## Example manifest
+
+Here is an example Voke application that defines a simple HTTP API:
 
 ```yaml
-kind: Http.Server
+kind: HttpServer.Server
 metadata:
   name: ExampleServer
 port: 8000
@@ -31,7 +52,7 @@ apis:
   - Http.Api.HelloApi
 info:
   title: Example API
-  version: '${{ example.Version }}'
+  version: "${{ example.Version }}"
 ---
 kind: Data.Type
 metadata:
@@ -40,8 +61,8 @@ schema:
   properties:
     name:
       type: string
-      default: 'World'
-  required: ['name']
+      default: "World"
+  required: ["name"]
   additionalProperties: false
 ---
 kind: Data.Type
@@ -54,7 +75,7 @@ schema:
       type: string
     nice:
       type: string
-  required: ['greeting', 'nice']
+  required: ["greeting", "nice"]
 ---
 kind: Http.Api
 metadata:
@@ -63,18 +84,18 @@ routes:
   - request:
       path: /hello
       method: GET
-      query: '#/HelloQuery' # Reference to Data.Type
+      query: "#/HelloQuery" # Reference to Data.Type
     handler:
       name: Logic.JavaScript.SayHello
       inputs:
-        name: '${{ request.query.name }}' # CEL expression
+        name: "${{ request.query.name }}" # CEL expression
     response:
       schema:
-        body: '#/HelloResponse' # Reference to Data.Type
+        body: "#/HelloResponse" # Reference to Data.Type
       status: 200
       body:
-        greeting: '${{ result.message }}!'
-        nice: 'WOW'
+        greeting: "${{ result.message }}!"
+        nice: "WOW"
 ---
 kind: JavaScript.Script
 name: SayHello
@@ -130,21 +151,21 @@ See [TEMPLATES.md](./runtime/TEMPLATES.md) for comprehensive documentation.
 
 ## Status
 
-This repository is an **early prototype** of the Digly runtime and specs. It is intended for exploration, feedback, and shaping the architecture rather than production use. The API surface - including YAML shapes - may change at any time without notice.
+This repository is an **early prototype** of the Voke runtime and specs. It is intended for exploration, feedback, and shaping the architecture rather than production use. The API surface - including YAML shapes - may change at any time without notice.
 
 ## Why
 
-Modern platforms often spend disproportionate effort on technical mechanics-wiring frameworks, managing infrastructure, and negotiating toolchains-while the original business problem gets delayed or diluted. Digly Runtime pushes in the opposite direction: it treats runtime execution as a stable, predictable host so teams can concentrate on the **business logic and outcomes** instead of the plumbing.
+Modern platforms often spend disproportionate effort on technical mechanics-wiring frameworks, managing infrastructure, and negotiating toolchains-while the original business problem gets delayed or diluted. Voke Runtime pushes in the opposite direction: it treats runtime execution as a stable, predictable host so teams can concentrate on the **business logic and outcomes** instead of the plumbing.
 
 By separating "what the system should do" from "how it is hosted", the runtime reduces friction for domain‑level changes. Teams can move faster on product requirements, experiment more safely, and keep conversations centered on value delivered rather than implementation trivia.
 
-DiglyAI also aims to **join forces across all programming language communities**, so the best ideas, patterns, and implementations can converge into a shared runtime truth without forcing everyone into a single stack.
+Voke also aims to **join forces across all programming language communities**, so the best ideas, patterns, and implementations can converge into a shared runtime truth without forcing everyone into a single stack.
 
 YAML also makes the system more **AI‑friendly** than traditional programming languages: it is explicit, structured, and easier for tools to generate, review, and transform without losing intent.
 
 ## Modularity
 
-Digly Runtime is built around **modules** that own specific resource kinds. A module is loaded from a manifest, declares which kinds it implements, and then receives only the resources of those kinds. This keeps concerns isolated and lets teams compose systems from focused building blocks rather than monolithic services.
+Voke Runtime is built around **modules** that own specific resource kinds. A module is loaded from a manifest, declares which kinds it implements, and then receives only the resources of those kinds. This keeps concerns isolated and lets teams compose systems from focused building blocks rather than monolithic services.
 
 At runtime, execution is always routed by **Kind.Name**. The kernel resolves the Kind to its owning module and hands off execution. Modules can call back into the kernel to execute other resources, enabling composition without tight coupling.
 
@@ -159,12 +180,11 @@ Implementation details, loading rules, and the runtime manifest specification li
 
 ## See more at
 
-- [DiglyAI Runtime](./runtime/README.md)
-- [Template System](./runtime/TEMPLATES.md)
-- [Template Examples](./examples/templates/README.md)
-- [DiglyAI SDK for module authors](sdk/README.md)
+- [Voke Runtime](./runtime/README.md)
+- [Template System](./yaml-cel-templating//README.md)
+- [Voke SDK for module authors](sdk/README.md)
 - [Modules](modules/README.md)
-  - [Core](modules/core/README.md)
+  - [HttpServer](modules/http-server/README.md)
 
 ## License
 

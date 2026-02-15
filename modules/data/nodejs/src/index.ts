@@ -1,4 +1,4 @@
-import { RuntimeResource } from '@diglyai/sdk';
+import { RuntimeResource } from "@vokerun/sdk";
 
 class DataTypeResource implements RuntimeResource {}
 

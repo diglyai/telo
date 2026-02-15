@@ -1,81 +1,80 @@
-kind: 'Runtime.Definition'
+kind: "Runtime.Definition"
 metadata:
-  name: 'HttpApiDefinition'
-  resourceKind: 'Api'
-  module: 'Http'
+  name: "HttpApiDefinition"
+  resourceKind: "Api"
+  module: "Http"
 controllers:
   - runtime: nodejs
     registry: npm
-    package: '@diglyai/http-server@1.0.0'
-    entry: './http-server-api'
+    package: "@vokerun/http-server@1.0.0"
+    entry: "./http-server-api"
   - runtime: nodejs
     registry: local
-    package: './nodejs'
-    entry: './http-server-api'
+    package: "./nodejs"
+    entry: "./http-server-api"
 schema:
-  type: 'object'
+  type: "object"
   properties:
     routes:
-      type: 'array'
+      type: "array"
       items:
-        type: 'object'
+        type: "object"
         properties:
           request:
-            type: 'object'
+            type: "object"
             properties:
               path:
-                type: 'string'
+                type: "string"
               method:
-                type: 'string'
-                enum:
-                  ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
+                type: "string"
+                enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
               query:
-                type: 'object'
+                type: "object"
               body:
-                type: 'object'
+                type: "object"
               headers:
-                type: 'object'
-            required: ['path', 'method']
+                type: "object"
+            required: ["path", "method"]
           handler:
             oneOf:
-              - type: 'string'
-              - type: 'object'
+              - type: "string"
+              - type: "object"
                 properties:
                   kind:
-                    type: 'string'
+                    type: "string"
                   type:
-                    type: 'string'
+                    type: "string"
           response:
-            type: 'object'
+            type: "object"
             properties:
               status:
-                type: 'integer'
+                type: "integer"
               headers:
-                type: 'object'
+                type: "object"
               body:
                 oneOf:
-                  - type: 'string'
-                  - type: 'object'
+                  - type: "string"
+                  - type: "object"
               schema:
-                type: 'object'
-                description: 'Response schema definition'
+                type: "object"
+                description: "Response schema definition"
                 properties:
                   status:
-                    type: 'integer'
+                    type: "integer"
                   headers:
-                    type: 'object'
+                    type: "object"
                   body:
-                    type: 'object'
+                    type: "object"
               mapping:
-                type: 'object'
-                description: 'Response mapping expressions'
+                type: "object"
+                description: "Response mapping expressions"
                 properties:
                   status:
-                    type: 'string'
+                    type: "string"
                   headers:
-                    type: 'object'
+                    type: "object"
                     additionalProperties:
-                      type: 'string'
+                      type: "string"
                   body:
-                    type: 'string'
-  required: ['routes']
+                    type: "string"
+  required: ["routes"]

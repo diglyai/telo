@@ -1,7 +1,7 @@
 kind: Runtime.Module
 metadata:
-  name: DiglyStudio
-  version: '1.0.0'
+  name: DiglyAI
+  version: "1.0.0"
 imports:
   - ../http
   - ../logic

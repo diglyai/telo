@@ -1,4 +1,4 @@
-# Digly Runtime Specification v1.0
+# Voke Runtime Specification v1.0
 
 **Status:** Draft
 
@@ -10,7 +10,7 @@
 
 ## 1. Core Concepts
 
-The Digly Runtime is a **Read-Only Execution Host**. It is designed with the assumption that a "Loader" (or "Linker") has already performed schema validation, ID resolution, module discovery, and resource loading. The runtime follows a **polyglot architecture**, enabling compatible implementations in multiple languages.
+The Voke Runtime is a **Read-Only Execution Host**. It is designed with the assumption that a "Loader" (or "Linker") has already performed schema validation, ID resolution, module discovery, and resource loading. The runtime follows a **polyglot architecture**, enabling compatible implementations in multiple languages.
 
 The Runtime performs three specific functions:
 
@@ -151,21 +151,7 @@ getResourcesByGenerationDepth(depth: number): RuntimeResource[];
 
 The Kernel is the central orchestrator. It manages the lifecycle and the message bus.
 
-### 4.1 Kernel Interface
-
-```typescript
-interface Kernel {
-  registry: Map<string, Map<string, RuntimeResource>>; // Kind -> Name -> Resource
-  modules: Map<string, DiglyModule>; // Kind -> Module
-
-  load(path: string): Promise<void>; // Ingest files
-  register(module: DiglyModule): void; // Attach drivers
-  start(): Promise<void>; // Boot sequence
-  execute(urn: string, input: any, ctx: Context): Promise<any>; // Dispatcher
-}
-```
-
-### 4.2 Boot Sequence
+### 4.1 Boot Sequence
 
 The runtime follows a six-step boot sequence with strict ordering to ensure proper initialization dependencies. **Any error at any step immediately halts the entire boot sequence.**
 
@@ -388,12 +374,7 @@ interface ModuleCreateContext extends ModuleContext {
     event: string,
     handler: (payload?: any) => void | Promise<void>,
   ): void;
-  emitResourceEvent(
-    kind: string,
-    name: string,
-    event: string,
-    payload?: any,
-  ): Promise<void>;
+  emitResourceEvent(kind: string, name: string, event: string, payload?: any): Promise<void>;
 }
 ```
 
@@ -498,8 +479,8 @@ metadata:
   name: DataTypeDefinition
   resourceKind: Type
 controllers:
-  - runtime: 'node@>=20'
-    entrypoint: './data-controller.ts'
+  - runtime: "node@>=20"
+    entrypoint: "./data-controller.ts"
 schema:
   type: object
   # ...
@@ -541,20 +522,20 @@ metadata:
 schema:
   type: object
   properties:
-    name: { type: string, default: 'api' }
+    name: { type: string, default: "api" }
     port: { type: integer, default: 8080 }
     regions:
       type: array
       items: { type: string }
-      default: ['us-east', 'eu-west']
+      default: ["us-east", "eu-west"]
   required: [name, port]
 resources:
-  - for: 'region in regions'
+  - for: "region in regions"
     kind: Http.Server
     metadata:
-      name: '${{ name }}-${{ region }}'
+      name: "${{ name }}-${{ region }}"
     port: ${{ port }}
-    region: '${{ region }}'
+    region: "${{ region }}"
 ```
 
 ### 14.2 Template Instantiation
@@ -565,9 +546,9 @@ Templates are instantiated using the kind `YourModule.<TemplateName>`:
 kind: YourModule.ApiServer
 metadata:
   name: ProductionApi
-name: 'production'
+name: "production"
 port: 3000
-regions: ['us-east-1', 'us-west-2', 'eu-central-1']
+regions: ["us-east-1", "us-west-2", "eu-central-1"]
 ```
 
 This generates 3 `Http.Server` resources at load time.
@@ -623,25 +604,25 @@ Modules can define their capabilities using a `module.yaml` manifest file that d
 ### 10.1 Module Manifest Structure
 
 ```yaml
-name: 'core' # Module identifier
-version: '1.0.0' # Module version
+name: "core" # Module identifier
+version: "1.0.0" # Module version
 imports: # Optional: Import other modules
-  - './http' # Relative path to imported module
+  - "./http" # Relative path to imported module
 definitions: # Resource definition files
-  - 'definitions/application.yaml'
-  - 'definitions/variable.yaml'
+  - "definitions/application.yaml"
+  - "definitions/variable.yaml"
 entrypoints: # Optional: Entrypoints per runtime
-  - runtime: 'node@>=20 <23'
-    entrypoint: './index.ts'
-  - runtime: 'bun@>=1.1'
-    entrypoint: './index.ts'
+  - runtime: "node@>=20 <23"
+    entrypoint: "./index.ts"
+  - runtime: "bun@>=1.1"
+    entrypoint: "./index.ts"
 importEntrypoints: # Optional: Override entrypoints for imports
-  './http':
-    - runtime: 'node@>=20 <23'
-      entrypoint: './index.ts'
-  './http-rust':
-    - runtime: 'rust@>=1.76'
-      entrypoint: './module.wasm'
+  "./http":
+    - runtime: "node@>=20 <23"
+      entrypoint: "./index.ts"
+  "./http-rust":
+    - runtime: "rust@>=1.76"
+      entrypoint: "./module.wasm"
 ```
 
 ### 10.2 Resource Definitions
@@ -650,7 +631,7 @@ Each module can define the kinds of resources it handles using Runtime.Definitio
 
 ```typescript
 interface ResourceDefinition {
-  kind: 'Runtime.Definition';
+  kind: "Runtime.Definition";
   metadata: {
     name: string; // Definition name
     resourceKind: string; // The local Kind this module handles (runtime scopes to ModuleName.Kind)
@@ -666,16 +647,16 @@ Definitions can map a Kind to per-runtime controllers:
 
 ```yaml
 definitions:
-  - path: 'definitions/logic.yaml'
+  - path: "definitions/logic.yaml"
     controllers:
-      - runtime: 'node@>=20 <23'
-        entrypoint: './controllers/logic.ts'
-      - runtime: 'bun@>=1.1'
-        entrypoint: './controllers/logic.ts'
-  - path: 'definitions/javascript.yaml'
+      - runtime: "node@>=20 <23"
+        entrypoint: "./controllers/logic.ts"
+      - runtime: "bun@>=1.1"
+        entrypoint: "./controllers/logic.ts"
+  - path: "definitions/javascript.yaml"
     controllers:
-      - runtime: 'node@>=20 <23'
-        entrypoint: './controllers/javascript.ts'
+      - runtime: "node@>=20 <23"
+        entrypoint: "./controllers/javascript.ts"
 ```
 
 Controllers may export any of:
@@ -698,7 +679,7 @@ When a module imports another module, both are registered separately in the kern
 
 ## 11. Debugging and Observability
 
-The Digly Runtime provides built-in debugging capabilities useful for testing and runtime introspection.
+The Voke Runtime provides built-in debugging capabilities useful for testing and runtime introspection.
 
 ### 11.1 Event Streaming
 
@@ -734,13 +715,11 @@ digly --debug ./runtime.yaml
 
 ```typescript
 const kernel = new Kernel();
-await kernel.enableEventStream('./debug.jsonl');
+await kernel.enableEventStream("./debug.jsonl");
 
 // Later, read events for testing
 const events = await kernel.getEventStream().readAll();
-const startedEvents = await kernel
-  .getEventStream()
-  .getEventsByType('Runtime.Started');
+const startedEvents = await kernel.getEventStream().getEventsByType("Runtime.Started");
 ```
 
 ### 11.2 State Snapshots
@@ -756,12 +735,12 @@ digly --snapshot-on-exit ./runtime.yaml
 **Output:** Creates `.digly-debug/snapshot.yaml` containing:
 
 ```yaml
-timestamp: '2026-02-02T10:30:45.123Z'
+timestamp: "2026-02-02T10:30:45.123Z"
 resources:
   - kind: Http.Server
     name: myserver
     metadata:
-      uri: 'file:///path/to/resources.yaml#Http.Server.myserver'
+      uri: "file:///path/to/resources.yaml#Http.Server.myserver"
       generationDepth: 0
     data:
       port: 8080
@@ -820,11 +799,11 @@ const server: ResourceInstance = {
 
 ```typescript
 const kernel = new Kernel();
-await kernel.loadFromConfig('./runtime.yaml');
+await kernel.loadFromConfig("./runtime.yaml");
 await kernel.start();
 
 // Take snapshot at any point
-const snapshot = await kernel.takeSnapshot('./runtime-snapshot.yaml');
+const snapshot = await kernel.takeSnapshot("./runtime-snapshot.yaml");
 
 // Or just get the data without writing to file
 const snapshotData = await kernel.takeSnapshot();
@@ -848,15 +827,15 @@ The runtime.yaml file is the entrypoint module manifest used by the Kernel.
 ### Example runtime.yaml
 
 ```yaml
-name: 'example'
-version: '1.0.0'
+name: "example"
+version: "1.0.0"
 imports:
-  - '@diglyai/digly-core' # NPM package or local path
+  - "@vokerun/digly-core" # NPM package or local path
 resources:
-  - 'path/to/first-manifest.yaml'
-  - 'path/to/directory'
-  - 'https://example.com/remote-manifest.yaml'
-  - '${{ env.MY_MANIFEST_PATH }}' # Environment variable support via CEL expressions inside brackets
+  - "path/to/first-manifest.yaml"
+  - "path/to/directory"
+  - "https://example.com/remote-manifest.yaml"
+  - "${{ env.MY_MANIFEST_PATH }}" # Environment variable support via CEL expressions inside brackets
 ```
 
 **Source Resolution:** The Runtime implementation maps the import strings to its local loader (e.g., npm install path for Node, dlopen for C/Rust).

@@ -1,5 +1,5 @@
 {
-  "name": "@diglyai/flow",
+  "name": "@vokerun/flow",
   "type": "module",
   "main": "./src/flow.ts",
   "module": "./src/flow.ts",
@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.lib.json"
   },
   "dependencies": {
-    "@diglyai/sdk": "workspace:*"
+    "@vokerun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

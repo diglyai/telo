@@ -1,9 +1,5 @@
-import type {
-  ModuleCreateContext,
-  ResourceInstance,
-  RuntimeResource,
-} from '@diglyai/sdk';
-import { ControllerContext } from '@diglyai/sdk';
+import type { ModuleCreateContext, ResourceInstance, RuntimeResource } from "@vokerun/sdk";
+import { ControllerContext } from "@vokerun/sdk";
 
 type TemplateParameter = {
   name: string;
@@ -30,7 +26,7 @@ export async function compile(
   resource: TemplateResource,
   ctx: ModuleCreateContext,
 ): Promise<RuntimeResource> {
-  if (resource.kind !== 'Template.Template') {
+  if (resource.kind !== "Template.Template") {
     return resource;
   }
 
@@ -55,15 +51,13 @@ export async function execute(
   ctx: { resource?: TemplateResource },
 ): Promise<any> {
   const resource = ctx?.resource;
-  if (!resource || resource.kind !== 'Template.Template') {
+  if (!resource || resource.kind !== "Template.Template") {
     throw new Error(`Template not found: ${name}`);
   }
   return resource.resources || [];
 }
 
-function buildParameters(
-  definitions: TemplateParameter[],
-): Record<string, any> {
+function buildParameters(definitions: TemplateParameter[]): Record<string, any> {
   const params: Record<string, any> = {};
 
   for (const def of definitions) {

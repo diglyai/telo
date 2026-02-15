@@ -1,6 +1,6 @@
-import { RuntimeResource } from '@diglyai/sdk';
-import * as path from 'path';
-import { ControllerInstance, ResourceDefinition } from './types';
+import { RuntimeResource } from "@vokerun/sdk";
+import * as path from "path";
+import { ControllerInstance, ResourceDefinition } from "./types";
 
 /**
  * ControllerRegistry: Manages controller loading and dispatch
@@ -9,8 +9,7 @@ import { ControllerInstance, ResourceDefinition } from './types';
 export class ControllerRegistry {
   private controllersByKind: Map<string, ControllerInstance> = new Map();
   private definitionsByKind: Map<string, ResourceDefinition> = new Map();
-  private controllerLoaders: Map<string, () => Promise<ControllerInstance>> =
-    new Map();
+  private controllerLoaders: Map<string, () => Promise<ControllerInstance>> = new Map();
 
   /**
    * Register a controller definition
@@ -26,18 +25,12 @@ export class ControllerRegistry {
     const baseDir = null;
     const resourceKind = definition.metadata.resourceKind;
     const kind =
-      namespace && !resourceKind.includes('.')
-        ? `${namespace}.${resourceKind}`
-        : resourceKind;
+      namespace && !resourceKind.includes(".") ? `${namespace}.${resourceKind}` : resourceKind;
 
     this.definitionsByKind.set(kind, definition);
 
     // If definition has controllers, register loader for them
-    if (
-      definition.controllers &&
-      definition.controllers.length > 0 &&
-      baseDir
-    ) {
+    if (definition.controllers && definition.controllers.length > 0 && baseDir) {
       this.registerControllerLoader(kind, definition, baseDir);
     }
   }
@@ -144,11 +137,7 @@ export class ControllerRegistry {
   /**
    * Compile a resource using its controller
    */
-  async compile(
-    kind: string,
-    resource: RuntimeResource,
-    ctx: any,
-  ): Promise<RuntimeResource> {
+  async compile(kind: string, resource: RuntimeResource, ctx: any): Promise<RuntimeResource> {
     const controller = await this.getController(kind);
     if (!controller || !controller.compile) {
       return resource;
@@ -159,11 +148,7 @@ export class ControllerRegistry {
   /**
    * Create a resource instance using its controller
    */
-  async create(
-    kind: string,
-    resource: RuntimeResource,
-    ctx: any,
-  ): Promise<any | null> {
+  async create(kind: string, resource: RuntimeResource, ctx: any): Promise<any | null> {
     const controller = this.getController(kind);
     if (!controller || !controller.create) {
       return null;
@@ -176,9 +161,7 @@ export class ControllerRegistry {
    */
   registerController(kind: string, controller: ControllerInstance): void {
     if (!this.definitionsByKind.has(kind)) {
-      throw new Error(
-        `Cannot register controller for kind ${kind} without definition`,
-      );
+      throw new Error(`Cannot register controller for kind ${kind} without definition`);
     }
     // Ensure controller has schema from definition
     const definition = this.definitionsByKind.get(kind);
@@ -208,34 +191,33 @@ export class ControllerRegistry {
     this.controllerLoaders.set(kind, async () => {
       const modulePath = path.resolve(moduleDir, controllerDef.entry);
       const moduleRuntime = await import(modulePath);
-      const exported =
-        moduleRuntime.default || moduleRuntime.Module || moduleRuntime;
+      const exported = moduleRuntime.default || moduleRuntime.Module || moduleRuntime;
 
       const registerFn =
-        typeof moduleRuntime.register === 'function'
+        typeof moduleRuntime.register === "function"
           ? moduleRuntime.register
-          : typeof exported === 'function' && !this.isModuleClass(exported)
+          : typeof exported === "function" && !this.isModuleClass(exported)
             ? exported
             : null;
 
       const createFn =
-        typeof moduleRuntime.create === 'function'
+        typeof moduleRuntime.create === "function"
           ? moduleRuntime.create
-          : typeof exported?.create === 'function'
+          : typeof exported?.create === "function"
             ? exported.create
             : null;
 
       const executeFn =
-        typeof moduleRuntime.execute === 'function'
+        typeof moduleRuntime.execute === "function"
           ? moduleRuntime.execute
-          : typeof exported?.execute === 'function'
+          : typeof exported?.execute === "function"
             ? exported.execute
             : null;
 
       const compileFn =
-        typeof moduleRuntime.compile === 'function'
+        typeof moduleRuntime.compile === "function"
           ? moduleRuntime.compile
-          : typeof exported?.compile === 'function'
+          : typeof exported?.compile === "function"
             ? exported.compile
             : null;
 
@@ -259,8 +241,7 @@ export class ControllerRegistry {
 
   private isModuleClass(obj: any): boolean {
     return (
-      typeof obj === 'function' &&
-      (obj.name === 'Controller' || obj.toString().includes('class'))
+      typeof obj === "function" && (obj.name === "Controller" || obj.toString().includes("class"))
     );
   }
 }

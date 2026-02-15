@@ -1,5 +1,5 @@
 {
-  "name": "@diglyai/pipeline",
+  "name": "@vokerun/pipeline",
   "type": "module",
   "main": "./src/job.ts",
   "module": "./src/job.ts",
@@ -8,6 +8,6 @@
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.48",
-    "@diglyai/sdk": "workspace:*"
+    "@vokerun/sdk": "workspace:*"
   }
 }

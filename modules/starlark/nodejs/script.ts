@@ -1,12 +1,12 @@
 import type {
-  ControllerContext,
-  ResourceContext,
-  ResourceInstance,
-  ResourceManifest,
-  RuntimeResource,
-} from '@diglyai/sdk';
-import Ajv, { ErrorObject, ValidateFunction } from 'ajv';
-import { initialize } from 'starlark-webasm';
+    ControllerContext,
+    ResourceContext,
+    ResourceInstance,
+    ResourceManifest,
+    RuntimeResource,
+} from "@vokerun/sdk";
+import Ajv, { ErrorObject, ValidateFunction } from "ajv";
+import { initialize } from "starlark-webasm";
 
 declare global {
   var run_starlark_code: (code: string, context?: Record<string, any>) => any;
@@ -46,7 +46,7 @@ class StarlarkScript implements ResourceInstance {
     readonly manifest: ResourceManifest,
   ) {
     this.name = manifest.metadata.name;
-    this.code = manifest.code || '';
+    this.code = manifest.code || "";
   }
 
   async init(): Promise<void> {
@@ -91,18 +91,18 @@ async function executeStarlark(code: string, input: any): Promise<any> {
 
     let cleanJson = result.message
       .replace(/'/g, '"')
-      .replace(/True/g, 'true')
-      .replace(/False/g, 'false')
-      .replace(/None/g, 'null');
+      .replace(/True/g, "true")
+      .replace(/False/g, "false")
+      .replace(/None/g, "null");
     const trimmed = cleanJson.trim();
     if (
-      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-      (trimmed.startsWith('[') && trimmed.endsWith(']'))
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
     ) {
       try {
         return JSON.parse(trimmed);
       } catch {
-        throw new Error('Invalid output from Starlark code');
+        throw new Error("Invalid output from Starlark code");
       }
     }
 
@@ -130,16 +130,13 @@ function getValidator(
 
 function formatAjvErrors(errors?: ErrorObject[] | null): string {
   if (!errors || errors.length === 0) {
-    return 'Validation failed';
+    return "Validation failed";
   }
   return errors
     .map((err) => {
-      const path =
-        err.instancePath && err.instancePath.length > 0
-          ? err.instancePath
-          : '/';
-      const message = err.message || 'is invalid';
+      const path = err.instancePath && err.instancePath.length > 0 ? err.instancePath : "/";
+      const message = err.message || "is invalid";
       return `${path} ${message}`;
     })
-    .join('; ');
+    .join("; ");
 }

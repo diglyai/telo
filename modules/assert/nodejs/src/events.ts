@@ -1,5 +1,5 @@
-import { ResourceContext } from "@diglyai/sdk";
 import { Static, Type } from "@sinclair/typebox";
+import { ResourceContext } from "@vokerun/sdk";
 
 const FilterEntry = Type.Object({
   type: Type.String(),

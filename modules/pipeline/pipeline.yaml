@@ -6,12 +6,12 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: '@diglyai/pipeline@1.0.0'
-    entry: './job'
+    package: "@vokerun/pipeline@1.0.0"
+    entry: "./job"
   - runtime: nodejs
     registry: local
-    package: './nodejs'
-    entry: './job'
+    package: "./nodejs"
+    entry: "./job"
 schema:
   type: object
   properties:

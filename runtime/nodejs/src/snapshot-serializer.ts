@@ -1,8 +1,8 @@
-import { RuntimeResource } from '@diglyai/sdk';
-import * as fs from 'fs/promises';
-import * as YAML from 'js-yaml';
-import * as path from 'path';
-import { ResourceInstance } from './types';
+import { RuntimeResource } from "@vokerun/sdk";
+import * as fs from "fs/promises";
+import * as YAML from "js-yaml";
+import * as path from "path";
+import { ResourceInstance } from "./types";
 
 export interface SnapshotData {
   timestamp: string;
@@ -30,10 +30,7 @@ export class SnapshotSerializer {
    */
   async takeSnapshot(
     resources: Map<string, Map<string, RuntimeResource>>,
-    resourceInstances?: Map<
-      string,
-      { resource: RuntimeResource; instance: ResourceInstance }
-    >,
+    resourceInstances?: Map<string, { resource: RuntimeResource; instance: ResourceInstance }>,
     filePath?: string,
   ): Promise<SnapshotData> {
     const snapshot: SnapshotData = {
@@ -46,16 +43,11 @@ export class SnapshotSerializer {
     const resourcesByDepth = this.groupByGenerationDepth(resources);
 
     // Process resources starting from depth 0
-    for (const depth of Array.from(resourcesByDepth.keys()).sort(
-      (a, b) => a - b,
-    )) {
+    for (const depth of Array.from(resourcesByDepth.keys()).sort((a, b) => a - b)) {
       const resourcesAtDepth = resourcesByDepth.get(depth) || [];
 
       for (const resource of resourcesAtDepth) {
-        const resourceEntry = await this.serializeResource(
-          resource,
-          resourceInstances,
-        );
+        const resourceEntry = await this.serializeResource(resource, resourceInstances);
         snapshot.resources.push(resourceEntry);
       }
     }
@@ -73,10 +65,7 @@ export class SnapshotSerializer {
    */
   private async serializeResource(
     resource: RuntimeResource,
-    resourceInstances?: Map<
-      string,
-      { resource: RuntimeResource; instance: ResourceInstance }
-    >,
+    resourceInstances?: Map<string, { resource: RuntimeResource; instance: ResourceInstance }>,
   ): Promise<{
     kind: string;
     name: string;
@@ -100,9 +89,7 @@ export class SnapshotSerializer {
       const instanceData = resourceInstances.get(key);
 
       if (instanceData && instanceData.instance) {
-        const snapshotData = await this.getInstanceSnapshot(
-          instanceData.instance,
-        );
+        const snapshotData = await this.getInstanceSnapshot(instanceData.instance);
         if (snapshotData) {
           resourceEntry.snapshot = snapshotData;
         }
@@ -121,14 +108,12 @@ export class SnapshotSerializer {
     const instanceAny = instance as any;
 
     // Check if snapshot method exists
-    if (typeof instanceAny.snapshot === 'function') {
+    if (typeof instanceAny.snapshot === "function") {
       try {
-        const result = await Promise.resolve(
-          instanceAny.snapshot(instance as any),
-        );
+        const result = await Promise.resolve(instanceAny.snapshot(instance as any));
         return result;
       } catch (error) {
-        console.error('Error calling snapshot() on resource instance:', error);
+        console.error("Error calling snapshot() on resource instance:", error);
         return null;
       }
     }
@@ -139,13 +124,11 @@ export class SnapshotSerializer {
   /**
    * Serialize metadata, filtering out circular references and functions
    */
-  private serializeMetadata(
-    metadata: Record<string, any>,
-  ): Record<string, any> {
+  private serializeMetadata(metadata: Record<string, any>): Record<string, any> {
     const serialized: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(metadata)) {
-      if (typeof value === 'function') {
+      if (typeof value === "function") {
         continue;
       }
       try {
@@ -165,7 +148,7 @@ export class SnapshotSerializer {
     const serialized: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(data)) {
-      if (typeof value === 'function') {
+      if (typeof value === "function") {
         continue;
       }
       try {
@@ -204,13 +187,10 @@ export class SnapshotSerializer {
   /**
    * Write snapshot to YAML file
    */
-  private async writeSnapshotToFile(
-    snapshot: SnapshotData,
-    filePath: string,
-  ): Promise<void> {
+  private async writeSnapshotToFile(snapshot: SnapshotData, filePath: string): Promise<void> {
     // Ensure directory exists
     const dir = path.dirname(filePath);
-    if (dir !== '.' && dir !== '') {
+    if (dir !== "." && dir !== "") {
       await fs.mkdir(dir, { recursive: true });
     }
 
@@ -220,7 +200,7 @@ export class SnapshotSerializer {
       lineWidth: 0,
     });
 
-    await fs.writeFile(filePath, yaml, 'utf-8');
+    await fs.writeFile(filePath, yaml, "utf-8");
   }
 
   /**
@@ -234,7 +214,7 @@ export class SnapshotSerializer {
    * Load snapshot from YAML file
    */
   async loadSnapshotFromFile(filePath: string): Promise<SnapshotData> {
-    const content = await fs.readFile(filePath, 'utf-8');
+    const content = await fs.readFile(filePath, "utf-8");
     return YAML.load(content) as SnapshotData;
   }
 }

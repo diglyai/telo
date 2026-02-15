@@ -1,6 +1,6 @@
-import { RuntimeResource } from '@diglyai/sdk';
-import { ResourceURI } from './resource-uri';
-import { DiglyRuntimeError, ResourceManifest } from './types';
+import { RuntimeResource } from "@vokerun/sdk";
+import { ResourceURI } from "./resource-uri";
+import { ResourceManifest, VokeRuntimeError } from "./types";
 
 /**
  * Registry: Indexes resources by composite key of Kind and Name
@@ -16,7 +16,7 @@ export class ManifestRegistry {
   register(resource: RuntimeResource): void {
     const { kind, metadata } = resource;
     const { name } = metadata;
-    console.log('Registering resource:', kind, name);
+    console.log("Registering resource:", kind, name);
     if (!this.resources.has(kind)) {
       this.resources.set(kind, new Map());
     }
@@ -24,10 +24,7 @@ export class ManifestRegistry {
     const kindMap = this.resources.get(kind)!;
 
     if (kindMap.has(name)) {
-      throw new DiglyRuntimeError(
-        'ERR_DUPLICATE_RESOURCE',
-        `Duplicate resource: ${kind}.${name}`,
-      );
+      throw new VokeRuntimeError("ERR_DUPLICATE_RESOURCE", `Duplicate resource: ${kind}.${name}`);
     }
 
     kindMap.set(name, resource);

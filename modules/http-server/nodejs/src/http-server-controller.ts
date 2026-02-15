@@ -1,12 +1,8 @@
-import type {
-  ResourceContext,
-  ResourceInstance,
-  RuntimeResource,
-} from '@diglyai/sdk';
-import swagger from '@fastify/swagger';
-import apiReference from '@scalar/fastify-api-reference';
-import Fastify, { FastifyInstance } from 'fastify';
-import { HttpServerApi } from './http-api-controller.js';
+import swagger from "@fastify/swagger";
+import apiReference from "@scalar/fastify-api-reference";
+import type { ResourceContext, ResourceInstance, RuntimeResource } from "@vokerun/sdk";
+import Fastify, { FastifyInstance } from "fastify";
+import { HttpServerApi } from "./http-api-controller.js";
 
 type HttpRouteResource = RuntimeResource & {
   metadata?: { path?: string; method?: string };
@@ -83,12 +79,12 @@ class HttpServer implements ResourceInstance {
   constructor(resource: HttpServerResource, ctx: ResourceContext) {
     this.resource = resource;
     this.ctx = ctx;
-    this.host = resource.host || '0.0.0.0';
+    this.host = resource.host || "0.0.0.0";
     this.port = Number(resource.port || 0);
     this.baseUrl = resource.baseUrl ?? `http://${this.host}:${this.port}`;
 
     if (!this.port) {
-      throw new Error('Http.Server port is required');
+      throw new Error("Http.Server port is required");
     }
     this.app = Fastify({ logger: true });
   }
@@ -105,20 +101,20 @@ class HttpServer implements ResourceInstance {
       const mounts = this.resource.mounts || [];
       const prefixes = new Set();
       for (const mount of mounts) {
-        prefixes.add(mount.path || '');
+        prefixes.add(mount.path || "");
       }
       for (const prefix of prefixes) {
         servers.push({ url: this.baseUrl + prefix });
       }
       await this.app.register(swagger, {
         openapi: {
-          openapi: '3.0.0',
+          openapi: "3.0.0",
           info: this.resource.openapi.info,
           servers,
         },
       });
       await this.app.register(apiReference, {
-        routePrefix: '/reference',
+        routePrefix: "/reference",
       });
     }
   }
@@ -128,16 +124,14 @@ class HttpServer implements ResourceInstance {
     const mounts = this.resource.mounts || [];
     // const resolveSchema = createSchemaResolver(this.ctx);
     for (const mount of mounts) {
-      const type = mount.type || '';
+      const type = mount.type || "";
       const { kind, name } = parseType(type);
-      const prefix = mount.path || '';
+      const prefix = mount.path || "";
 
       const api: HttpServerApi = this.ctx.getResourcesByName(kind, name) as any;
 
       if (!api) {
-        throw new Error(
-          `Failed to mount Http.Api at "${prefix}": ${type} not found`,
-        );
+        throw new Error(`Failed to mount Http.Api at "${prefix}": ${type} not found`);
       }
       api.register(this.app, prefix);
     }
@@ -181,9 +175,9 @@ export function create(
 }
 
 function parseType(type: string): { kind: string; name: string } {
-  const separator = type.lastIndexOf('.');
+  const separator = type.lastIndexOf(".");
   if (separator <= 0 || separator === type.length - 1) {
-    return { kind: '', name: '' };
+    return { kind: "", name: "" };
   }
   return { kind: type.slice(0, separator), name: type.slice(separator + 1) };
 }

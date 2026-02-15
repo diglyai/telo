@@ -1,10 +1,10 @@
 import {
-  NoopValidator,
-  type ControllerContext,
-  type DataValidator,
-  type ResourceContext,
-  type RuntimeResource,
-} from "@diglyai/sdk";
+    NoopValidator,
+    type ControllerContext,
+    type DataValidator,
+    type ResourceContext,
+    type RuntimeResource,
+} from "@vokerun/sdk";
 
 type JavaScriptResource = RuntimeResource & {
   code?: string;

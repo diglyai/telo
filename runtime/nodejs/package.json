@@ -1,7 +1,7 @@
 {
-  "name": "@diglyai/runtime",
+  "name": "@vokerun/runtime",
   "version": "1.0.0",
-  "description": "Digly Runtime - Read-Only Execution Host for Resolved Distribution Directories",
+  "description": "Voke Runtime - A lightweight, polyglot execution host.",
   "type": "module",
   "scripts": {
     "build": "tsc",
@@ -18,7 +18,7 @@
     "cel-js": "^0.8.2",
     "@sinclair/typebox": "^0.34.48",
     "ajv": "^8.17.1",
-    "@diglyai/sdk": "workspace:*"
+    "@vokerun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",

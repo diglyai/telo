@@ -1,6 +1,6 @@
-# Digly SDKs
+# Voke SDKs
 
-This directory hosts language‑specific SDKs for building Digly modules. Each SDK exposes the same conceptual contract (module lifecycle, contexts, and resource execution) while remaining idiomatic to its language ecosystem.
+This directory hosts language‑specific SDKs for building Voke modules. Each SDK exposes the same conceptual contract (module lifecycle, contexts, and resource execution) while remaining idiomatic to its language ecosystem.
 
 ## Available SDKs
 

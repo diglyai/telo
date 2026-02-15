@@ -1,5 +1,5 @@
-import { ResourceContext } from "@diglyai/sdk";
 import { Static, Type } from "@sinclair/typebox";
+import { ResourceContext } from "@vokerun/sdk";
 
 export const schema = Type.Object(
   {

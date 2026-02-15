@@ -6,7 +6,7 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: "@diglyai/assert@1.0.0"
+    package: "@vokerun/assert@1.0.0"
     entry: "./events"
   - runtime: nodejs
     registry: local

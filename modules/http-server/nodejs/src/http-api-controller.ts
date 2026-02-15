@@ -1,10 +1,6 @@
-import {
-  ControllerContext,
-  ResourceContext,
-  ResourceInstance,
-} from '@diglyai/sdk';
-import { Static, Type } from '@sinclair/typebox';
-import { FastifyInstance } from 'fastify';
+import { Static, Type } from "@sinclair/typebox";
+import { ControllerContext, ResourceContext, ResourceInstance } from "@vokerun/sdk";
+import { FastifyInstance } from "fastify";
 
 const HttpApiRouteManifest = Type.Object({
   request: Type.Object({
@@ -25,10 +21,7 @@ const HttpApiRouteManifest = Type.Object({
     inputs: Type.Optional(Type.Any()),
   }),
   response: Type.Object({
-    status: Type.Union([
-      Type.Number({ minimum: 100, maximum: 599 }),
-      Type.String(),
-    ]),
+    status: Type.Union([Type.Number({ minimum: 100, maximum: 599 }), Type.String()]),
     statuses: Type.Record(
       Type.String(),
       Type.Object({
@@ -62,7 +55,7 @@ export class HttpServerApi implements ResourceInstance {
 
   async init() {}
 
-  register(app: FastifyInstance, prefix = '') {
+  register(app: FastifyInstance, prefix = "") {
     if (prefix) {
       app.register(
         async (scoped) => {
@@ -143,7 +136,7 @@ export class HttpServerApi implements ResourceInstance {
 
         // Set status
         const status =
-          typeof response.status === 'string'
+          typeof response.status === "string"
             ? this.ctx.expandValue(response.status, { result })
             : response.status;
         if (response.status) {
@@ -151,9 +144,7 @@ export class HttpServerApi implements ResourceInstance {
         }
         const statusConfig = response.statuses[response.status];
         if (!statusConfig) {
-          return reply
-            .code(500)
-            .send({ error: 'Invalid response status configuration' });
+          return reply.code(500).send({ error: "Invalid response status configuration" });
         }
         // Map headers if specified
         if (statusConfig.headers) {
@@ -187,29 +178,26 @@ export async function create(
 }
 
 function resolveHandlerName(handler: any): { kind: string; name: string } {
-  if (typeof handler === 'string') {
-    const [kind, name] = handler.split('/');
+  if (typeof handler === "string") {
+    const [kind, name] = handler.split("/");
     return { kind, name };
   }
   if (
     handler &&
-    typeof handler === 'object' &&
-    typeof handler.name === 'string' &&
-    typeof handler.kind === 'string'
+    typeof handler === "object" &&
+    typeof handler.name === "string" &&
+    typeof handler.kind === "string"
   ) {
     return { name: handler.name, kind: handler.kind };
   }
-  throw new Error('Unable to resolve handler');
+  throw new Error("Unable to resolve handler");
 }
 
-function resolveHandlerInputs(
-  handler: any,
-  requestPayload: Record<string, any>,
-): any {
-  if (typeof handler === 'string') {
+function resolveHandlerInputs(handler: any, requestPayload: Record<string, any>): any {
+  if (typeof handler === "string") {
     return requestPayload;
   }
-  if (!handler || typeof handler !== 'object') {
+  if (!handler || typeof handler !== "object") {
     return requestPayload;
   }
   if (!handler.inputs) {
@@ -220,7 +208,7 @@ function resolveHandlerInputs(
 }
 
 function resolveTemplateInputs(value: any, context: Record<string, any>): any {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const match = value.match(/^\s*\$\{\{\s*([^}]+)\s*\}\}\s*$/);
     if (match) {
       return resolveTemplatePath(match[1], context);
@@ -230,7 +218,7 @@ function resolveTemplateInputs(value: any, context: Record<string, any>): any {
   if (Array.isArray(value)) {
     return value.map((item) => resolveTemplateInputs(item, context));
   }
-  if (value && typeof value === 'object') {
+  if (value && typeof value === "object") {
     const resolved: Record<string, any> = {};
     for (const [key, entry] of Object.entries(value)) {
       resolved[key] = resolveTemplateInputs(entry, context);
@@ -240,17 +228,11 @@ function resolveTemplateInputs(value: any, context: Record<string, any>): any {
   return value;
 }
 
-function resolveTemplatePath(
-  pathExpression: string,
-  context: Record<string, any>,
-): any {
-  const parts = pathExpression.trim().split('.').filter(Boolean);
+function resolveTemplatePath(pathExpression: string, context: Record<string, any>): any {
+  const parts = pathExpression.trim().split(".").filter(Boolean);
   let current: any = context;
   for (const part of parts) {
-    if (
-      !current ||
-      (typeof current !== 'object' && typeof current !== 'function')
-    ) {
+    if (!current || (typeof current !== "object" && typeof current !== "function")) {
       return undefined;
     }
     current = current[part];

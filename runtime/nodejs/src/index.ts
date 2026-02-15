@@ -1,19 +1,17 @@
-export { ControllerRegistry } from './controller-registry';
-export { EventStream } from './event-stream';
-export { Kernel } from './kernel';
-export { Loader } from './loader';
-export { ManifestRegistry as Registry } from './registry';
-export { ResourceURI } from './resource-uri';
-export { SnapshotSerializer } from './snapshot-serializer';
+export { ControllerRegistry } from "./controller-registry";
+export { EventStream } from "./event-stream";
+export { Kernel } from "./kernel";
+export { Loader } from "./loader";
+export { ManifestRegistry as Registry } from "./registry";
+export { ResourceURI } from "./resource-uri";
+export { SnapshotSerializer } from "./snapshot-serializer";
 export {
     ControllerDefinition,
-    ControllerInstance,
-    DiglyRuntimeError,
-    ExecContext,
+    ControllerInstance, ExecContext,
     KernelContext,
-    ResourceDefinition
-} from './types';
-export type { Kernel as IKernel } from './types';
+    ResourceDefinition, VokeRuntimeError
+} from "./types";
+export type { Kernel as IKernel } from "./types";
 
 // Template system exports
 export {
@@ -22,10 +20,10 @@ export {
     TemplateContext,
     TemplateDefinition,
     TemplateResourceBlueprint
-} from './template-definition';
+} from "./template-definition";
 export {
     expandPropertyWithControlFlow,
     expandTemplates,
     instantiateTemplate
-} from './template-expander';
+} from "./template-expander";
 

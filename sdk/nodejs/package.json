@@ -1,5 +1,5 @@
 {
-  "name": "@diglyai/sdk",
+  "name": "@vokerun/sdk",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",

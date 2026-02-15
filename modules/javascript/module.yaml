@@ -1,66 +1,66 @@
 kind: Runtime.Module
 metadata:
-  name: 'JavaScript'
-  version: '1.0.0'
+  name: "JavaScript"
+  version: "1.0.0"
 ---
-kind: 'Runtime.Definition'
+kind: "Runtime.Definition"
 metadata:
-  name: 'JavaScriptDefinition'
-  resourceKind: 'Script'
-  module: 'JavaScript'
+  name: "JavaScriptDefinition"
+  resourceKind: "Script"
+  module: "JavaScript"
 controllers:
   - runtime: nodejs
     registry: npm
-    package: '@diglyai/javascript@1.0.0'
-    entry: './script'
+    package: "@vokerun/javascript@1.0.0"
+    entry: "./script"
   - runtime: nodejs
     registry: local
-    package: './nodejs'
-    entry: './script'
+    package: "./nodejs"
+    entry: "./script"
 schema:
-  type: 'object'
+  type: "object"
   properties:
     metadata:
-      type: 'object'
+      type: "object"
       properties:
         name:
-          type: 'string'
-      required: ['name']
+          type: "string"
+      required: ["name"]
     code:
-      type: 'string'
+      type: "string"
     inputSchema:
-      type: 'object'
+      type: "object"
     outputSchema:
-      type: 'object'
-  required: ['metadata', 'code']
+      type: "object"
+  required: ["metadata", "code"]
 ---
-kind: 'Runtime.Definition'
+kind: "Runtime.Definition"
 metadata:
-  name: 'InlineScriptDefinition'
-  resourceKind: 'InlineScript'
-  module: 'JavaScript'
+  name: "InlineScriptDefinition"
+  resourceKind: "InlineScript"
+  module: "JavaScript"
 controllers:
   - runtime: nodejs
     registry: npm
-    package: '@diglyai/javascript@1.0.0'
-    entry: './inline'
+    package: "@vokerun/javascript@1.0.0"
+    entry: "./inline"
   - runtime: nodejs
     registry: local
-    package: './nodejs'
-    entry: './inline'
+    package: "./nodejs"
+    entry: "./inline"
 schema:
-  type: 'object'
+  type: "object"
   properties:
     metadata:
-      type: 'object'
+      type: "object"
       properties:
         name:
-          type: 'string'
-      required: ['name']
+          type: "string"
+      required: ["name"]
     code:
-      type: 'string'
+      type: "string"
     inputSchema:
-      type: 'object'
+      type: "object"
     outputSchema:
-      type: 'object'
-  required: ['metadata', 'code']
+      type: "object"
+  required: ["metadata", "code"]

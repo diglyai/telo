@@ -1,7 +1,7 @@
-import { DataValidator } from "@diglyai/sdk";
+import { DataValidator } from "@vokerun/sdk";
 import Ajv from "ajv";
 import { formatAjvErrors } from "./manifest-schemas";
-import { DiglyRuntimeError } from "./types";
+import { VokeRuntimeError } from "./types";
 
 export class SchemaValidator {
   private ajv: Ajv;
@@ -30,7 +30,7 @@ export class SchemaValidator {
       validate: (data: any) => {
         const isValid = validate(data);
         if (!isValid) {
-          throw new DiglyRuntimeError(
+          throw new VokeRuntimeError(
             "ERR_RESOURCE_NOT_FOUND",
             `Invalid value passed: ${JSON.stringify(data)}. Error: ${formatAjvErrors(validate.errors)}`,
           );

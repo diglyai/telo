@@ -1,9 +1,9 @@
 import type {
-  ControllerContext,
-  ResourceContext,
-  ResourceInstance,
-  ResourceManifest,
-} from '@diglyai/sdk';
+    ControllerContext,
+    ResourceContext,
+    ResourceInstance,
+    ResourceManifest,
+} from "@vokerun/sdk";
 
 export function register(ctx: ControllerContext): void {}
 
@@ -23,7 +23,7 @@ class ConsoleWriteLineResource implements ResourceInstance {
   invoke(input: any) {
     this.ctx.validateSchema(input, this.inputSchema);
     process.stdout.write(this.ctx.expandValue(this.output, input));
-    process.stdout.write('\n');
+    process.stdout.write("\n");
   }
 }
 

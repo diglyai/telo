@@ -1,10 +1,10 @@
-import { RuntimeResource } from '@diglyai/sdk';
+import { RuntimeResource } from "@vokerun/sdk";
 
 /**
  * Built-in TemplateDefinition resource type
  */
 export interface TemplateDefinition extends RuntimeResource {
-  kind: 'TemplateDefinition';
+  kind: "TemplateDefinition";
   schema: Record<string, any>; // JSONSchema defining template variables
   resources: TemplateResourceBlueprint[];
 }
@@ -41,35 +41,27 @@ export interface TemplateContext {
 /**
  * Validates if a resource is a TemplateDefinition
  */
-export function isTemplateDefinition(
-  resource: RuntimeResource,
-): resource is TemplateDefinition {
-  return resource.kind === 'TemplateDefinition';
+export function isTemplateDefinition(resource: RuntimeResource): resource is TemplateDefinition {
+  return resource.kind === "TemplateDefinition";
 }
 
 /**
  * Extracts default values from JSONSchema to build initial template context
  */
-export function extractDefaultsFromSchema(
-  schema: Record<string, any>,
-): TemplateContext {
+export function extractDefaultsFromSchema(schema: Record<string, any>): TemplateContext {
   const context: TemplateContext = {};
 
-  if (!schema || typeof schema !== 'object') {
+  if (!schema || typeof schema !== "object") {
     return context;
   }
 
   const properties = schema.properties;
-  if (!properties || typeof properties !== 'object') {
+  if (!properties || typeof properties !== "object") {
     return context;
   }
 
   for (const [key, propSchema] of Object.entries(properties)) {
-    if (
-      propSchema &&
-      typeof propSchema === 'object' &&
-      'default' in propSchema
-    ) {
+    if (propSchema && typeof propSchema === "object" && "default" in propSchema) {
       context[key] = propSchema.default;
     }
   }

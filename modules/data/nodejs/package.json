@@ -1,5 +1,5 @@
 {
-  "name": "@diglyai/data",
+  "name": "@vokerun/data",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -8,6 +8,6 @@
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.48",
-    "@diglyai/sdk": "workspace:*"
+    "@vokerun/sdk": "workspace:*"
   }
 }

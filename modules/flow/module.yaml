@@ -6,12 +6,12 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: '@diglyai/flow@1.0.0'
-    entry: './flow'
+    package: "@vokerun/flow@1.0.0"
+    entry: "./flow"
   - runtime: nodejs
     registry: local
-    package: './nodejs'
-    entry: './flow'
+    package: "./nodejs"
+    entry: "./flow"
 schema:
   type: object
   properties:
