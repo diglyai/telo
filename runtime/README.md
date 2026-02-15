@@ -1,519 +1,313 @@
-# Voke Runtime Specification v1.0
+# Voke Runtime
 
-**Status:** Draft
+**Status:** Early prototype. The API surface — including YAML shapes — may change at any time without notice.
 
-**Target:** Polyglot Implementation (Node.js, Rust, Go)
+**Target:** Node.js (Rust/Go ports planned)
 
-**Input:** Resolved Distribution Directory
-
-**Status:** Early prototype (spec and runtime are evolving; not production‑ready). The API surface - including YAML shapes - may change at any time without notice.
+**Input:** A module manifest YAML file or a directory of YAML files
 
 ## 1. Core Concepts
 
-The Voke Runtime is a **Read-Only Execution Host**. It is designed with the assumption that a "Loader" (or "Linker") has already performed schema validation, ID resolution, module discovery, and resource loading. The runtime follows a **polyglot architecture**, enabling compatible implementations in multiple languages.
+The Voke Runtime is a **declarative execution host**. You describe resources in YAML; the runtime loads them, wires up controllers, and keeps the process alive until all work is done.
 
-The Runtime performs three specific functions:
+The runtime performs three functions:
 
-- **Template Expander:** Dynamically generates resources from TemplateDefinition blueprints with control flow (for/if).
-- **Registry:** Indexes resources by a composite key of Kind and Name.
-- **Router:** A synchronous dispatcher that routes execution requests based on URNs.
+- **Loader:** Reads YAML files, compiles them through the CEL-YAML templating engine, and resolves controller entrypoints.
+- **Registry:** Indexes resource instances by a composite key of `module.Kind.name`.
+- **Kernel:** Orchestrates the boot sequence, manages the event bus, and routes invocations.
 
-**Module Loading and Resource Discovery:** These are responsibilities of the Loader, not the Runtime. The Loader prepares modules and resources before handing them to the Runtime.
+**Module loading and resource discovery** happen during the load phase, before any resource is initialized.
 
-**See [TEMPLATES.md](./TEMPLATES.md) for comprehensive template system documentation.**
+## 2. Resource Format
 
-## 2. Input Format
-
-The Runtime receives pre-loaded resources and modules from the Loader. Resources are already validated and indexed.
-
-### 2.1 Resource Format
-
-- The Runtime does not load files directly; the Loader handles file I/O and validation.
-- Resources are provided as in-memory objects, already validated against their schemas.
-- **Multiple Formats Supported:** Resources may come from files, templates, or dynamically-generated sources.
-
-### 2.2 Resource Object Model
-
-Every YAML document must deserialize into the following structure:
+Every YAML document must have `kind` and `metadata.name`. All configuration lives at the top level — there is no `spec` wrapper.
 
 ```typescript
 interface RuntimeResource {
-  kind: string; // e.g., "Http.Route", "Logic.JavaScript", "Workflow.Step"
+  kind: string;           // e.g. "Http.Server", "JavaScript.Script"
   metadata: {
-    name: string; // Unique identifier within the Kind
-    [key: string]: any; // Custom labels or annotations
+    name: string;         // unique within kind + module
+    module: string;       // which Runtime.Module declared this resource
+    [key: string]: any;   // custom labels or annotations
   };
-  // All configuration fields are flat at the top level.
-  // Resource kinds should define their own top-level fields (e.g., "routes", "port", "mounts").
-  // A "spec" field from kubernetes is not used by the runtime and should be avoided for clarity.
-  [key: string]: any;
+  [key: string]: any;     // kind-specific configuration fields
 }
 ```
 
-## 3. Reference Standards
+Multiple YAML documents can live in one file, separated by `---`.
 
-All pointers must be pre-resolved into Uniform Resource Names (URNs).
+## 3. CEL-YAML Templating
 
-### 3.1 The URN Format
+Before a manifest object is processed, it is compiled by the **CEL-YAML templating engine** (`@vokerun/yaml-cel-templating`). This runs as part of loading — any compilation error halts the boot sequence immediately.
 
-- **Format:** `Kind.Name` (Case-sensitive). `Kind` can include dots (e.g., `Http.Server`).
-- **Source Logic:** `type: Logic.JavaScript.GetUsers`
-- **Source Data:** Runtime: `type: "http://${{ Secret.Host }}"`
+The compile step provides `{ env: process.env }` as the initial context, so environment variables are available everywhere:
 
-### 3.2 Reference Types
-
-- **Logic References:** Used in fields that trigger execution (e.g., `handler: "Logic.JavaScript.Insert"`).
-- **Data References:** Used for structural lookups (e.g., `target: "Data.Type.Product"`).
-- **Expressions (CEL):** Injected into strings. The CEL evaluator must resolve kind/resource segments as nested namespaces (e.g., `${{ Http.Server.Example.port }}`).
-
-### 3.3 Resource URIs
-
-Every resource has an optional `metadata.uri` field that provides an absolute, standard URI identifying where the resource came from and its lineage through template generations.
-
-#### 3.3.1 URI Format
-
-```
-scheme://host/path#fragment
+```yaml
+resources:
+  - ${{ env.MY_MANIFEST_PATH }}
 ```
 
-Where:
+### 3.1 Directives
 
-- **scheme:** Standard URI scheme: `file`, `http`, `https`, or others
-- **host:** Authority (e.g., `localhost` for templates, domain name for remote resources)
-- **path:** Resource location path
-- **fragment:** Resource identifier chain in the form `kind.name[/kind.child/kind.child/...]`
+Directives are keys that start with `$`. They are evaluated in a fixed priority order within any YAML mapping:
 
-#### 3.3.2 URI Examples
+| Directive | Purpose |
+|-----------|---------|
+| `$schema` | Validate parent-scope data against a JSON Schema |
+| `$let` | Define variables scoped to the current object and descendants |
+| `$assert` / `$msg` | Fail with an error if a CEL condition is false |
+| `$if` / `$then` / `$else` | Conditional blocks |
+| `$for` / `$do` | Iterate over a collection |
+| `$include` / `$with` | Include an external YAML file *(not yet implemented)* |
 
-**File-based resource:**
+### 3.2 Interpolation
 
-```
-file:///path/to/resources.yaml#Http.Server.Example
-```
+String values support two equivalent syntaxes:
 
-**Template-generated resource (single level):**
+- `${{ expr }}` — primary syntax used throughout Voke
+- `${ expr }` — alternate shorthand
 
-```
-http://localhost/template/ApiServer#Http.Server.api-us-east
-```
+When the entire string is a single interpolation, the result preserves the CEL type (integer, boolean, etc.). Mixed strings are coerced to string.
 
-**Nested template-generated resource (multiple levels):**
+**See [../yaml-cel-templating/README.md](../yaml-cel-templating/README.md) for full directive reference.**
 
-```
-http://localhost/template/ApiServer#Http.Server/Http.Route/api-us-east
-```
+## 4. Boot Sequence
 
-#### 3.3.3 URI Generation
-
-The Runtime automatically generates URIs during loading:
-
-1. **File Resources:** When a resource is loaded from a YAML file, its URI is set to `file://<absolute-path>#kind.name`
-2. **Template-Generated Resources:** When a `TemplateDefinition` is instantiated, child resources receive URIs in the form `http://localhost/template/<DefinitionName>#kind.name`
-3. **Nested Templates:** When a template generates other templates, the fragment path grows: `http://localhost/template/<Parent>#kind.name/kind.child/kind.grandchild`
-
-#### 3.3.4 Metadata Fields
-
-Each `RuntimeResource.metadata` includes:
-
-```typescript
-interface ResourceMetadata {
-  name: string; // User-provided in YAML
-  uri: string; // Runtime-computed during Step 4: Absolute URI identifying resource origin and lineage
-  generationDepth: number; // Runtime-computed during Step 4: Nesting depth (0=file, 1+=template-generated)
-  [key: string]: any; // User-provided custom labels or annotations
-}
-```
-
-#### 3.3.5 Use Cases
-
-- **Debugging:** Trace where a resource originated (file vs generated)
-- **Introspection:** Query resources by source (e.g., all resources from a specific file)
-- **Filtering:** Find all nested resources from a template
-- **Auditing:** Track full lineage of dynamically generated resources
-- **Caching:** Use URI as a stable identifier for resource metadata
-
-#### 3.3.6 Registry Query Methods
-
-Modules can query resources by URI through the `ModuleCreateContext`:
-
-```typescript
-// Get resource by exact URI
-getResourceByUri(uri: string): RuntimeResource | undefined;
-
-// Get all resources from a specific source file
-getResourcesBySourcePath(path: string): RuntimeResource[];
-
-// Get all resources with a specific generation depth
-getResourcesByGenerationDepth(depth: number): RuntimeResource[];
-```
-
-## 4. Kernel Architecture
-
-The Kernel is the central orchestrator. It manages the lifecycle and the message bus.
-
-### 4.1 Boot Sequence
-
-The runtime follows a six-step boot sequence with strict ordering to ensure proper initialization dependencies. **Any error at any step immediately halts the entire boot sequence.**
-
-#### Step 1: Load Manifests from YAML Files
-
-**loadFromConfig() (via Loader):**
-
-1. Read YAML files from runtime config `resources` list
-2. Parse all YAML documents using `yaml.loadAll()`
-3. Deserialize each document into a raw manifest object
-4. Validate each manifest has `kind` and `metadata.name` fields (runtime fields `uri` and `generationDepth` are added later)
-5. **If ANY parsing/validation error occurs: FAIL bootstrap immediately**
-
-Result: Uncompiled manifest objects in memory.
-
-#### Step 2: Compile Manifests with YAML-CEL Templating Engine
-
-**compileManifests() (via yaml-cel-templating):**
-
-For each raw manifest object, apply YAML-CEL templating compilation:
-
-1. Process directives in priority order:
-   - `$schema` - Type validation for parent scope data
-   - `$let` - Variable definitions (scoped to current object and descendants)
-   - `$assert` - Assertions with optional `$msg` error messages
-   - `$if` / `$then` / `$else` - Conditional blocks
-   - `$for` / `$do` - Iteration over collections
-   - `$include` / `$with` - External file inclusion and composition
-
-2. Resolve CEL interpolations (`${...}`) in string values
-
-3. **If ANY compilation error occurs (CEL evaluation failure, assertion failure, schema validation failure): FAIL bootstrap immediately with detailed error context**
-
-Result: Fully expanded manifest objects ready for registration. All structural directives processed, all interpolations resolved.
-
-See [yaml-cel-templating/README.md](../yaml-cel-templating/README.md) for comprehensive directive documentation.
-
-#### Step 3: Register Compiled Manifests into Registry
-
-**registerResources():**
-
-1. For each compiled manifest:
-   - Extract `kind` and `metadata.name`
-   - Add manifest to registry: `registry[kind][name] = manifest`
-     - Registry checks if `(kind, name)` pair already exists in registry
-     - **If duplicate found: FAIL bootstrap immediately with error**
-   - Emit `Resource.Registered` event
-
-2. Index resources for discovery (by URI, source file, generation depth)
-
-Result: Registry populated with all compiled manifests, indexed by Kind and Name.
-
-#### Step 4: Multi-Pass Controller Discovery Loop (Max 10 Passes)
-
-**discoverAndCreateResources() - Loop:**
-
-Run up to 10 passes to discover resource definitions and create resource instances. Each pass removes handled resources from the list, making subsequent passes faster:
+### 4.1 Overview
 
 ```
-unhandledResources = getAll resources from registry as list
-passNumber = 1
+loadFromConfig(path)
+  └── loadBuiltinDefinitions()       # register Runtime.Definition + Runtime.Module controllers
+  └── loader.loadManifest(path)      # yaml.loadAll → compile() → queue
 
-while (passNumber <= 10 && unhandledResources is not empty):
+start()
+  ├── register()                     # call register() on all known controllers
+  ├── initializeResources()          # multi-pass create + init loop (max 10 passes)
+  ├── emit Runtime.Initialized
+  ├── emit Runtime.Starting
+  ├── runInstances()                 # call run() on all instances
+  ├── emit Runtime.Started
+  ├── waitForIdle()                  # block until hold count reaches 0
+  └── [finally]
+      ├── emit Runtime.Stopping
+      ├── teardownResources()        # call teardown() on all instances
+      └── emit Runtime.Stopped
+```
+
+### 4.2 Step 1 — Load
+
+`loadFromConfig(path)` first registers two built-in controllers:
+
+- `Runtime.Definition` — handles resource type definitions that load and register controllers dynamically.
+- `Runtime.Module` — handles module manifests that import other modules and resources.
+
+It then calls `loader.loadManifest(path)`, which:
+
+1. Reads the file and parses all YAML documents with `yaml.loadAll()`.
+2. Passes each raw document through `compile(doc, { context: { env } })` from `@vokerun/yaml-cel-templating`. All directives (`$let`, `$if`, `$for`, etc.) are evaluated and all interpolations are resolved. **Any compilation error halts boot immediately.**
+3. Places the compiled manifests into the initialization queue.
+
+`loadDirectory(dir)` works the same way but walks the directory for `*.yaml` / `*.yml` files, additionally running template expansion for `TemplateDefinition` resources (see [Section 8](#8-built-in-templatedefinition)).
+
+### 4.3 Step 2 — Register
+
+Before initializing any resource, `start()` calls `register(ctx)` on every controller that has been registered so far. Controllers use this hook to subscribe to events or perform one-time setup.
+
+### 4.4 Step 3 — Multi-Pass Initialization (max 10 passes)
+
+Resources may depend on other resources being initialized first (e.g. `Runtime.Module` registers new kinds, which other resources need). The kernel resolves this with a multi-pass loop:
+
+```
+unhandled = all resources in initialization queue
+pass = 1
+
+while pass <= 10 and unhandled is not empty:
   handledThisPass = []
 
-  for each resource in unhandledResources:
-    definition = find definition for resource.kind
+  for each resource in unhandled:
+    controller = lookup controller for resource.kind
+    if not found: skip (try next pass)
 
-    if definition not found:
-      continue  # Try again in next pass
+    validate resource against controller.schema   # FAIL on error
+    instance = controller.create(resource, ctx)   # FAIL on error
+    if instance:
+      instance.init(ctx)                          # FAIL on error (if defined)
+      store instance in registry
+      mark resource as handled
 
-    # Assign URI just before passing to create()
-    resource.metadata.uri = generateUri(resource.kind, resource.name)
+  remove handled resources from unhandled
+  if nothing was handled this pass: break
+  pass++
 
-    # Create resource instance
-    controller = find controller for definition
-    if controller
-      instance = controller.create(resource, context)
-    else
-      instance = wrapped resource
-
-    if instance != null:
-      resourceInstances[resource.kind][resource.name] = instance
-
-      # Initialize immediately after creation
-      if instance.init exists:
-        await instance.init()
-
-      emit `{resource.kind}.Initialized` event
-      handledThisPass.append(resource)
-
-  # Remove handled resources from list (list gets smaller each pass)
-  unhandledResources = unhandledResources.filter(r => r not in handledThisPass)
-
-  if handledThisPass is empty:
-    break  # No resources handled this pass
-
-  passNumber++
-
-# After all passes complete
-if unhandledResources is not empty:
-  # FAIL: Unhandled resources remain
-  for each resource in unhandledResources:
-    FAIL bootstrap with error:
-      "No controller found for resource: {resource.kind}.{resource.name}"
+if unhandled is not empty: FAIL boot with list of unresolved resources
 ```
 
-**Key Points:**
+**Key invariants:**
+- Schema validation runs before `create()` — a resource with an invalid shape never reaches its controller.
+- Each resource is created and initialized exactly once.
+- `init()` is called immediately after `create()`, before the next resource in the same pass.
+- If any step throws, boot halts immediately with context.
 
-- Start with full list of unhandled resources
-- Each pass removes successfully handled resources
-- List gets progressively smaller (faster iterations)
-- Maximum 10 passes prevents infinite loops from circular dependencies
-- URI assignment and resource initialization (`instance.init()`) happens just after `controller.create()` call
-- If any resources remain unhandled after all passes: FAIL bootstrap immediately
-- If any controller.create() or instance.init() throws error: FAIL bootstrap immediately
+### 4.5 Step 4 — Run
 
-#### Event Order Example
+After all resources are initialized, the kernel calls `run()` on every instance that defines it. `run()` is where long-lived work starts (HTTP listeners, queue consumers, etc.).
 
-For a runtime with Http.Server and JavaScript.Script (created in Pass 1):
+### 4.6 Event Order Example
 
 ```
-Resource.Registered (Http.Server:Api)
-Resource.Registered (JavaScript.Script:MyHandler)
-Runtime.Starting
-Http.Server:Api.Initialized
-JavaScript.Script.MyHandler.Initialized
-Runtime.Started
+Runtime.Initialized                            # all create()+init() done
+Runtime.Starting                               # about to call run()
+Runtime.Started                                # all run() called
+Runtime.Blocked                                # first hold acquired
+...
+Runtime.Unblocked                              # last hold released
+Runtime.Stopping
+Runtime.Stopped
 ```
 
-For a runtime with nested resource dependencies (created across multiple passes):
+### 4.7 Error Scenarios
 
-```
-Resource.Registered (Data.Type.User)
-Resource.Registered (Http.Server.api)
-Resource.Registered (Http.Route.GetUser)
-Runtime.Starting
+All of the following halt boot immediately:
 
-# Pass 1
-Data.Type.User instance created
-Data.Type.User.Initialized
-Http.Server.api instance created
-Http.Server.api.Initialized
+1. **Compilation error** — CEL expression fails, assertion fails, or schema validation fails during the compile step.
+2. **Schema validation error** — resource fields don't match the controller's declared schema.
+3. **Creation failure** — `controller.create()` throws.
+4. **Initialization failure** — `instance.init()` throws.
+5. **Unhandled resource** — after 10 passes, a resource's kind has no controller.
 
-# Pass 2
-Http.Route.GetUser instance created
-Http.Route.GetUser.Initialized
+## 5. Controller Interface
 
-Runtime.Started
-```
-
-#### Error Scenarios (All Halt Bootstrap)
-
-1. **Compilation Error:** CEL expression fails to evaluate, assertion fails, schema validation fails
-2. **Duplicate Resource:** Two resources with same (kind, name) pair
-3. **Unhandled Resource:** After 10 passes, resource kind has no controller
-4. **Creation Failure:** controller.create() throws error
-5. **Initialization Failure:** instance.init() throws error
-6. **Parse Error:** YAML parsing fails, manifest missing required fields
-
-#### Key Invariants
-
-- All modules registered before boot sequence starts
-- Compilation must succeed for all manifests before any registration
-- Registration must succeed for all manifests before controller discovery
-- Controller discovery runs in passes until no new resources are created
-- Each resource is created and initialized exactly once
-- No resource proceeds without a valid controller
-- Bootstrap halts immediately on first error with context
-
-## 5. Module Entry Point
-
-Modules export a single `register` function and may export a `create` function for per-resource instances.
+A controller module exports some or all of:
 
 ```typescript
+// Called once before any resource is initialized
 export function register(ctx: ControllerContext): void | Promise<void>;
+
+// Called once per resource of this kind; return null to skip instance tracking
 export function create(
   resource: RuntimeResource,
-  ctx: ModuleCreateContext,
+  ctx: ResourceContext,
 ): ResourceInstance | null | Promise<ResourceInstance | null>;
 ```
 
-`create()` is called once per resource the module handles. The returned `ResourceInstance` may define:
+The returned `ResourceInstance` may define any of:
 
 ```typescript
-interface ResourceInstance {
-  init?(): void | Promise<void>;
+type ResourceInstance = {
+  init?(ctx?: ResourceContext): void | Promise<void>;
+  run?(): void | Promise<void>;
+  invoke?(input: any): any | Promise<any>;
   teardown?(): void | Promise<void>;
-  /**
-   * Optional method for debugging/snapshots
-   * Called when taking runtime state snapshots
-   * Should return serializable state data specific to this resource
-   */
   snapshot?(): Record<string, any> | Promise<Record<string, any>>;
-}
+};
 ```
+
+Lifecycle order: `create()` → `init()` → `run()` → *(process alive)* → `teardown()`.
+
+### 5.1 ControllerContext
+
+Passed to `register()`:
 
 ```typescript
-interface ModuleCreateContext extends ModuleContext {
-  kernel: {
-    registry: Map<string, Map<string, RuntimeResource>>;
-    execute(urn: string, input: any, ctx?: any): Promise<any>;
-  };
-  getResources(kind: string): RuntimeResource[];
-  onResourceEvent(
-    kind: string,
-    name: string,
-    event: string,
-    handler: (payload?: any) => void | Promise<void>,
-  ): void;
-  onceResourceEvent(
-    kind: string,
-    name: string,
-    event: string,
-    handler: (payload?: any) => void | Promise<void>,
-  ): void;
-  offResourceEvent(
-    kind: string,
-    name: string,
-    event: string,
-    handler: (payload?: any) => void | Promise<void>,
-  ): void;
-  emitResourceEvent(kind: string, name: string, event: string, payload?: any): Promise<void>;
+interface ControllerContext {
+  on(event: string, handler: (event: RuntimeEvent) => void | Promise<void>): void;
+  once(event: string, handler: (event: RuntimeEvent) => void | Promise<void>): void;
+  off(event: string, handler: (event: RuntimeEvent) => void | Promise<void>): void;
+  emit(event: string, payload?: any): void;
+  acquireHold(reason?: string): () => void;
+  requestExit(code: number): void;
+  evaluateCel(expression: string, context: Record<string, any>): unknown;
+  expandValue(value: any, context: Record<string, any>): any;
 }
 ```
 
-## 6. Execution Model (The Request Loop)
+### 5.2 ResourceContext
 
-The Kernel acts as a **Synchronous Dispatcher**. It does not understand "SQL" or "HTTP"; it only understands "Who handles this Kind?".
+Passed to `create()` and `init()` — extends `ControllerContext` with resource-level operations:
 
-### 6.1 The Dispatch Cycle
+```typescript
+interface ResourceContext extends ControllerContext {
+  // Invoke another resource
+  invoke(kind: string, name: string, ...args: any[]): Promise<any>;
 
-1. **Request:** A Module or External Trigger calls `kernel.execute("Kind.Name", payload)`.
-2. **Lookup:** Kernel splits URN on the last dot. Finds Module associated with Kind.
-3. **Handoff:** Kernel calls `module.execute("Name", payload, context)`.
-4. **Recursion:** If the Module needs to trigger another resource, it calls `context.execute()` (back to the Kernel).
+  // Query the registry
+  getResources(kind: string): RuntimeResource[];
+  getResourcesByName(kind: string, name: string): RuntimeResource | null;
 
-## 7. Error Handling Standards
+  // Dynamically register resources during initialization (used by Runtime.Module)
+  registerManifest(resource: any): void;
+  registerController(moduleName: string, resourceKind: string, controller: any): Promise<void>;
+  registerDefinition(definition: any): void;
 
-Implementations must use these standard error codes:
+  // Schema helpers
+  validateSchema(value: any, schema: any): void;
+  createSchemaValidator(schema: any): DataValidator;
 
-- **ERR_RESOURCE_NOT_FOUND:** The URN `Kind.Name` does not exist in the Registry.
-- **ERR_MODULE_MISSING:** The Kind exists in the Registry, but no Module has claimed it.
-- **ERR_DUPLICATE_RESOURCE:** Two resources share the same Kind/Name during Load.
-- **ERR_EXECUTION_FAILED:** The Module encountered a runtime error during execute.
-
-## 8. Runtime Events
-
-Events are namespaced as `<Module>.<Event>`.
-
-Runtime emits:
-
-- `Runtime.Starting`
-- `Runtime.Started`
-- `Runtime.Blocked`
-- `Runtime.Unblocked`
-- `Runtime.Stopping`
-- `Runtime.Stopped`
-
-Modules can emit their own events via `ctx.emit("Module.Event", payload)` (if no dot is present, the module name is prefixed automatically).
-
-Resource-scoped events use `<Kind>.<Event>`:
-
-- `<Kind>.Initialized`
-- `<Kind>.Teardown`
-
-Custom resource triggers are emitted via `emitResourceEvent(kind, name, event, payload)`.
-`Initialized` and `Teardown` are reserved and cannot be emitted by modules.
-
-### 8.1 Runtime Holds (Keepalive Leases)
-
-The runtime stays alive while one or more holds are active. Modules and resources can
-acquire a hold when they start long-lived work (HTTP servers, queues, watchers) and
-release it during teardown. When the hold count transitions from 0 to 1, the runtime
-emits `Runtime.Blocked`. When it returns to 0, the runtime emits `Runtime.Unblocked`
-and the host exits after running shutdown hooks.
-
-## 12. Summary for Implementers
-
-- **Stateless Logic:** The Kernel should be stateless. All execution state must live in the Context passed through the stack.
-- **Kind Isolation:** A Module owning Kind A cannot access the spec of Kind B except via a `kernel.execute` call.
-- **Schema-Agnostic Runtime:** The Kernel does not interpret schema fields; validation is a module concern.
-- **Module Manifests:** Modules define their capabilities through `module.yaml` manifests with resource definition files.
-- **Module Imports:** Modules can import other modules, with each imported module registered separately in the kernel.
-- **Keepalive Holds:** The runtime remains alive while at least one module or resource holds a runtime lease. When the hold count reaches zero, the runtime emits `Runtime.Stopping`/`Runtime.Stopped` and exits.
-
-## 13. Runtime Kind Inheritance
-
-The runtime supports creating new kinds at runtime that inherit behavior from existing kinds using the built-in `Runtime.KindDefinition` resource.
-
-### 13.1 KindDefinition Resource
-
-`Runtime.KindDefinition` is a special built-in resource kind handled directly by the Kernel (no module required):
-
-```yaml
-kind: Runtime.KindDefinition
-metadata:
-  name: Data.ObjectType # Name of the new kind being created
-extends: Data.Type # Parent kind to inherit controller from
-schema: # Optional: Schema for the new kind
-  type: object
-  additionalProperties: true
+  // Event helpers
+  emitEvent(event: string, payload?: any): Promise<void>;
+}
 ```
 
-### 13.2 Inheritance Behavior
+## 6. Invocation Model
 
-When a `Runtime.KindDefinition` resource is registered:
+Resources call each other through `ctx.invoke()`. The kernel routes the call to the named instance's `invoke()` method:
 
-1. The Kernel tracks the inheritance relationship: `Data.ObjectType extends Data.Type`
-2. During module resolution, if no module handles `Data.ObjectType`, the Kernel automatically assigns the module that handles `Data.Type`
-3. This works recursively - kinds can extend other extended kinds
+```typescript
+// From inside a controller — same-module invocation:
+const result = await ctx.invoke("Http.Server", "Example");
 
-### 13.3 Use Cases
-
-- Creating domain-specific data types without writing controllers
-- Extending framework kinds with custom semantics
-- Runtime schema validation for specialized resource types
-
-### 13.4 Example
-
-```yaml
-# Module defines Data.Type
-kind: Runtime.Definition
-metadata:
-  name: DataTypeDefinition
-  resourceKind: Type
-controllers:
-  - runtime: "node@>=20"
-    entrypoint: "./data-controller.ts"
-schema:
-  type: object
-  # ...
-
----
-# Application creates Data.ObjectType extending Data.Type
-kind: Runtime.KindDefinition
-metadata:
-  name: Data.ObjectType
-extends: Data.Type
-schema:
-  type: object
-  additionalProperties: true
-
----
-# Now Data.ObjectType can be used like Data.Type
-kind: Data.ObjectType
-metadata:
-  name: UserProfile
-schema:
-  type: object
-  properties:
-    name:
-      type: string
+// Cross-module invocation — prefix the kind with the module name:
+const result = await ctx.invoke("OtherModule.Http.Server", "Example");
 ```
 
-## 14. Built-in TemplateDefinition
+If the target instance doesn't exist or has no `invoke()` method, a `VokeRuntimeError` is thrown.
 
-The runtime includes a built-in `TemplateDefinition` resource kind that enables dynamic resource generation through declarative templates with CEL-based control flow. Templates support loops (`for`), conditionals (`if`), variable expansion, and recursive composition.
+## 7. Runtime Events
 
-**For comprehensive documentation, see [TEMPLATES.md](./TEMPLATES.md).**
+All events are namespaced as `Module.Event` or `Module.Kind.Name.Event`.
 
-### 14.1 Basic Template Structure
+### 7.1 Kernel Lifecycle Events
+
+| Event | When |
+|-------|------|
+| `Runtime.Initialized` | All `create()` + `init()` calls completed |
+| `Runtime.Starting` | About to call `run()` on instances |
+| `Runtime.Started` | All `run()` calls completed |
+| `Runtime.Blocked` | Hold count went from 0 → 1 |
+| `Runtime.Unblocked` | Hold count returned to 0 |
+| `Runtime.Stopping` | Teardown phase beginning |
+| `Runtime.Stopped` | Teardown complete; process will exit |
+
+### 7.2 Resource Events
+
+Controllers can emit events via `ctx.emit(event, payload)`. If `event` contains no dot, the current kind is used as the namespace prefix automatically.
+
+Teardown events are emitted by the kernel:
+
+```
+{module}.{Kind}.{name}.Teardown
+```
+
+### 7.3 Runtime Holds (Keepalive Leases)
+
+The runtime exits when there is no more work to do. Modules and resources prevent exit by acquiring a **hold**:
+
+```typescript
+const release = ctx.acquireHold("http-server");
+// ...later, on shutdown:
+release();
+```
+
+- First hold acquired → `Runtime.Blocked` emitted.
+- Last hold released → `Runtime.Unblocked` emitted; kernel proceeds to teardown.
+
+### 7.4 Exit Codes
+
+Controllers request a non-zero exit code via `ctx.requestExit(code)`. The kernel uses the highest requested code on exit.
+
+## 8. Built-in TemplateDefinition
+
+`TemplateDefinition` is a built-in resource kind that generates concrete resources at load time using CEL-based control flow. Expansion happens inside `loadDirectory()` before the kernel sees any resources.
 
 ```yaml
 kind: TemplateDefinition
@@ -522,8 +316,8 @@ metadata:
 schema:
   type: object
   properties:
-    name: { type: string, default: "api" }
-    port: { type: integer, default: 8080 }
+    name:   { type: string, default: "api" }
+    port:   { type: integer, default: 8080 }
     regions:
       type: array
       items: { type: string }
@@ -538,308 +332,157 @@ resources:
     region: "${{ region }}"
 ```
 
-### 14.2 Template Instantiation
+The expansion loop runs up to 10 iterations to support templates that instantiate other templates.
 
-Templates are instantiated using the kind `YourModule.<TemplateName>`:
+**For full template documentation see [TEMPLATES.md](./TEMPLATES.md).**
+
+## 9. Module System
+
+### 9.1 Runtime.Module Resource
+
+A `Runtime.Module` resource declares a module's imports and resource files:
 
 ```yaml
-kind: YourModule.ApiServer
+kind: Runtime.Module
 metadata:
-  name: ProductionApi
-name: "production"
-port: 3000
-regions: ["us-east-1", "us-west-2", "eu-central-1"]
+  name: MyApp           # module namespace — propagated as metadata.module on all owned resources
+  version: 1.0.0
+imports:                # directories to load as sub-modules (via loadDirectory)
+  - ./my-module
+  - ../../shared/http-module
+definitions:            # definition YAML files (Runtime.Definition resources)
+  - definitions/my-type.yaml
+resources:              # resource YAML files
+  - resources/config.yaml
+  - resources/routes.yaml
 ```
 
-This generates 3 `Http.Server` resources at load time.
+`imports` are resolved with `loader.loadDirectory()` (walks for YAML files, expands templates). `definitions` and `resources` are resolved with `loader.loadManifest()` (compiles through yaml-cel-templating).
 
-### 14.3 Key Features
+The `Runtime.Module` controller itself returns `null` from `create()` — it has no runtime instance, only load-time side effects.
 
-- **Clean variable syntax**: `${{ varName }}` (no namespace prefix required)
-- **JSONSchema-based parameters**: Type-safe with defaults and validation
-- **Control flow directives**: `for` (loops) and `if` (conditionals)
-- **Recursive expansion**: Templates can instantiate other templates (up to 10 levels)
-- **Property-level expansion**: Control flow works within resource properties
+### 9.2 Runtime.Definition Resource
 
-### 14.4 Template Expansion Pipeline
-
-1. **Load Phase**: Loader ingests all resources, including TemplateDefinitions
-2. **Instantiation Detection**: Resources with kind `YourModule.<Name>` are identified
-3. **Recursive Expansion**: Template instances are expanded, generating concrete resources
-4. **Registry Registration**: Generated resources are added to the registry
-5. **Expression Resolution**: Standard CEL expression resolution continues
-
-## 9. Module Distribution & Loading
-
-The Runtime supports two methods of loading modules to maintain polyglot compatibility.
-
-### 9.1 Static/Built-in Modules
-
-Modules compiled directly into the Runtime binary. These are registered manually in the Runtime's entry point before kernel.load() is called.
-
-### 9.2 Dynamic External Modules
-
-Modules loaded at runtime based on the runtime.yaml entrypoint module.
-
-Runtime Environment
-
-Loading Mechanism
-
-Node.js
-
-require() or import() from a local path or node_modules.
-
-Go
-
-Go dynamic module package (.so files) or RPC-based HashiCorp modules.
-
-Rust
-
-libloading (Dynamic libraries) or WebAssembly (Wasmtime/WasmEdge).
-
-## 10. Module Manifest System
-
-Modules can define their capabilities using a `module.yaml` manifest file that describes their definitions and dependencies.
-
-### 10.1 Module Manifest Structure
+Modules declare the resource kinds they handle using `Runtime.Definition`:
 
 ```yaml
-name: "core" # Module identifier
-version: "1.0.0" # Module version
-imports: # Optional: Import other modules
-  - "./http" # Relative path to imported module
-definitions: # Resource definition files
-  - "definitions/application.yaml"
-  - "definitions/variable.yaml"
-entrypoints: # Optional: Entrypoints per runtime
-  - runtime: "node@>=20 <23"
-    entrypoint: "./index.ts"
-  - runtime: "bun@>=1.1"
-    entrypoint: "./index.ts"
-importEntrypoints: # Optional: Override entrypoints for imports
-  "./http":
-    - runtime: "node@>=20 <23"
-      entrypoint: "./index.ts"
-  "./http-rust":
-    - runtime: "rust@>=1.76"
-      entrypoint: "./module.wasm"
+kind: Runtime.Definition
+metadata:
+  name: HttpServerDefinition
+  resourceKind: Server      # becomes Http.Server when module namespace is Http
+  module: Http
+schema:                     # JSON Schema — validated against each resource before create()
+  type: object
+  properties:
+    port: { type: integer }
+    host: { type: string }
+  required: [port]
+controllers:
+  - runtime: "node@>=20"
+    entry: ./controllers/server.js   # relative to this definition file
 ```
 
-### 10.2 Resource Definitions
+When a `Runtime.Definition` instance initializes, it dynamically imports the controller module and registers it with the kernel.
 
-Each module can define the kinds of resources it handles using Runtime.Definition files:
+### 9.3 Module Loading Flow
+
+```
+Runtime.Module resource initialized
+  ├── imports:     loadDirectory(path) for each import path
+  ├── definitions: loadManifest(path) for each definition file
+  └── resources:   loadManifest(path) for each resource file
+```
+
+All resulting resources are pushed into the initialization queue and picked up in subsequent passes of the multi-pass loop.
+
+## 10. Error Codes
+
+| Code | Meaning |
+|------|---------|
+| `ERR_RESOURCE_NOT_FOUND` | `invoke()` target does not exist |
+| `ERR_RESOURCE_NOT_INVOKABLE` | Instance has no `invoke()` method |
+| `ERR_MODULE_MISSING` | Kind exists but no controller is registered |
+| `ERR_DUPLICATE_RESOURCE` | Two resources share the same module/kind/name |
+| `ERR_EXECUTION_FAILED` | Controller threw during execution |
+| `ERR_CONTROLLER_INVALID` | Controller exists but has no `create()` method |
+| `ERR_CONTROLLER_NOT_FOUND` | After all passes, resource kind has no controller |
+| `ERR_INVALID_VALUE` | Schema validation failed on a value |
+
+## 11. Resource URIs
+
+Every resource gets a `metadata.uri` assigned by the Loader:
+
+- **File-based:** `file:///path/to/resources.yaml#Kind.name`
+- **Template-generated:** `http://localhost/template/DefinitionName#Kind.name`
+- **Nested template:** the fragment path grows with each generation level
+
+Additional metadata fields set by the Loader:
 
 ```typescript
-interface ResourceDefinition {
-  kind: "Runtime.Definition";
-  metadata: {
-    name: string; // Definition name
-    resourceKind: string; // The local Kind this module handles (runtime scopes to ModuleName.Kind)
-  };
-  schema: Record<string, any>; // JSON Schema for validation
-  events?: string[]; // Optional: discoverable custom events
+interface ResourceMetadata {
+  name: string;             // user-provided
+  module: string;           // which Runtime.Module owns this resource
+  uri: string;              // loader-assigned absolute URI
+  generationDepth: number;  // 0 = loaded from file; 1+ = template-generated
+  source: string;           // absolute path of the source file
+  [key: string]: any;
 }
 ```
 
-### 10.3 Per-Kind Controllers
+## 12. Debugging and Observability
 
-Definitions can map a Kind to per-runtime controllers:
-
-```yaml
-definitions:
-  - path: "definitions/logic.yaml"
-    controllers:
-      - runtime: "node@>=20 <23"
-        entrypoint: "./controllers/logic.ts"
-      - runtime: "bun@>=1.1"
-        entrypoint: "./controllers/logic.ts"
-  - path: "definitions/javascript.yaml"
-    controllers:
-      - runtime: "node@>=20 <23"
-        entrypoint: "./controllers/javascript.ts"
-```
-
-Controllers may export any of:
-
-```typescript
-export function register(ctx: ControllerContext): void | Promise<void>;
-export function create(
-  resource: RuntimeResource,
-  ctx: ModuleCreateContext,
-): ResourceInstance | null | Promise<ResourceInstance | null>;
-export function execute(name: string, input: any, ctx: any): Promise<any>;
-```
-
-When a controller is defined for a Kind, it is used instead of the module-level entrypoint for that Kind.
-
-### 10.4 Module Discovery and Import
-
-The Runtime supports module imports, allowing modules to depend on other modules.
-When a module imports another module, both are registered separately in the kernel, maintaining isolation between their resource kinds and execution contexts.
-
-## 11. Debugging and Observability
-
-The Voke Runtime provides built-in debugging capabilities useful for testing and runtime introspection.
-
-### 11.1 Event Streaming
-
-Event streaming captures all runtime events to a JSONL file for debugging and testing purposes.
-
-**Enable via CLI:**
+### 12.1 CLI Usage
 
 ```bash
-digly --debug ./runtime.yaml
+voke [--verbose] [--debug] [--snapshot-on-exit] <module.yaml|directory>
 ```
 
-**Output:** Creates `.digly-debug/events.jsonl` with newline-delimited JSON events. Each line contains:
+| Flag | Effect |
+|------|--------|
+| `--verbose` | Log all events to stdout |
+| `--debug` | Stream all events to `.digly-debug/events.jsonl` |
+| `--snapshot-on-exit` | *(reserved; not yet implemented)* |
 
-```typescript
-{
-  timestamp: string;      // ISO-8601 timestamp
-  event: string;          // Event name (e.g., 'Runtime.Started', 'Module.Registered')
-  payload?: any;          // Event-specific data
-  module?: string;        // Optional: module name
-  resource?: string;      // Optional: resource URN
-  kind?: string;          // Optional: resource kind
-  name?: string;          // Optional: resource name
-}
+### 12.2 Event Streaming
+
+When `--debug` is set, every event is written as a JSONL line to `.digly-debug/events.jsonl`:
+
+```json
+{"timestamp":"2026-01-01T00:00:00.000Z","event":"Runtime.Started","payload":{}}
 ```
 
-**Use Cases:**
-
-- **Testing:** Verify that specific events occur in the correct order
-- **Debugging:** Observe runtime execution flow without console logging
-- **Profiling:** Record timestamps to measure execution duration between events
-
-**API Usage:**
+**Programmatic use:**
 
 ```typescript
 const kernel = new Kernel();
 await kernel.enableEventStream("./debug.jsonl");
-
-// Later, read events for testing
+// ...
 const events = await kernel.getEventStream().readAll();
-const startedEvents = await kernel.getEventStream().getEventsByType("Runtime.Started");
+const started = await kernel.getEventStream().getEventsByType("Runtime.Started");
 ```
 
-### 11.2 State Snapshots
+### 12.3 Custom Resource Snapshots
 
-State snapshots capture the current runtime state (registry, resource instances, and custom state) into a YAML file for inspection and debugging.
-
-**Enable via CLI:**
-
-```bash
-digly --snapshot-on-exit ./runtime.yaml
-```
-
-**Output:** Creates `.digly-debug/snapshot.yaml` containing:
-
-```yaml
-timestamp: "2026-02-02T10:30:45.123Z"
-resources:
-  - kind: Http.Server
-    name: myserver
-    metadata:
-      uri: "file:///path/to/resources.yaml#Http.Server.myserver"
-      generationDepth: 0
-    data:
-      port: 8080
-      host: localhost
-    snapshot: # Optional: custom snapshot data from resource instance
-      activeConnections: 42
-      uptime: 3600000
-```
-
-**Resource Organization:**
-
-Snapshots organize resources by `generationDepth` (a depth-first traversal):
-
-- **Depth 0:** Directly loaded resources from YAML files
-- **Depth 1+:** Resources generated from templates or nested generation
-
-This enables understanding resource hierarchy and template-generated resource relationships.
-
-**Custom Resource Snapshots:**
-
-Resource implementations can define a `snapshot()` method to include custom state:
+Resource instances can expose internal state for diagnostics by implementing `snapshot()`:
 
 ```typescript
-export interface ResourceInstance {
-  init?(): void | Promise<void>;
-  teardown?(): void | Promise<void>;
-
-  /**
-   * Optional method for snapshots
-   * Called when taking runtime state snapshots
-   * Should return serializable state specific to this resource
-   */
-  snapshot?(): Record<string, any> | Promise<Record<string, any>>;
-}
-```
-
-**Example implementation:**
-
-```typescript
-const server: ResourceInstance = {
-  async init() {
-    // startup logic
-  },
+const instance: ResourceInstance = {
+  async init(ctx) { /* ... */ },
 
   async snapshot() {
     return {
       activeConnections: this.connections.size,
       uptime: Date.now() - this.startTime,
-      requests: this.requestCount,
     };
   },
 };
 ```
 
-**API Usage:**
+## 13. Implementer Summary
 
-```typescript
-const kernel = new Kernel();
-await kernel.loadFromConfig("./runtime.yaml");
-await kernel.start();
-
-// Take snapshot at any point
-const snapshot = await kernel.takeSnapshot("./runtime-snapshot.yaml");
-
-// Or just get the data without writing to file
-const snapshotData = await kernel.takeSnapshot();
-console.log(snapshotData.resources);
-```
-
-### 11.3 Combining Debug Flags
-
-Multiple debug flags can be combined:
-
-```bash
-digly --verbose --debug --snapshot-on-exit ./runtime.yaml
-```
-
-This enables verbose console logging, event streaming, and creates a final state snapshot on exit.
-
-## 12. The Runtime Manifest (runtime.yaml)
-
-The runtime.yaml file is the entrypoint module manifest used by the Kernel.
-
-### Example runtime.yaml
-
-```yaml
-name: "example"
-version: "1.0.0"
-imports:
-  - "@vokerun/digly-core" # NPM package or local path
-resources:
-  - "path/to/first-manifest.yaml"
-  - "path/to/directory"
-  - "https://example.com/remote-manifest.yaml"
-  - "${{ env.MY_MANIFEST_PATH }}" # Environment variable support via CEL expressions inside brackets
-```
-
-**Source Resolution:** The Runtime implementation maps the import strings to its local loader (e.g., npm install path for Node, dlopen for C/Rust).
-
-**Manifest Loading:** Each module manifest (including `runtime.yaml`) is loaded to determine its resource kinds and dependencies.
-
-**Resources Loading:** The runtime `resources` list is loaded into the registry before modules are started.
+- **Resource key:** `module.Kind.name` — all three parts are required.
+- **Schema-agnostic kernel:** The kernel validates resources against the controller's declared schema but does not interpret field semantics.
+- **Multi-pass initialization:** Up to 10 passes allow modules that register new kinds to be processed before resources of those kinds.
+- **Invocation, not URN dispatch:** Resources call each other via `ctx.invoke(kind, name, ...args)`, not via URN strings.
+- **Hold-based keepalive:** The process exits when all holds are released. Long-lived resources must acquire a hold in `init()` or `run()` and release it in `teardown()`.
+- **CEL-YAML compile step:** Every YAML document is fully compiled before it reaches the kernel. Controllers receive clean, resolved objects — no `$`-directives remain at runtime.

@@ -5,25 +5,29 @@ export { Loader } from "./loader";
 export { ManifestRegistry as Registry } from "./registry";
 export { ResourceURI } from "./resource-uri";
 export { SnapshotSerializer } from "./snapshot-serializer";
-export {
+export type {
     ControllerDefinition,
-    ControllerInstance, ExecContext,
+    ControllerInstance,
+    ExecContext,
     KernelContext,
-    ResourceDefinition, VokeRuntimeError
+    ResourceDefinition,
 } from "./types";
+export { VokeRuntimeError } from "./types";
 export type { Kernel as IKernel } from "./types";
 
 // Template system exports
+export type {
+    TemplateContext,
+    TemplateDefinition,
+    TemplateResourceBlueprint,
+} from "./template-definition";
 export {
     extractDefaultsFromSchema,
     isTemplateDefinition,
-    TemplateContext,
-    TemplateDefinition,
-    TemplateResourceBlueprint
 } from "./template-definition";
 export {
     expandPropertyWithControlFlow,
     expandTemplates,
-    instantiateTemplate
+    instantiateTemplate,
 } from "./template-expander";
 

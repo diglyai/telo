@@ -6,6 +6,7 @@ import * as fs from "fs/promises";
 import * as yaml from "js-yaml";
 import * as path from "path";
 import { promisify } from "util";
+import { compile } from "@vokerun/yaml-cel-templating";
 import { formatAjvErrors, validateRuntimeResource } from "./manifest-schemas";
 import { ResourceURI } from "./resource-uri";
 import { isTemplateDefinition } from "./template-definition";
@@ -37,18 +38,30 @@ export class Loader {
   async loadManifest(runtimeYamlPath: string): Promise<ResourceManifest[]> {
     Loader.ensureProjectRoot(path.dirname(runtimeYamlPath));
     const content = await fs.readFile(runtimeYamlPath, "utf-8");
-    const config = yaml.loadAll(content) as ResourceManifest[];
+    const rawDocs = yaml.loadAll(content);
+    const compileContext = { env: process.env };
 
     const resolved: ResourceManifest[] = [];
-    for (const manifest of config) {
-      const resource: ResourceManifest = {
-        ...manifest,
-        metadata: {
-          ...manifest.metadata,
-          source: runtimeYamlPath,
-        },
-      };
-      resolved.push(await this.resolveControllers(resource));
+    for (const rawDoc of rawDocs) {
+      let compiled: any;
+      try {
+        compiled = compile(rawDoc, { context: compileContext });
+      } catch (error) {
+        throw new Error(
+          `Failed to compile manifest in ${runtimeYamlPath}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+      const compiledDocs = Array.isArray(compiled) ? compiled : [compiled];
+      for (const manifest of compiledDocs) {
+        const resource: ResourceManifest = {
+          ...manifest,
+          metadata: {
+            ...manifest.metadata,
+            source: runtimeYamlPath,
+          },
+        };
+        resolved.push(await this.resolveControllers(resource));
+      }
     }
     return resolved;
   }
@@ -79,27 +92,39 @@ export class Loader {
     const content = await fs.readFile(filePath, "utf-8");
     const documents = yaml.loadAll(content);
     const absolutePath = path.resolve(filePath);
+    const compileContext = { env: process.env };
 
-    for (const doc of documents) {
-      const resource = this.normalizeResource(doc);
-      if (!resource) {
-        continue;
-      }
-      if (!validateRuntimeResource(resource)) {
-        const kind = (resource as any).kind;
-        const name = (resource as any).metadata?.name;
+    for (const rawDoc of documents) {
+      let compiled: any;
+      try {
+        compiled = compile(rawDoc, { context: compileContext });
+      } catch (error) {
         throw new Error(
-          `Resource validation failed for ${kind}.${name}: ${formatAjvErrors(validateRuntimeResource.errors)}`,
+          `Failed to compile manifest in ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
+      const compiledDocs = Array.isArray(compiled) ? compiled : [compiled];
+      for (const doc of compiledDocs) {
+        const resource = this.normalizeResource(doc);
+        if (!resource) {
+          continue;
+        }
+        if (!validateRuntimeResource(resource)) {
+          const kind = (resource as any).kind;
+          const name = (resource as any).metadata?.name;
+          throw new Error(
+            `Resource validation failed for ${kind}.${name}: ${formatAjvErrors(validateRuntimeResource.errors)}`,
+          );
+        }
 
-      // Assign URI based on file source
-      const { kind, name } = resource.metadata;
-      resource.metadata.source = filePath;
-      resource.metadata.uri = ResourceURI.fromFile(absolutePath, kind, name).toString();
-      resource.metadata.generationDepth = 0;
+        // Assign URI based on file source
+        const { kind, name } = resource.metadata;
+        resource.metadata.source = filePath;
+        resource.metadata.uri = ResourceURI.fromFile(absolutePath, kind, name).toString();
+        resource.metadata.generationDepth = 0;
 
-      resources.push(await this.resolveControllers(resource));
+        resources.push(await this.resolveControllers(resource));
+      }
     }
   }
 

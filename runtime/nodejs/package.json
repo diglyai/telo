@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Voke Runtime - A lightweight, polyglot execution host.",
   "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch"
@@ -18,7 +22,8 @@
     "cel-js": "^0.8.2",
     "@sinclair/typebox": "^0.34.48",
     "ajv": "^8.17.1",
-    "@vokerun/sdk": "workspace:*"
+    "@vokerun/sdk": "workspace:*",
+    "@vokerun/yaml-cel-templating": "workspace:*"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",

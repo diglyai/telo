@@ -18,13 +18,5 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"
-  },
-  "digly": {
-    "controllers": [
-      {
-        "engine": "nodejs",
-        "entry": "./dist/writeline-controller.js"
-      }
-    ]
   }
 }

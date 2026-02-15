@@ -3,20 +3,20 @@
 ⚡ Voke
 The open-source runtime for declarative backends.
 
-Voke is a lightning-fast, plugin-driven execution engine (Micro-Kernel) that runs logic defined entirely in YAML manifests. Instead of writing imperative backend code, you define your routes, databases, schemas, and AI workflows as atomic, interconnected files. Voke takes those files and runs them.
+Voke is an execution engine (Micro-Kernel) that runs logic defined entirely in YAML manifests. Instead of writing imperative backend code, you define your routes, databases, schemas, and AI workflows as atomic, interconnected YAML documents. Voke takes those manifests and runs them.
 
-Built to be language-agnostic and infinitely extensible, Voke is the open-source engine that powers DiglyAI.
+Built to be language-agnostic and infinitely extensible, Voke is the open-source engine that powers [DiglyAI](https://digly.ai).
 
 🔮 The Meaning of Voke
 A design manifest sitting on a hard drive is just a dead text file. It has potential, but no pulse.
 
-The name Voke is derived from the Latin root vocare—to call, to invoke, to summon. That is exactly what this runtime does. It acts as the animating force for your architecture. You feed it a directory of static configurations, and Voke summons them into a living, breathing backend system—binding HTTP ports, opening database connection pools, and orchestrating complex workflows.
+The name Voke is derived from the Latin root vocare—to call, to invoke, to summon. That is exactly what this runtime does. It acts as the animating force for your architecture. You feed it with static configurations, and Voke summons them into a living, breathing backend system—binding HTTP ports, opening database connection pools, and orchestrating complex workflows.
 
 You write the spell. Voke casts it.
 
 ```bash
 # Bring your manifests to life
-$ voke ./manifest.yaml
+$ voke ./your-cast.yaml
 
 🚀 Voke Kernel started
 🔌 Loaded Modules: [HttpServer, Postgres, Workflow, AI]
@@ -25,80 +25,76 @@ $ voke ./manifest.yaml
 
 ## Why use Voke?
 
-Zero Lock-in: Your entire backend is just standard YAML, JSON Schema ($ref), and CEL expressions.
+Zero Lock-in: Your entire backend is just standard YAML, JSON Schema and CEL expressions.
 
-Micro-Kernel Architecture: Voke itself knows nothing about HTTP or SQL. Everything is a plugin, meaning you only load exactly what you need.
+Micro-Kernel Architecture: Voke itself knows nothing about HTTP or SQL. Everything is a plugin (module), meaning you only load exactly what you need.
 
-Language Agnostic: Available as a Node.js runtime today, with a shared JSON runtime contract that allows for future Rust or Go implementations without changing your manifests.
+Language Agnostic: Available as a Node.js runtime today, with a shared YAML runtime contract that allows for future Rust or Go implementations without changing your manifests.
 
 ## Example manifest
 
 Here is an example Voke application that defines a simple HTTP API:
 
 ```yaml
-kind: HttpServer.Server
+kind: Http.Server
 metadata:
-  name: ExampleServer
-port: 8000
+  name: Example
+  module: Example
+baseUrl: http://localhost:8844
+port: 8844
+logger: true
+openapi:
+  info:
+    title: Hello server
+    version: 1.0.0
 mounts:
   - path: /v1
     type: Http.Api.HelloApi
 ---
-kind: OpenApi.Spec
-metadata:
-  name: HelloApiSpec
-path: /reference
-apis:
-  - Http.Api.HelloApi
-info:
-  title: Example API
-  version: "${{ example.Version }}"
----
-kind: Data.Type
-metadata:
-  name: HelloQuery
-schema:
-  properties:
-    name:
-      type: string
-      default: "World"
-  required: ["name"]
-  additionalProperties: false
----
-kind: Data.Type
-metadata:
-  name: HelloResponse
-schema:
-  type: object
-  properties:
-    greeting:
-      type: string
-    nice:
-      type: string
-  required: ["greeting", "nice"]
----
 kind: Http.Api
 metadata:
   name: HelloApi
+  module: Example
 routes:
   - request:
       path: /hello
       method: GET
-      query: "#/HelloQuery" # Reference to Data.Type
+      schema:
+        query:
+          type: object
+          properties:
+            name:
+              type: string
+          required: ["name"]
     handler:
-      name: Logic.JavaScript.SayHello
+      kind: JavaScript.Script
+      name: SayHello
       inputs:
         name: "${{ request.query.name }}" # CEL expression
     response:
-      schema:
-        body: "#/HelloResponse" # Reference to Data.Type
       status: 200
-      body:
-        greeting: "${{ result.message }}!"
-        nice: "WOW"
+      statuses:
+        "200":
+          schema:
+            body:
+              type: object
+              properties:
+                greeting:
+                  type: string
+                nice:
+                  type: string
+              required: ["greeting", "nice"]
+              additionalProperties: false
+          headers:
+            Content-Type: application/json
+          body:
+            greeting: "${{ result.message }}!"
+            nice: "WOW"
 ---
 kind: JavaScript.Script
-name: SayHello
+metadata:
+  name: SayHello
+  module: Example
 code: |
   function main({ name }) {
     return {

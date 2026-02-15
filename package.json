@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Voke Runtime: A lightweight, polyglot execution host.",
   "scripts": {
-    "voke": "bun ./runtime/nodejs/bin/voke.ts"
+    "voke": "bun ./cli/nodejs/bin/voke.ts"
   },
   "packageManager": "pnpm@10.28.2"
 }
