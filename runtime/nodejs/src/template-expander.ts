@@ -1,12 +1,12 @@
 import { RuntimeResource } from "@citorun/sdk";
 import { evaluate } from "cel-js";
-import { ResourceURI } from "./resource-uri";
+import { ResourceURI } from "./resource-uri.js";
 import type {
     TemplateContext,
     TemplateDefinition,
     TemplateResourceBlueprint,
-} from "./template-definition";
-import { extractDefaultsFromSchema, isTemplateDefinition } from "./template-definition";
+} from "./template-definition.js";
+import { extractDefaultsFromSchema, isTemplateDefinition } from "./template-definition.js";
 
 const MAX_EXPANSION_DEPTH = 10;
 const TEMPLATE_REGEX = /\$\{\{\s*([^}]+?)\s*\}\}/g;

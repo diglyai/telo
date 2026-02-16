@@ -6,8 +6,15 @@
   "exports": {
     "./job": "./src/job.ts"
   },
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json"
+  },
   "dependencies": {
     "@sinclair/typebox": "^0.34.48",
     "@citorun/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   }
 }

@@ -1,6 +1,6 @@
 import { RuntimeResource } from "@citorun/sdk";
 import * as path from "path";
-import { ControllerInstance, ResourceDefinition } from "./types";
+import { ControllerInstance, ResourceDefinition } from "./types.js";
 
 /**
  * ControllerRegistry: Manages controller loading and dispatch

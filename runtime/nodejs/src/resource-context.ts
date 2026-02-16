@@ -1,10 +1,11 @@
 import { NoopValidator, ResourceContext, RuntimeResource } from "@citorun/sdk";
-import Ajv from "ajv";
-import { expandValue } from "./expressions";
-import { Kernel } from "./kernel";
-import { formatAjvErrors } from "./manifest-schemas";
-import { SchemaValidator } from "./schema-valiator";
-import { CitoRuntimeError } from "./types";
+import AjvModule from "ajv";
+const Ajv = AjvModule.default ?? AjvModule;
+import { expandValue } from "./expressions.js";
+import { Kernel } from "./kernel.js";
+import { formatAjvErrors } from "./manifest-schemas.js";
+import { SchemaValidator } from "./schema-valiator.js";
+import { CitoRuntimeError } from "./types.js";
 
 export class ResourceContextImpl implements ResourceContext {
   constructor(

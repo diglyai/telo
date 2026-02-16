@@ -1,6 +1,6 @@
 import { RuntimeResource } from "@citorun/sdk";
 import { evaluate } from "cel-js";
-import type { ResourceManifest } from "./types";
+import type { ResourceManifest } from "./types.js";
 
 type ResourceId = { kind: string; name: string };
 

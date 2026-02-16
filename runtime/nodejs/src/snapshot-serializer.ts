@@ -2,7 +2,7 @@ import { RuntimeResource } from "@citorun/sdk";
 import * as fs from "fs/promises";
 import * as YAML from "js-yaml";
 import * as path from "path";
-import { ResourceInstance } from "./types";
+import { ResourceInstance } from "./types.js";
 
 export interface SnapshotData {
   timestamp: string;

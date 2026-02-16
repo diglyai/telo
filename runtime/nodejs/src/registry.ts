@@ -1,6 +1,6 @@
 import { RuntimeResource } from "@citorun/sdk";
-import { ResourceURI } from "./resource-uri";
-import { ResourceManifest, CitoRuntimeError } from "./types";
+import { ResourceURI } from "./resource-uri.js";
+import { ResourceManifest, CitoRuntimeError } from "./types.js";
 
 /**
  * Registry: Indexes resources by composite key of Kind and Name

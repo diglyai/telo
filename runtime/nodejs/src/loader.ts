@@ -7,11 +7,11 @@ import * as yaml from "js-yaml";
 import * as path from "path";
 import { promisify } from "util";
 import { compile } from "@citorun/yaml-cel-templating";
-import { formatAjvErrors, validateRuntimeResource } from "./manifest-schemas";
-import { ResourceURI } from "./resource-uri";
-import { isTemplateDefinition } from "./template-definition";
-import { instantiateTemplate } from "./template-expander";
-import { ResourceManifest } from "./types";
+import { formatAjvErrors, validateRuntimeResource } from "./manifest-schemas.js";
+import { ResourceURI } from "./resource-uri.js";
+import { isTemplateDefinition } from "./template-definition.js";
+import { instantiateTemplate } from "./template-expander.js";
+import { ResourceManifest } from "./types.js";
 
 /**
  * Loader: Ingests resolved YAML manifests from disk into memory
@@ -352,6 +352,33 @@ export class Loader {
     return parsed.name;
   }
 
+  private static readonly isBun = typeof (globalThis as any).Bun !== "undefined";
+
+  /**
+   * For Node.js, resolve .ts paths to their compiled .js equivalents in dist/.
+   * Bun can load .ts directly, so it returns the path unchanged.
+   */
+  private async resolveForRuntime(resolvedPath: string, packageRoot: string): Promise<string> {
+    if (Loader.isBun || !resolvedPath.endsWith(".ts")) {
+      return resolvedPath;
+    }
+    // Try dist/ equivalent: src/foo.ts -> dist/foo.js
+    const relative = path.relative(packageRoot, resolvedPath);
+    const distEquivalent = path.resolve(
+      packageRoot,
+      relative.replace(/^src\//, "dist/").replace(/\.ts$/, ".js"),
+    );
+    if (await this.pathExists(distEquivalent)) {
+      return distEquivalent;
+    }
+    // Fallback: same location but .js
+    const jsPath = resolvedPath.replace(/\.ts$/, ".js");
+    if (await this.pathExists(jsPath)) {
+      return jsPath;
+    }
+    return resolvedPath;
+  }
+
   private async resolvePackageEntry(
     packageRoot: string,
     entry: string,
@@ -381,7 +408,7 @@ export class Loader {
     if (exportTarget) {
       const resolved = path.resolve(packageRoot, exportTarget);
       if (await this.pathExists(resolved)) {
-        return resolved;
+        return this.resolveForRuntime(resolved, packageRoot);
       }
       if (!path.extname(resolved)) {
         const withJs = `${resolved}.js`;
@@ -397,7 +424,7 @@ export class Loader {
         if (typeof target === "string") {
           const resolved = path.resolve(packageRoot, target);
           if (await this.pathExists(resolved)) {
-            return resolved;
+            return this.resolveForRuntime(resolved, packageRoot);
           }
           if (!path.extname(resolved)) {
             const withJs = `${resolved}.js`;
@@ -411,7 +438,7 @@ export class Loader {
 
     const directPath = path.resolve(packageRoot, entryValue);
     if (await this.pathExists(directPath)) {
-      return directPath;
+      return this.resolveForRuntime(directPath, packageRoot);
     }
     if (!path.extname(directPath)) {
       const withJs = `${directPath}.js`;

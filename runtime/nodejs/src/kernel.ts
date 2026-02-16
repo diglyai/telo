@@ -1,12 +1,12 @@
 import { ResourceContext, RuntimeEvent, RuntimeResource } from "@citorun/sdk";
 import * as path from "path";
-import { ControllerRegistry } from "./controller-registry";
-import { EventStream } from "./event-stream";
-import { EventBus } from "./events";
-import { evaluateCel, expandValue } from "./expressions";
-import { Loader } from "./loader";
-import { ResourceContextImpl } from "./resource-context";
-import { SchemaValidator } from "./schema-valiator";
+import { ControllerRegistry } from "./controller-registry.js";
+import { EventStream } from "./event-stream.js";
+import { EventBus } from "./events.js";
+import { evaluateCel, expandValue } from "./expressions.js";
+import { Loader } from "./loader.js";
+import { ResourceContextImpl } from "./resource-context.js";
+import { SchemaValidator } from "./schema-valiator.js";
 import {
     CitoRuntimeError,
     ControllerContext,
@@ -14,7 +14,7 @@ import {
     ResourceDefinition,
     ResourceInstance,
     ResourceManifest,
-} from "./types";
+} from "./types.js";
 
 /**
  * Kernel: Central orchestrator managing lifecycle and message bus
@@ -86,9 +86,9 @@ export class Kernel implements IKernel {
     });
     this.controllers.registerController(
       "Runtime.Definition",
-      await import("./controllers/resource-definition/resource-definition-controller"),
+      await import("./controllers/resource-definition/resource-definition-controller.js"),
     );
-    const moduleSchema = await import("./controllers/module/module.json");
+    const moduleSchema = await import("./controllers/module/module.json", { with: { type: "json" } });
     this.controllers.registerDefinition({
       kind: "Runtime.Definition",
       metadata: { name: "Module", resourceKind: "Module", module: "Runtime" },
@@ -96,7 +96,7 @@ export class Kernel implements IKernel {
     });
     this.controllers.registerController(
       "Runtime.Module",
-      await import("./controllers/module/module-controller"),
+      await import("./controllers/module/module-controller.js"),
     );
   }
 
@@ -249,6 +249,7 @@ export class Kernel implements IKernel {
       evaluateCel: (expression: string, context: Record<string, any>) =>
         evaluateCel(expression, context),
       expandValue: (value: any, context: Record<string, any>) => expandValue(value, context),
+      requestExit: (code: number) => this.requestExit(code),
     };
   }
 

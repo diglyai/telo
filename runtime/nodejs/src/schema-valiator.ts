@@ -1,10 +1,11 @@
 import { DataValidator } from "@citorun/sdk";
-import Ajv from "ajv";
-import { formatAjvErrors } from "./manifest-schemas";
-import { CitoRuntimeError } from "./types";
+import AjvModule from "ajv";
+const Ajv = AjvModule.default ?? AjvModule;
+import { formatAjvErrors } from "./manifest-schemas.js";
+import { CitoRuntimeError } from "./types.js";
 
 export class SchemaValidator {
-  private ajv: Ajv;
+  private ajv: InstanceType<typeof Ajv>;
 
   constructor() {
     this.ajv = new Ajv({

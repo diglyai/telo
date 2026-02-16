@@ -1,18 +1,23 @@
 {
   "name": "@citorun/cli",
-  "version": "1.0.0",
+  "version": "0.0.4",
   "description": "Cito CLI - Command-line interface for the Cito runtime.",
   "type": "module",
   "bin": {
     "cito": "./bin/cito.mjs"
   },
-  "main": "./src/cli.ts",
+  "main": "./dist/cli.js",
   "exports": {
-    ".": "./src/cli.ts"
+    ".": "./dist/cli.js"
   },
+  "files": [
+    "bin",
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "prepublishOnly": "tsc"
   },
   "keywords": [
     "cito",

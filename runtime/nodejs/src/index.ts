@@ -1,33 +1,33 @@
-export { ControllerRegistry } from "./controller-registry";
-export { EventStream } from "./event-stream";
-export { Kernel } from "./kernel";
-export { Loader } from "./loader";
-export { ManifestRegistry as Registry } from "./registry";
-export { ResourceURI } from "./resource-uri";
-export { SnapshotSerializer } from "./snapshot-serializer";
+export { ControllerRegistry } from "./controller-registry.js";
+export { EventStream } from "./event-stream.js";
+export { Kernel } from "./kernel.js";
+export { Loader } from "./loader.js";
+export { ManifestRegistry as Registry } from "./registry.js";
+export { ResourceURI } from "./resource-uri.js";
+export { SnapshotSerializer } from "./snapshot-serializer.js";
 export type {
     ControllerDefinition,
     ControllerInstance,
     ExecContext,
     KernelContext,
     ResourceDefinition,
-} from "./types";
-export { CitoRuntimeError } from "./types";
-export type { Kernel as IKernel } from "./types";
+} from "./types.js";
+export { CitoRuntimeError } from "./types.js";
+export type { Kernel as IKernel } from "./types.js";
 
 // Template system exports
 export type {
     TemplateContext,
     TemplateDefinition,
     TemplateResourceBlueprint,
-} from "./template-definition";
+} from "./template-definition.js";
 export {
     extractDefaultsFromSchema,
     isTemplateDefinition,
-} from "./template-definition";
+} from "./template-definition.js";
 export {
     expandPropertyWithControlFlow,
     expandTemplates,
     instantiateTemplate,
-} from "./template-expander";
+} from "./template-expander.js";
 

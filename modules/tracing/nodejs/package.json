@@ -9,7 +9,11 @@
   "dependencies": {
     "@citorun/sdk": "workspace:*"
   },
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json"
+  },
   "devDependencies": {
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   }
 }

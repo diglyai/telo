@@ -5,7 +5,7 @@ import type {
     RuntimeResource,
 } from "@citorun/sdk";
 import * as path from "path";
-import { formatAjvErrors, validateResourceDefinition } from "../../manifest-schemas";
+import { formatAjvErrors, validateResourceDefinition } from "../../manifest-schemas.js";
 
 type ResourceDefinitionResource = RuntimeResource & {
   kind: "Definition";

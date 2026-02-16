@@ -1,5 +1,6 @@
 import { Type } from '@sinclair/typebox';
-import Ajv, { ErrorObject } from 'ajv';
+import AjvModule, { ErrorObject } from 'ajv';
+const Ajv = AjvModule.default ?? AjvModule;
 
 const EntrypointSchema = Type.Object(
   {

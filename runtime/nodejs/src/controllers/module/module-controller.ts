@@ -1,6 +1,6 @@
 import type { ControllerContext, ResourceContext, RuntimeResource } from "@citorun/sdk";
 import * as path from "path";
-import { Loader } from "../../loader";
+import { Loader } from "../../loader.js";
 
 type ModuleResource = RuntimeResource & {
   source?: string;

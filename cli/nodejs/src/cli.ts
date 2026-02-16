@@ -35,7 +35,7 @@ async function run(argv: { path: string; verbose: boolean; debug: boolean; snaps
   try {
     const kernel = new Kernel();
     if (argv.verbose) {
-      kernel.on("*", (event) => {
+      kernel.on("*", (event: any) => {
         log.info(`${event.name}: ${JSON.stringify(event.payload)}`);
       });
     }

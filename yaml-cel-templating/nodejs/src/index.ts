@@ -1,4 +1,5 @@
-import Ajv from 'ajv';
+import AjvModule from 'ajv';
+const Ajv = AjvModule.default ?? AjvModule;
 import { evaluate as evaluateCEL } from 'cel-js';
 
 /**
@@ -411,7 +412,7 @@ function validateAgainstSchema(
 
   if (!validate(data)) {
     const errors = validate.errors
-      ?.map((e) => `${e.instancePath || '/'}: ${e.message}`)
+      ?.map((e: any) => `${e.instancePath || '/'}: ${e.message}`)
       .join('; ');
     throw new Error(`Schema validation failed at "${path}": ${errors}`);
   }
