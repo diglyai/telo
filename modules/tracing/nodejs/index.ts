@@ -3,7 +3,7 @@ import type {
     ModuleCreateContext,
     ResourceInstance,
     RuntimeResource,
-} from "@vokerun/sdk";
+} from "@citorun/sdk";
 import * as fs from "fs/promises";
 import * as path from "path";
 

@@ -1,4 +1,4 @@
-# Voke Runtime
+# Cito Runtime
 
 **Status:** Early prototype. The API surface — including YAML shapes — may change at any time without notice.
 
@@ -8,7 +8,7 @@
 
 ## 1. Core Concepts
 
-The Voke Runtime is a **declarative execution host**. You describe resources in YAML; the runtime loads them, wires up controllers, and keeps the process alive until all work is done.
+The Cito Runtime is a **declarative execution host**. You describe resources in YAML; the runtime loads them, wires up controllers, and keeps the process alive until all work is done.
 
 The runtime performs three functions:
 
@@ -24,13 +24,13 @@ Every YAML document must have `kind` and `metadata.name`. All configuration live
 
 ```typescript
 interface RuntimeResource {
-  kind: string;           // e.g. "Http.Server", "JavaScript.Script"
+  kind: string; // e.g. "Http.Server", "JavaScript.Script"
   metadata: {
-    name: string;         // unique within kind + module
-    module: string;       // which Runtime.Module declared this resource
-    [key: string]: any;   // custom labels or annotations
+    name: string; // unique within kind + module
+    module: string; // which Runtime.Module declared this resource
+    [key: string]: any; // custom labels or annotations
   };
-  [key: string]: any;     // kind-specific configuration fields
+  [key: string]: any; // kind-specific configuration fields
 }
 ```
 
@@ -38,7 +38,7 @@ Multiple YAML documents can live in one file, separated by `---`.
 
 ## 3. CEL-YAML Templating
 
-Before a manifest object is processed, it is compiled by the **CEL-YAML templating engine** (`@vokerun/yaml-cel-templating`). This runs as part of loading — any compilation error halts the boot sequence immediately.
+Before a manifest object is processed, it is compiled by the **CEL-YAML templating engine** (`@citorun/yaml-cel-templating`). This runs as part of loading — any compilation error halts the boot sequence immediately.
 
 The compile step provides `{ env: process.env }` as the initial context, so environment variables are available everywhere:
 
@@ -51,20 +51,20 @@ resources:
 
 Directives are keys that start with `$`. They are evaluated in a fixed priority order within any YAML mapping:
 
-| Directive | Purpose |
-|-----------|---------|
-| `$schema` | Validate parent-scope data against a JSON Schema |
-| `$let` | Define variables scoped to the current object and descendants |
-| `$assert` / `$msg` | Fail with an error if a CEL condition is false |
-| `$if` / `$then` / `$else` | Conditional blocks |
-| `$for` / `$do` | Iterate over a collection |
-| `$include` / `$with` | Include an external YAML file *(not yet implemented)* |
+| Directive                 | Purpose                                                       |
+| ------------------------- | ------------------------------------------------------------- |
+| `$schema`                 | Validate parent-scope data against a JSON Schema              |
+| `$let`                    | Define variables scoped to the current object and descendants |
+| `$assert` / `$msg`        | Fail with an error if a CEL condition is false                |
+| `$if` / `$then` / `$else` | Conditional blocks                                            |
+| `$for` / `$do`            | Iterate over a collection                                     |
+| `$include` / `$with`      | Include an external YAML file _(not yet implemented)_         |
 
 ### 3.2 Interpolation
 
 String values support two equivalent syntaxes:
 
-- `${{ expr }}` — primary syntax used throughout Voke
+- `${{ expr }}` — primary syntax used throughout Cito
 - `${ expr }` — alternate shorthand
 
 When the entire string is a single interpolation, the result preserves the CEL type (integer, boolean, etc.). Mixed strings are coerced to string.
@@ -104,7 +104,7 @@ start()
 It then calls `loader.loadManifest(path)`, which:
 
 1. Reads the file and parses all YAML documents with `yaml.loadAll()`.
-2. Passes each raw document through `compile(doc, { context: { env } })` from `@vokerun/yaml-cel-templating`. All directives (`$let`, `$if`, `$for`, etc.) are evaluated and all interpolations are resolved. **Any compilation error halts boot immediately.**
+2. Passes each raw document through `compile(doc, { context: { env } })` from `@citorun/yaml-cel-templating`. All directives (`$let`, `$if`, `$for`, etc.) are evaluated and all interpolations are resolved. **Any compilation error halts boot immediately.**
 3. Places the compiled manifests into the initialization queue.
 
 `loadDirectory(dir)` works the same way but walks the directory for `*.yaml` / `*.yml` files, additionally running template expansion for `TemplateDefinition` resources (see [Section 8](#8-built-in-templatedefinition)).
@@ -143,6 +143,7 @@ if unhandled is not empty: FAIL boot with list of unresolved resources
 ```
 
 **Key invariants:**
+
 - Schema validation runs before `create()` — a resource with an invalid shape never reaches its controller.
 - Each resource is created and initialized exactly once.
 - `init()` is called immediately after `create()`, before the next resource in the same pass.
@@ -202,7 +203,7 @@ type ResourceInstance = {
 };
 ```
 
-Lifecycle order: `create()` → `init()` → `run()` → *(process alive)* → `teardown()`.
+Lifecycle order: `create()` → `init()` → `run()` → _(process alive)_ → `teardown()`.
 
 ### 5.1 ControllerContext
 
@@ -227,7 +228,7 @@ Passed to `create()` and `init()` — extends `ControllerContext` with resource-
 
 ```typescript
 interface ResourceContext extends ControllerContext {
-  // Invoke another resource
+  // Incito another resource
   invoke(kind: string, name: string, ...args: any[]): Promise<any>;
 
   // Query the registry
@@ -260,7 +261,7 @@ const result = await ctx.invoke("Http.Server", "Example");
 const result = await ctx.invoke("OtherModule.Http.Server", "Example");
 ```
 
-If the target instance doesn't exist or has no `invoke()` method, a `VokeRuntimeError` is thrown.
+If the target instance doesn't exist or has no `invoke()` method, a `CitoRuntimeError` is thrown.
 
 ## 7. Runtime Events
 
@@ -268,15 +269,15 @@ All events are namespaced as `Module.Event` or `Module.Kind.Name.Event`.
 
 ### 7.1 Kernel Lifecycle Events
 
-| Event | When |
-|-------|------|
+| Event                 | When                                      |
+| --------------------- | ----------------------------------------- |
 | `Runtime.Initialized` | All `create()` + `init()` calls completed |
-| `Runtime.Starting` | About to call `run()` on instances |
-| `Runtime.Started` | All `run()` calls completed |
-| `Runtime.Blocked` | Hold count went from 0 → 1 |
-| `Runtime.Unblocked` | Hold count returned to 0 |
-| `Runtime.Stopping` | Teardown phase beginning |
-| `Runtime.Stopped` | Teardown complete; process will exit |
+| `Runtime.Starting`    | About to call `run()` on instances        |
+| `Runtime.Started`     | All `run()` calls completed               |
+| `Runtime.Blocked`     | Hold count went from 0 → 1                |
+| `Runtime.Unblocked`   | Hold count returned to 0                  |
+| `Runtime.Stopping`    | Teardown phase beginning                  |
+| `Runtime.Stopped`     | Teardown complete; process will exit      |
 
 ### 7.2 Resource Events
 
@@ -316,8 +317,8 @@ metadata:
 schema:
   type: object
   properties:
-    name:   { type: string, default: "api" }
-    port:   { type: integer, default: 8080 }
+    name: { type: string, default: "api" }
+    port: { type: integer, default: 8080 }
     regions:
       type: array
       items: { type: string }
@@ -345,14 +346,14 @@ A `Runtime.Module` resource declares a module's imports and resource files:
 ```yaml
 kind: Runtime.Module
 metadata:
-  name: MyApp           # module namespace — propagated as metadata.module on all owned resources
+  name: MyApp # module namespace — propagated as metadata.module on all owned resources
   version: 1.0.0
-imports:                # directories to load as sub-modules (via loadDirectory)
+imports: # directories to load as sub-modules (via loadDirectory)
   - ./my-module
   - ../../shared/http-module
-definitions:            # definition YAML files (Runtime.Definition resources)
+definitions: # definition YAML files (Runtime.Definition resources)
   - definitions/my-type.yaml
-resources:              # resource YAML files
+resources: # resource YAML files
   - resources/config.yaml
   - resources/routes.yaml
 ```
@@ -369,9 +370,9 @@ Modules declare the resource kinds they handle using `Runtime.Definition`:
 kind: Runtime.Definition
 metadata:
   name: HttpServerDefinition
-  resourceKind: Server      # becomes Http.Server when module namespace is Http
+  resourceKind: Server # becomes Http.Server when module namespace is Http
   module: Http
-schema:                     # JSON Schema — validated against each resource before create()
+schema: # JSON Schema — validated against each resource before create()
   type: object
   properties:
     port: { type: integer }
@@ -379,7 +380,7 @@ schema:                     # JSON Schema — validated against each resource be
   required: [port]
 controllers:
   - runtime: "node@>=20"
-    entry: ./controllers/server.js   # relative to this definition file
+    entry: ./controllers/server.js # relative to this definition file
 ```
 
 When a `Runtime.Definition` instance initializes, it dynamically imports the controller module and registers it with the kernel.
@@ -397,16 +398,16 @@ All resulting resources are pushed into the initialization queue and picked up i
 
 ## 10. Error Codes
 
-| Code | Meaning |
-|------|---------|
-| `ERR_RESOURCE_NOT_FOUND` | `invoke()` target does not exist |
-| `ERR_RESOURCE_NOT_INVOKABLE` | Instance has no `invoke()` method |
-| `ERR_MODULE_MISSING` | Kind exists but no controller is registered |
-| `ERR_DUPLICATE_RESOURCE` | Two resources share the same module/kind/name |
-| `ERR_EXECUTION_FAILED` | Controller threw during execution |
-| `ERR_CONTROLLER_INVALID` | Controller exists but has no `create()` method |
-| `ERR_CONTROLLER_NOT_FOUND` | After all passes, resource kind has no controller |
-| `ERR_INVALID_VALUE` | Schema validation failed on a value |
+| Code                         | Meaning                                           |
+| ---------------------------- | ------------------------------------------------- |
+| `ERR_RESOURCE_NOT_FOUND`     | `invoke()` target does not exist                  |
+| `ERR_RESOURCE_NOT_INVOKABLE` | Instance has no `invoke()` method                 |
+| `ERR_MODULE_MISSING`         | Kind exists but no controller is registered       |
+| `ERR_DUPLICATE_RESOURCE`     | Two resources share the same module/kind/name     |
+| `ERR_EXECUTION_FAILED`       | Controller threw during execution                 |
+| `ERR_CONTROLLER_INVALID`     | Controller exists but has no `create()` method    |
+| `ERR_CONTROLLER_NOT_FOUND`   | After all passes, resource kind has no controller |
+| `ERR_INVALID_VALUE`          | Schema validation failed on a value               |
 
 ## 11. Resource URIs
 
@@ -420,11 +421,11 @@ Additional metadata fields set by the Loader:
 
 ```typescript
 interface ResourceMetadata {
-  name: string;             // user-provided
-  module: string;           // which Runtime.Module owns this resource
-  uri: string;              // loader-assigned absolute URI
-  generationDepth: number;  // 0 = loaded from file; 1+ = template-generated
-  source: string;           // absolute path of the source file
+  name: string; // user-provided
+  module: string; // which Runtime.Module owns this resource
+  uri: string; // loader-assigned absolute URI
+  generationDepth: number; // 0 = loaded from file; 1+ = template-generated
+  source: string; // absolute path of the source file
   [key: string]: any;
 }
 ```
@@ -434,21 +435,21 @@ interface ResourceMetadata {
 ### 12.1 CLI Usage
 
 ```bash
-voke [--verbose] [--debug] [--snapshot-on-exit] <module.yaml|directory>
+cito [--verbose] [--debug] [--snapshot-on-exit] <module.yaml|directory>
 ```
 
-| Flag | Effect |
-|------|--------|
-| `--verbose` | Log all events to stdout |
-| `--debug` | Stream all events to `.digly-debug/events.jsonl` |
-| `--snapshot-on-exit` | *(reserved; not yet implemented)* |
+| Flag                 | Effect                                           |
+| -------------------- | ------------------------------------------------ |
+| `--verbose`          | Log all events to stdout                         |
+| `--debug`            | Stream all events to `.digly-debug/events.jsonl` |
+| `--snapshot-on-exit` | _(reserved; not yet implemented)_                |
 
 ### 12.2 Event Streaming
 
 When `--debug` is set, every event is written as a JSONL line to `.digly-debug/events.jsonl`:
 
 ```json
-{"timestamp":"2026-01-01T00:00:00.000Z","event":"Runtime.Started","payload":{}}
+{ "timestamp": "2026-01-01T00:00:00.000Z", "event": "Runtime.Started", "payload": {} }
 ```
 
 **Programmatic use:**
@@ -467,7 +468,9 @@ Resource instances can expose internal state for diagnostics by implementing `sn
 
 ```typescript
 const instance: ResourceInstance = {
-  async init(ctx) { /* ... */ },
+  async init(ctx) {
+    /* ... */
+  },
 
   async snapshot() {
     return {

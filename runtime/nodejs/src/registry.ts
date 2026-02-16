@@ -1,6 +1,6 @@
-import { RuntimeResource } from "@vokerun/sdk";
+import { RuntimeResource } from "@citorun/sdk";
 import { ResourceURI } from "./resource-uri";
-import { ResourceManifest, VokeRuntimeError } from "./types";
+import { ResourceManifest, CitoRuntimeError } from "./types";
 
 /**
  * Registry: Indexes resources by composite key of Kind and Name
@@ -24,7 +24,7 @@ export class ManifestRegistry {
     const kindMap = this.resources.get(kind)!;
 
     if (kindMap.has(name)) {
-      throw new VokeRuntimeError("ERR_DUPLICATE_RESOURCE", `Duplicate resource: ${kind}.${name}`);
+      throw new CitoRuntimeError("ERR_DUPLICATE_RESOURCE", `Duplicate resource: ${kind}.${name}`);
     }
 
     kindMap.set(name, resource);

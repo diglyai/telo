@@ -1,4 +1,4 @@
-import type { ControllerContext, ResourceContext, RuntimeResource } from "@vokerun/sdk";
+import type { ControllerContext, ResourceContext, RuntimeResource } from "@citorun/sdk";
 import * as path from "path";
 import { Loader } from "../../loader";
 

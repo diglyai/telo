@@ -1,5 +1,5 @@
 {
-  "name": "@vokerun/starlark",
+  "name": "@citorun/starlark",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@vokerun/sdk": "workspace:*",
+    "@citorun/sdk": "workspace:*",
     "ajv": "^8.17.1",
     "starlark-webasm": "^1.0.3"
   },

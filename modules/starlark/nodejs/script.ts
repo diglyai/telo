@@ -4,7 +4,7 @@ import type {
     ResourceInstance,
     ResourceManifest,
     RuntimeResource,
-} from "@vokerun/sdk";
+} from "@citorun/sdk";
 import Ajv, { ErrorObject, ValidateFunction } from "ajv";
 import { initialize } from "starlark-webasm";
 

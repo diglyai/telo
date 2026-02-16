@@ -30,7 +30,7 @@ metadata:
 trigger:
   event: Runtime.Started
   once: true
-  filter: 'true'
+  filter: "true"
 steps:
   - name: Step1
     input:

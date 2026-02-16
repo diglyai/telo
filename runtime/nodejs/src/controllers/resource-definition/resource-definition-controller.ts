@@ -3,7 +3,7 @@ import type {
     ResourceContext,
     ResourceInstance,
     RuntimeResource,
-} from "@vokerun/sdk";
+} from "@citorun/sdk";
 import * as path from "path";
 import { formatAjvErrors, validateResourceDefinition } from "../../manifest-schemas";
 

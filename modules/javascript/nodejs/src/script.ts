@@ -4,7 +4,7 @@ import {
     type DataValidator,
     type ResourceContext,
     type RuntimeResource,
-} from "@vokerun/sdk";
+} from "@citorun/sdk";
 
 type JavaScriptResource = RuntimeResource & {
   code?: string;

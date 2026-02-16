@@ -11,7 +11,7 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: "@vokerun/javascript@1.0.0"
+    package: "@citorun/javascript@1.0.0"
     entry: "./script"
   - runtime: nodejs
     registry: local
@@ -42,7 +42,7 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: "@vokerun/javascript@1.0.0"
+    package: "@citorun/javascript@1.0.0"
     entry: "./inline"
   - runtime: nodejs
     registry: local

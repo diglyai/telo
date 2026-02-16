@@ -1,4 +1,4 @@
-import { ResourceContext, RuntimeEvent, RuntimeResource } from "@vokerun/sdk";
+import { ResourceContext, RuntimeEvent, RuntimeResource } from "@citorun/sdk";
 import * as path from "path";
 import { ControllerRegistry } from "./controller-registry";
 import { EventStream } from "./event-stream";
@@ -8,12 +8,12 @@ import { Loader } from "./loader";
 import { ResourceContextImpl } from "./resource-context";
 import { SchemaValidator } from "./schema-valiator";
 import {
+    CitoRuntimeError,
     ControllerContext,
     Kernel as IKernel,
     ResourceDefinition,
     ResourceInstance,
     ResourceManifest,
-    VokeRuntimeError,
 } from "./types";
 
 /**
@@ -329,7 +329,7 @@ export class Kernel implements IKernel {
 
         if (!controller.create) {
           // Controller exists but has no create method, skip
-          throw new VokeRuntimeError(
+          throw new CitoRuntimeError(
             "ERR_CONTROLLER_INVALID",
             `Controller for ${kind} does not implement create method`,
           );
@@ -387,7 +387,7 @@ export class Kernel implements IKernel {
       const unhandledList = Array.from(unhandledResources.entries())
         .map(([resource, error]) => `- ${resource}: ${error}`)
         .join("\n");
-      throw new VokeRuntimeError(
+      throw new CitoRuntimeError(
         "ERR_CONTROLLER_NOT_FOUND",
         `Unable to process resources:\n\n${unhandledList}`,
       );
@@ -403,13 +403,13 @@ export class Kernel implements IKernel {
   //   // Lookup resource
   //   const resource = this.manifests.get(kind, name);
   //   if (!resource) {
-  //     throw new VokeRuntimeError("ERR_RESOURCE_NOT_FOUND", `Resource not found: ${urn}`);
+  //     throw new CitoRuntimeError("ERR_RESOURCE_NOT_FOUND", `Resource not found: ${urn}`);
   //   }
 
   //   // Find controller for this Kind
   //   const controller = await this.controllers.getController(kind);
   //   if (!controller) {
-  //     throw new VokeRuntimeError(
+  //     throw new CitoRuntimeError(
   //       "ERR_CONTROLLER_NOT_FOUND",
   //       `No controller registered for Kind: ${kind}`,
   //     );
@@ -434,7 +434,7 @@ export class Kernel implements IKernel {
   //       urn,
   //       error: error instanceof Error ? error.message : String(error),
   //     });
-  //     throw new VokeRuntimeError(
+  //     throw new CitoRuntimeError(
   //       "ERR_EXECUTION_FAILED",
   //       `Execution failed for ${urn}: ${error instanceof Error ? error.message : String(error)}`,
   //     );
@@ -456,19 +456,19 @@ export class Kernel implements IKernel {
   async invoke(module: string, kind: string, name: string, ...args: any[]): Promise<any> {
     const instance: any = this.getResourceByName(module, kind, name);
     if (!instance) {
-      throw new VokeRuntimeError(
+      throw new CitoRuntimeError(
         "ERR_RESOURCE_NOT_FOUND",
         `Resource not found for invocation: ${module}.${kind}.${name}`,
       );
     }
     if (typeof instance !== "object" || typeof instance["invoke"] !== "function") {
-      throw new VokeRuntimeError(
+      throw new CitoRuntimeError(
         "ERR_RESOURCE_NOT_INVOKABLE",
         `Resource ${kind}.${name} does not have an invoke method`,
       );
     }
     const result = await instance["invoke"](...args);
-    this.emitRuntimeEvent(`${module}.${kind}.${name}.Invoked`, {
+    this.emitRuntimeEvent(`${module}.${kind}.${name}.Incitod`, {
       result,
     });
     return result;

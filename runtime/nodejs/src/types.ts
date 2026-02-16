@@ -5,13 +5,13 @@ import type {
     ResourceManifest,
     RuntimeErrorCode,
     RuntimeResource,
-} from "@vokerun/sdk";
+} from "@citorun/sdk";
 export type {
     ControllerContext,
     ResourceContext,
     ResourceInstance,
     ResourceManifest
-} from "@vokerun/sdk";
+} from "@citorun/sdk";
 
 export interface KernelContext {
   kernel: Kernel;
@@ -74,12 +74,12 @@ export interface Kernel {
   readonly exitCode: number;
 }
 
-export class VokeRuntimeError extends Error {
+export class CitoRuntimeError extends Error {
   constructor(
     public code: RuntimeErrorCode,
     message: string,
   ) {
     super(message);
-    this.name = "VokeRuntimeError";
+    this.name = "CitoRuntimeError";
   }
 }

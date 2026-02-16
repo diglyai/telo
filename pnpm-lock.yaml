@@ -10,7 +10,7 @@ importers:
 
   cli/nodejs:
     dependencies:
-      '@vokerun/runtime':
+      '@citorun/runtime':
         specifier: workspace:*
         version: link:../../runtime/nodejs
       yargs:
@@ -32,7 +32,7 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
-      '@vokerun/sdk':
+      '@citorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
     devDependencies:
@@ -45,7 +45,7 @@ importers:
 
   modules/console/nodejs:
     dependencies:
-      '@vokerun/sdk':
+      '@citorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
     devDependencies:
@@ -61,13 +61,13 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
-      '@vokerun/sdk':
+      '@citorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
 
   modules/flow/nodejs:
     dependencies:
-      '@vokerun/sdk':
+      '@citorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
     devDependencies:
@@ -89,7 +89,7 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
-      '@vokerun/sdk':
+      '@citorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
       ajv:
@@ -117,7 +117,7 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
-      '@vokerun/sdk':
+      '@citorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
       ajv:
@@ -139,13 +139,13 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
-      '@vokerun/sdk':
+      '@citorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
 
   modules/starlark/nodejs:
     dependencies:
-      '@vokerun/sdk':
+      '@citorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
       ajv:
@@ -161,7 +161,7 @@ importers:
 
   modules/tracing/nodejs:
     dependencies:
-      '@vokerun/sdk':
+      '@citorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
     devDependencies:
@@ -174,10 +174,10 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
-      '@vokerun/sdk':
+      '@citorun/sdk':
         specifier: workspace:*
         version: link:../../sdk/nodejs
-      '@vokerun/yaml-cel-templating':
+      '@citorun/yaml-cel-templating':
         specifier: workspace:*
         version: link:../../yaml-cel-templating/nodejs
       ajv:

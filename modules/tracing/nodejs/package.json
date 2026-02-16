@@ -1,5 +1,5 @@
 {
-  "name": "@vokerun/tracing",
+  "name": "@citorun/tracing",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@vokerun/sdk": "workspace:*"
+    "@citorun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0"

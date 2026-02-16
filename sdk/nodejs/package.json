@@ -1,5 +1,5 @@
 {
-  "name": "@vokerun/sdk",
+  "name": "@citorun/sdk",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",

@@ -1,6 +1,6 @@
 # Testing
 
-Tests for Voke manifests and controllers use Voke resources to orchestrate execution and verify outputs. In other words Voke is used to test Voke.
+Tests for Cito manifests and controllers use Cito resources to orchestrate execution and verify outputs. In other words Cito is used to test Cito.
 This allows tests to be defined once for every runtime implementation.
 
 ## Quick Start
@@ -40,7 +40,7 @@ steps:
 Run it:
 
 ```bash
-voke ./tests/test-add.yaml
+cito ./tests/test-add.yaml
 ```
 
 ## Step Types
@@ -282,5 +282,5 @@ kernel.execute("Pipeline.Job.TestCalculator", {})
 ## See Also
 
 - [Examples](../examples/) - Complete working test examples
-- [Runtime Documentation](../runtime/README.md) - How Voke runtime works
+- [Runtime Documentation](../runtime/README.md) - How Cito runtime works
 - [Module Documentation](../modules/README.md) - Module structure and resources

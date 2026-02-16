@@ -1,5 +1,5 @@
+import type { ResourceContext } from "@citorun/sdk";
 import { Static, Type } from "@sinclair/typebox";
-import type { ResourceContext } from "@vokerun/sdk";
 
 export const schema = Type.Object({
   metadata: Type.Record(Type.String(), Type.String()),

@@ -1,6 +1,6 @@
-# Voke Modules
+# Cito Modules
 
-This directory contains Voke modules packaged for use by the runtime. Each module is self‑contained and declared by its own manifest, resources, and definitions.
+This directory contains Cito modules packaged for use by the runtime. Each module is self‑contained and declared by its own manifest, resources, and definitions.
 
 ## How Modules Fit Together
 

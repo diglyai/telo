@@ -9,7 +9,7 @@ mounts:
 kind: Tracing.FileExporter
 metadata:
   name: Traces
-path: ./.voke-debug/traces.ndjson
+path: ./.cito-debug/traces.ndjson
 format: ndjson
 mode: overwrite
 ---

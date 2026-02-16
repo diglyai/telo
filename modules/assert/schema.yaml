@@ -6,7 +6,7 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: "@vokerun/assert@1.0.0"
+    package: "@citorun/assert@1.0.0"
     entry: "./schema"
   - runtime: nodejs
     registry: local

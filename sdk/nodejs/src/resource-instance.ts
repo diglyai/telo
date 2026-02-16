@@ -1,4 +1,4 @@
-import { ResourceContext } from './resource-context.js';
+import { ResourceContext } from "./resource-context.js";
 
 export type ResourceInstance = {
   init?(ctx?: ResourceContext): Promise<void>;

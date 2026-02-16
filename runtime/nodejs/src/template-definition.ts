@@ -1,4 +1,4 @@
-import { RuntimeResource } from "@vokerun/sdk";
+import { RuntimeResource } from "@citorun/sdk";
 
 /**
  * Built-in TemplateDefinition resource type

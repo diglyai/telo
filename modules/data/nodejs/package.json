@@ -1,5 +1,5 @@
 {
-  "name": "@vokerun/data",
+  "name": "@citorun/data",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -8,6 +8,6 @@
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.48",
-    "@vokerun/sdk": "workspace:*"
+    "@citorun/sdk": "workspace:*"
   }
 }

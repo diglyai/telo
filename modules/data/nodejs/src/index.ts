@@ -1,4 +1,4 @@
-import { RuntimeResource } from "@vokerun/sdk";
+import { RuntimeResource } from "@citorun/sdk";
 
 class DataTypeResource implements RuntimeResource {}
 

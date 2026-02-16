@@ -1,7 +1,7 @@
 {
-  "name": "@vokerun/yaml-cel-templating",
+  "name": "@citorun/yaml-cel-templating",
   "version": "1.0.0",
-  "description": "Voke YAML-CEL Templating engine implementation",
+  "description": "Cito YAML-CEL Templating engine implementation",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

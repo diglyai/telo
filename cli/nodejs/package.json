@@ -1,10 +1,10 @@
 {
-  "name": "@vokerun/cli",
+  "name": "@citorun/cli",
   "version": "1.0.0",
-  "description": "Voke CLI - Command-line interface for the Voke runtime.",
+  "description": "Cito CLI - Command-line interface for the Cito runtime.",
   "type": "module",
   "bin": {
-    "voke": "./bin/voke.mjs"
+    "cito": "./bin/cito.mjs"
   },
   "main": "./src/cli.ts",
   "exports": {
@@ -15,12 +15,12 @@
     "dev": "tsc --watch"
   },
   "keywords": [
-    "voke",
+    "cito",
     "cli",
     "runtime"
   ],
   "dependencies": {
-    "@vokerun/runtime": "workspace:*",
+    "@citorun/runtime": "workspace:*",
     "yargs": "^17.7.2"
   },
   "devDependencies": {

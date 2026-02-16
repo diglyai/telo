@@ -12,7 +12,7 @@ export type {
     KernelContext,
     ResourceDefinition,
 } from "./types";
-export { VokeRuntimeError } from "./types";
+export { CitoRuntimeError } from "./types";
 export type { Kernel as IKernel } from "./types";
 
 // Template system exports

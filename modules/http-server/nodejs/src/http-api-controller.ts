@@ -1,5 +1,5 @@
+import { ControllerContext, ResourceContext, ResourceInstance } from "@citorun/sdk";
 import { Static, Type } from "@sinclair/typebox";
-import { ControllerContext, ResourceContext, ResourceInstance } from "@vokerun/sdk";
 import { FastifyInstance } from "fastify";
 
 const HttpApiRouteManifest = Type.Object({

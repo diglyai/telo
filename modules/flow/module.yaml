@@ -6,7 +6,7 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: "@vokerun/flow@1.0.0"
+    package: "@citorun/flow@1.0.0"
     entry: "./flow"
   - runtime: nodejs
     registry: local

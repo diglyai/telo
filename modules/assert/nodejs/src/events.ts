@@ -1,5 +1,5 @@
 import { Static, Type } from "@sinclair/typebox";
-import { ResourceContext } from "@vokerun/sdk";
+import { ResourceContext } from "@citorun/sdk";
 
 const FilterEntry = Type.Object({
   type: Type.String(),

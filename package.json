@@ -1,9 +1,9 @@
 {
-  "name": "@vokerun/monorepo",
+  "name": "@citorun/monorepo",
   "version": "1.0.0",
-  "description": "Voke Runtime: A lightweight, polyglot execution host.",
+  "description": "Cito Runtime: A lightweight, polyglot execution host.",
   "scripts": {
-    "voke": "bun ./cli/nodejs/bin/voke.ts"
+    "cito": "bun ./cli/nodejs/bin/cito.ts"
   },
   "packageManager": "pnpm@10.28.2"
 }

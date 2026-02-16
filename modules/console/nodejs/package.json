@@ -1,5 +1,5 @@
 {
-  "name": "@vokerun/console",
+  "name": "@citorun/console",
   "type": "module",
   "main": "./dist/writeline-controller.js",
   "module": "./dist/writeline-controller.js",
@@ -13,7 +13,7 @@
     "dist/**"
   ],
   "dependencies": {
-    "@vokerun/sdk": "workspace:*"
+    "@citorun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

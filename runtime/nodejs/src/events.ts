@@ -1,4 +1,4 @@
-import { RuntimeEvent } from "@vokerun/sdk";
+import { RuntimeEvent } from "@citorun/sdk";
 
 type EventHandler = (payload?: any) => void | Promise<void>;
 

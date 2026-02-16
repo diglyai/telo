@@ -1,7 +1,7 @@
 {
-  "name": "@vokerun/runtime",
+  "name": "@citorun/runtime",
   "version": "1.0.0",
-  "description": "Voke Runtime - A lightweight, polyglot execution host.",
+  "description": "Cito Runtime - A lightweight, polyglot execution host.",
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
@@ -22,8 +22,8 @@
     "cel-js": "^0.8.2",
     "@sinclair/typebox": "^0.34.48",
     "ajv": "^8.17.1",
-    "@vokerun/sdk": "workspace:*",
-    "@vokerun/yaml-cel-templating": "workspace:*"
+    "@citorun/sdk": "workspace:*",
+    "@citorun/yaml-cel-templating": "workspace:*"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",

@@ -6,7 +6,7 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: "@vokerun/assert@1.0.0"
+    package: "@citorun/assert@1.0.0"
     entry: "./events"
   - runtime: nodejs
     registry: local
@@ -32,7 +32,7 @@ schema:
         properties:
           event:
             type: string
-            description: Event name or wildcard pattern (e.g. "JavaScript.Script.*.Invoked")
+            description: Event name or wildcard pattern (e.g. "JavaScript.Script.*.Incitod")
           payload:
             type: object
             description: Partial payload to match against (only declared fields are checked)

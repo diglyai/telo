@@ -1,7 +1,7 @@
-import { DataValidator } from "@vokerun/sdk";
+import { DataValidator } from "@citorun/sdk";
 import Ajv from "ajv";
 import { formatAjvErrors } from "./manifest-schemas";
-import { VokeRuntimeError } from "./types";
+import { CitoRuntimeError } from "./types";
 
 export class SchemaValidator {
   private ajv: Ajv;
@@ -30,7 +30,7 @@ export class SchemaValidator {
       validate: (data: any) => {
         const isValid = validate(data);
         if (!isValid) {
-          throw new VokeRuntimeError(
+          throw new CitoRuntimeError(
             "ERR_RESOURCE_NOT_FOUND",
             `Invalid value passed: ${JSON.stringify(data)}. Error: ${formatAjvErrors(validate.errors)}`,
           );
