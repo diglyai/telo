@@ -1,6 +1,6 @@
-# Cito SDKs
+# Telo SDKs
 
-This directory hosts language‑specific SDKs for building Cito modules. Each SDK exposes the same conceptual contract (module lifecycle, contexts, and resource execution) while remaining idiomatic to its language ecosystem.
+This directory hosts language‑specific SDKs for building Telo modules. Each SDK exposes the same conceptual contract (module lifecycle, contexts, and resource execution) while remaining idiomatic to its language ecosystem.
 
 ## Available SDKs
 

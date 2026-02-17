@@ -1,4 +1,4 @@
-import { RuntimeResource } from "@citorun/sdk";
+import { RuntimeResource } from "@telorun/sdk";
 import * as fs from "fs/promises";
 import * as YAML from "js-yaml";
 import * as path from "path";

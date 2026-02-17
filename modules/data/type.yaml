@@ -6,7 +6,7 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: "@citorun/data@1.0.0"
+    package: "@telorun/data@1.0.0"
     entry: "./type"
   - runtime: nodejs
     registry: local

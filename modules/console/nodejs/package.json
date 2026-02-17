@@ -1,5 +1,5 @@
 {
-  "name": "@citorun/console",
+  "name": "@telorun/console",
   "type": "module",
   "main": "./dist/writeline-controller.js",
   "module": "./dist/writeline-controller.js",
@@ -13,7 +13,7 @@
     "dist/**"
   ],
   "dependencies": {
-    "@citorun/sdk": "workspace:*"
+    "@telorun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

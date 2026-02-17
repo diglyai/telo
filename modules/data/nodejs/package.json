@@ -1,5 +1,5 @@
 {
-  "name": "@citorun/data",
+  "name": "@telorun/data",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.48",
-    "@citorun/sdk": "workspace:*"
+    "@telorun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

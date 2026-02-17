@@ -3,7 +3,7 @@ import type {
     ResourceContext,
     ResourceInstance,
     ResourceManifest,
-} from "@citorun/sdk";
+} from "@telorun/sdk";
 
 export function register(ctx: ControllerContext): void {}
 

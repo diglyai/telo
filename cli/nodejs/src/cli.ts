@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
+import { Kernel } from "@telorun/runtime";
 import * as fs from "fs/promises";
 import * as path from "path";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { Kernel } from "@citorun/runtime";
 
 function createLogger(verbose: boolean) {
   const useColor = process.stdout.isTTY;
@@ -19,7 +19,12 @@ function createLogger(verbose: boolean) {
   };
 }
 
-async function run(argv: { path: string; verbose: boolean; debug: boolean; snapshotOnExit: boolean }) {
+async function run(argv: {
+  path: string;
+  verbose: boolean;
+  debug: boolean;
+  snapshotOnExit: boolean;
+}) {
   const inputPath = path.resolve(argv.path);
   let inputStat: Awaited<ReturnType<typeof fs.stat>>;
   try {
@@ -41,7 +46,7 @@ async function run(argv: { path: string; verbose: boolean; debug: boolean; snaps
     }
 
     if (argv.debug) {
-      const debugDir = path.join(process.cwd(), ".cito-debug");
+      const debugDir = path.join(process.cwd(), ".telo-debug");
       const eventStreamPath = path.join(debugDir, "events.jsonl");
       await kernel.enableEventStream(eventStreamPath);
       log.info(`Event stream enabled: ${eventStreamPath}`);
@@ -64,11 +69,11 @@ async function run(argv: { path: string; verbose: boolean; debug: boolean; snaps
 }
 
 yargs(hideBin(process.argv))
-  .scriptName("cito")
+  .scriptName("telo")
   .usage("$0 <command> [options]")
   .command(
     ["run <path>", "$0 <path>"],
-    "Run a Cito runtime from a manifest file or directory",
+    "Run a Telo runtime from a manifest file or directory",
     (yargs) =>
       yargs.positional("path", {
         describe: "Path to a runtime.yaml file or directory",

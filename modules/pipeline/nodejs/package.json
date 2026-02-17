@@ -1,5 +1,5 @@
 {
-  "name": "@citorun/pipeline",
+  "name": "@telorun/pipeline",
   "type": "module",
   "main": "./src/job.ts",
   "module": "./src/job.ts",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.48",
-    "@citorun/sdk": "workspace:*"
+    "@telorun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

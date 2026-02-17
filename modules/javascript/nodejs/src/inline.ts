@@ -1,4 +1,4 @@
-import type { ControllerContext, RuntimeResource } from "@citorun/sdk";
+import type { ControllerContext, RuntimeResource } from "@telorun/sdk";
 import type { ErrorObject, ValidateFunction } from "ajv";
 import { Ajv } from "ajv";
 

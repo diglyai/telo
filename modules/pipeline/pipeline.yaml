@@ -6,7 +6,7 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: "@citorun/pipeline@1.0.0"
+    package: "@telorun/pipeline@1.0.0"
     entry: "./job"
   - runtime: nodejs
     registry: local

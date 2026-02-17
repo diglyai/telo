@@ -4,7 +4,7 @@
   "commit": false,
   "fixed": [],
   "linked": [
-    ["@citorun/sdk", "@citorun/runtime", "@citorun/cli"]
+    ["@telorun/sdk", "@telorun/runtime", "@telorun/cli"]
   ],
   "access": "public",
   "baseBranch": "main",

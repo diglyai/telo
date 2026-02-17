@@ -1,5 +1,5 @@
 {
-  "name": "@citorun/flow",
+  "name": "@telorun/flow",
   "type": "module",
   "main": "./src/flow.ts",
   "module": "./src/flow.ts",
@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.lib.json"
   },
   "dependencies": {
-    "@citorun/sdk": "workspace:*"
+    "@telorun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

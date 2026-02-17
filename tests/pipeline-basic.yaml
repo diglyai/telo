@@ -43,9 +43,9 @@ metadata:
 filter:
   - type: "*"
 expect:
-  - event: PipelineBasic.JavaScript.Script.*.Incitod
+  - event: PipelineBasic.JavaScript.Script.*.Invoked
     payload:
       result: 8
-  - event: PipelineBasic.Assert.Schema.*.Incitod
+  - event: PipelineBasic.Assert.Schema.*.Invoked
     payload:
       result: true

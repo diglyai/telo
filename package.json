@@ -1,10 +1,10 @@
 {
-  "name": "@citorun/monorepo",
+  "name": "@telorun/monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "Cito Runtime: A lightweight, polyglot execution host.",
+  "description": "Telo Runtime: A lightweight, polyglot execution host.",
   "scripts": {
-    "cito": "bun ./cli/nodejs/bin/cito.ts",
+    "telo": "bun ./cli/nodejs/bin/telo.ts",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "pnpm -r build && changeset publish"

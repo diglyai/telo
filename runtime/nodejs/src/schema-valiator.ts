@@ -1,8 +1,8 @@
-import { DataValidator } from "@citorun/sdk";
+import { DataValidator } from "@telorun/sdk";
 import AjvModule from "ajv";
-const Ajv = AjvModule.default ?? AjvModule;
 import { formatAjvErrors } from "./manifest-schemas.js";
-import { CitoRuntimeError } from "./types.js";
+import { TeloRuntimeError } from "./types.js";
+const Ajv = AjvModule.default ?? AjvModule;
 
 export class SchemaValidator {
   private ajv: InstanceType<typeof Ajv>;
@@ -31,7 +31,7 @@ export class SchemaValidator {
       validate: (data: any) => {
         const isValid = validate(data);
         if (!isValid) {
-          throw new CitoRuntimeError(
+          throw new TeloRuntimeError(
             "ERR_RESOURCE_NOT_FOUND",
             `Invalid value passed: ${JSON.stringify(data)}. Error: ${formatAjvErrors(validate.errors)}`,
           );

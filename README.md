@@ -1,38 +1,37 @@
-# ⚡ Cito
+# ⚡ Telo
 
 The open-source runtime for declarative backends.
 
-Cito is an execution engine (Micro-Kernel) that runs logic defined entirely in YAML manifests. Instead of writing imperative backend code, you define your routes, databases, schemas, and AI workflows as atomic, interconnected YAML documents. Cito takes those manifests and runs them.
+Telo is an execution engine (Micro-Kernel) that runs logic defined entirely in YAML manifests. Instead of writing imperative backend code, you define your routes, databases, schemas, and AI workflows as atomic, interconnected YAML documents. Telo takes those manifests and runs them.
 
-Built to be language-agnostic and infinitely extensible, Cito is the open-source engine that powers [DiglyAI](https://digly.ai).
+Built to be language-agnostic and infinitely extensible, Telo is the open-source engine that powers [DiglyAI](https://digly.ai).
 
-🔮 The Meaning of Cito
-A design manifest sitting on a hard drive is just a dead text file. It has potential, but no pulse.
+🔮 The Meaning of Telo
 
-The name Cito comes from Latin, meaning to put into quick motion, to rouse, or to summon swiftly. That is exactly what this runtime does. It acts as the animating force for your architecture. You feed it static configurations, and Cito jolts them into a living, breathing backend system—binding HTTP ports, opening database connection pools, and orchestrating complex workflows.
+The name Telo is derived from the Greek root Telos - meaning the "end goal", "purpose", or "final state". That is exactly the philosophy behind this runtime. In standard imperative programming, you have to write thousands of lines of code to tell a server exactly how to start. With Telo, you simply declare your desired final state.
 
-You write the blueprint. Cito starts the engine.
+You define the end state. Telo makes it real.
 
 ```bash
-# Put your manifests into motion
-$ cito ./module.yaml
+# Reconcile your manifest into a running backend
+$ telo ./module.yaml
 
-🚀 Cito started
+🚀 Telo started
 🔌 Loaded Modules: HttpServer, Postgres, Workflow, AI
 📡 Listening on http://localhost:3000
 ```
 
-## Why use Cito?
+## Why use Telo?
 
 Zero Lock-in: Your entire backend is just standard YAML, JSON Schema and CEL expressions.
 
-Micro-Kernel Architecture: Cito itself knows nothing about HTTP or SQL. Everything is a plugin (module), meaning you only load exactly what you need.
+Micro-Kernel Architecture: Telo itself knows nothing about HTTP or SQL. Everything is a plugin (module), meaning you only load exactly what you need.
 
 Language Agnostic: Available as a Node.js runtime today, with a shared YAML runtime contract that allows for future Rust or Go implementations without changing your manifests.
 
 ## Example manifest
 
-Here is an example Cito application that defines a simple HTTP API:
+Here is an example Telo application that defines a simple HTTP API:
 
 ```yaml
 kind: Http.Server
@@ -146,21 +145,21 @@ See [TEMPLATES.md](./runtime/TEMPLATES.md) for comprehensive documentation.
 
 ## Status
 
-This repository is an **early prototype** of the Cito runtime and specs. It is intended for exploration, feedback, and shaping the architecture rather than production use. The API surface - including YAML shapes - may change at any time without notice.
+This repository is an **early prototype** of the Telo runtime and specs. It is intended for exploration, feedback, and shaping the architecture rather than production use. The API surface - including YAML shapes - may change at any time without notice.
 
 ## Why
 
-Modern platforms often spend disproportionate effort on technical mechanics-wiring frameworks, managing infrastructure, and negotiating toolchains-while the original business problem gets delayed or diluted. Cito Runtime pushes in the opposite direction: it treats runtime execution as a stable, predictable host so teams can concentrate on the **business logic and outcomes** instead of the plumbing.
+Modern platforms often spend disproportionate effort on technical mechanics-wiring frameworks, managing infrastructure, and negotiating toolchains-while the original business problem gets delayed or diluted. Telo Runtime pushes in the opposite direction: it treats runtime execution as a stable, predictable host so teams can concentrate on the **business logic and outcomes** instead of the plumbing.
 
 By separating "what the system should do" from "how it is hosted", the runtime reduces friction for domain‑level changes. Teams can move faster on product requirements, experiment more safely, and keep conversations centered on value delivered rather than implementation trivia.
 
-Cito also aims to **join forces across all programming language communities**, so the best ideas, patterns, and implementations can converge into a shared runtime truth without forcing everyone into a single stack.
+Telo also aims to **join forces across all programming language communities**, so the best ideas, patterns, and implementations can converge into a shared runtime truth without forcing everyone into a single stack.
 
 YAML also makes the system more **AI‑friendly** than traditional programming languages: it is explicit, structured, and easier for tools to generate, review, and transform without losing intent.
 
 ## Modularity
 
-Cito Runtime is built around **modules** that own specific resource kinds. A module is loaded from a manifest, declares which kinds it implements, and then receives only the resources of those kinds. This keeps concerns isolated and lets teams compose systems from focused building blocks rather than monolithic services.
+Telo Runtime is built around **modules** that own specific resource kinds. A module is loaded from a manifest, declares which kinds it implements, and then receives only the resources of those kinds. This keeps concerns isolated and lets teams compose systems from focused building blocks rather than monolithic services.
 
 At runtime, execution is always routed by **Kind.Name**. The kernel resolves the Kind to its owning module and hands off execution. Modules can call back into the kernel to execute other resources, enabling composition without tight coupling.
 
@@ -175,9 +174,9 @@ Implementation details, loading rules, and the runtime manifest specification li
 
 ## See more at
 
-- [Cito Runtime](./runtime/README.md)
+- [Telo Runtime](./runtime/README.md)
 - [Template System](./yaml-cel-templating//README.md)
-- [Cito SDK for module authors](sdk/README.md)
+- [Telo SDK for module authors](sdk/README.md)
 - [Modules](modules/README.md)
   - [HttpServer](modules/http-server/README.md)
 

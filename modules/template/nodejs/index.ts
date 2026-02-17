@@ -1,5 +1,5 @@
-import type { ModuleCreateContext, ResourceInstance, RuntimeResource } from "@citorun/sdk";
-import { ControllerContext } from "@citorun/sdk";
+import type { ModuleCreateContext, ResourceInstance, RuntimeResource } from "@telorun/sdk";
+import { ControllerContext } from "@telorun/sdk";
 
 type TemplateParameter = {
   name: string;

@@ -1,5 +1,5 @@
 {
-  "name": "@citorun/tracing",
+  "name": "@telorun/tracing",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@citorun/sdk": "workspace:*"
+    "@telorun/sdk": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json"

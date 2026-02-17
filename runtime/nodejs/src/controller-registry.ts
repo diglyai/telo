@@ -1,4 +1,4 @@
-import { RuntimeResource } from "@citorun/sdk";
+import { RuntimeResource } from "@telorun/sdk";
 import * as path from "path";
 import { ControllerInstance, ResourceDefinition } from "./types.js";
 

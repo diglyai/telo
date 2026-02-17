@@ -1,11 +1,11 @@
-import { NoopValidator, ResourceContext, RuntimeResource } from "@citorun/sdk";
+import { NoopValidator, ResourceContext, RuntimeResource } from "@telorun/sdk";
 import AjvModule from "ajv";
-const Ajv = AjvModule.default ?? AjvModule;
 import { expandValue } from "./expressions.js";
 import { Kernel } from "./kernel.js";
 import { formatAjvErrors } from "./manifest-schemas.js";
 import { SchemaValidator } from "./schema-valiator.js";
-import { CitoRuntimeError } from "./types.js";
+import { TeloRuntimeError } from "./types.js";
+const Ajv = AjvModule.default ?? AjvModule;
 
 export class ResourceContextImpl implements ResourceContext {
   constructor(
@@ -35,7 +35,7 @@ export class ResourceContextImpl implements ResourceContext {
     );
     const isValid = validate(value);
     if (!isValid) {
-      throw new CitoRuntimeError(
+      throw new TeloRuntimeError(
         "ERR_INVALID_VALUE",
         `Invalid value passed: ${JSON.stringify(value)}. Error: ${formatAjvErrors(validate.errors)}`,
       );

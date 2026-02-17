@@ -1,6 +1,6 @@
-# Cito Modules
+# Telo Modules
 
-This directory contains Cito modules packaged for use by the runtime. Each module is self‑contained and declared by its own manifest, resources, and definitions.
+This directory contains Telo modules packaged for use by the runtime. Each module is self‑contained and declared by its own manifest, resources, and definitions.
 
 ## How Modules Fit Together
 

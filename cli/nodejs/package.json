@@ -1,10 +1,10 @@
 {
-  "name": "@citorun/cli",
+  "name": "@telorun/cli",
   "version": "0.0.4",
-  "description": "Cito CLI - Command-line interface for the Cito runtime.",
+  "description": "Telo CLI - Command-line interface for the Telo runtime.",
   "type": "module",
   "bin": {
-    "cito": "./bin/cito.mjs"
+    "telo": "./bin/telo.mjs"
   },
   "main": "./dist/cli.js",
   "exports": {
@@ -20,12 +20,12 @@
     "prepublishOnly": "tsc"
   },
   "keywords": [
-    "cito",
+    "telo",
     "cli",
     "runtime"
   ],
   "dependencies": {
-    "@citorun/runtime": "workspace:*",
+    "@telorun/runtime": "workspace:*",
     "yargs": "^17.7.2"
   },
   "devDependencies": {

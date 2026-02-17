@@ -1,4 +1,4 @@
-import { RuntimeResource } from "@citorun/sdk";
+import { RuntimeResource } from "@telorun/sdk";
 import { evaluate } from "cel-js";
 import { ResourceURI } from "./resource-uri.js";
 import type {

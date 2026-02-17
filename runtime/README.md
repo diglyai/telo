@@ -1,4 +1,4 @@
-# Cito Runtime
+# Telo Runtime
 
 **Status:** Early prototype. The API surface — including YAML shapes — may change at any time without notice.
 
@@ -8,7 +8,7 @@
 
 ## 1. Core Concepts
 
-The Cito Runtime is a **declarative execution host**. You describe resources in YAML; the runtime loads them, wires up controllers, and keeps the process alive until all work is done.
+The Telo Runtime is a **declarative execution host**. You describe resources in YAML; the runtime loads them, wires up controllers, and keeps the process alive until all work is done.
 
 The runtime performs three functions:
 
@@ -38,7 +38,7 @@ Multiple YAML documents can live in one file, separated by `---`.
 
 ## 3. CEL-YAML Templating
 
-Before a manifest object is processed, it is compiled by the **CEL-YAML templating engine** (`@citorun/yaml-cel-templating`). This runs as part of loading — any compilation error halts the boot sequence immediately.
+Before a manifest object is processed, it is compiled by the **CEL-YAML templating engine** (`@telorun/yaml-cel-templating`). This runs as part of loading — any compilation error halts the boot sequence immediately.
 
 The compile step provides `{ env: process.env }` as the initial context, so environment variables are available everywhere:
 
@@ -64,7 +64,7 @@ Directives are keys that start with `$`. They are evaluated in a fixed priority 
 
 String values support two equivalent syntaxes:
 
-- `${{ expr }}` — primary syntax used throughout Cito
+- `${{ expr }}` — primary syntax used throughout Telo
 - `${ expr }` — alternate shorthand
 
 When the entire string is a single interpolation, the result preserves the CEL type (integer, boolean, etc.). Mixed strings are coerced to string.
@@ -104,7 +104,7 @@ start()
 It then calls `loader.loadManifest(path)`, which:
 
 1. Reads the file and parses all YAML documents with `yaml.loadAll()`.
-2. Passes each raw document through `compile(doc, { context: { env } })` from `@citorun/yaml-cel-templating`. All directives (`$let`, `$if`, `$for`, etc.) are evaluated and all interpolations are resolved. **Any compilation error halts boot immediately.**
+2. Passes each raw document through `compile(doc, { context: { env } })` from `@telorun/yaml-cel-templating`. All directives (`$let`, `$if`, `$for`, etc.) are evaluated and all interpolations are resolved. **Any compilation error halts boot immediately.**
 3. Places the compiled manifests into the initialization queue.
 
 `loadDirectory(dir)` works the same way but walks the directory for `*.yaml` / `*.yml` files, additionally running template expansion for `TemplateDefinition` resources (see [Section 8](#8-built-in-templatedefinition)).
@@ -228,7 +228,7 @@ Passed to `create()` and `init()` — extends `ControllerContext` with resource-
 
 ```typescript
 interface ResourceContext extends ControllerContext {
-  // Incito another resource
+  // Intelo another resource
   invoke(kind: string, name: string, ...args: any[]): Promise<any>;
 
   // Query the registry
@@ -261,7 +261,7 @@ const result = await ctx.invoke("Http.Server", "Example");
 const result = await ctx.invoke("OtherModule.Http.Server", "Example");
 ```
 
-If the target instance doesn't exist or has no `invoke()` method, a `CitoRuntimeError` is thrown.
+If the target instance doesn't exist or has no `invoke()` method, a `TeloRuntimeError` is thrown.
 
 ## 7. Runtime Events
 
@@ -435,7 +435,7 @@ interface ResourceMetadata {
 ### 12.1 CLI Usage
 
 ```bash
-cito [--verbose] [--debug] [--snapshot-on-exit] <module.yaml|directory>
+telo [--verbose] [--debug] [--snapshot-on-exit] <module.yaml|directory>
 ```
 
 | Flag                 | Effect                                           |

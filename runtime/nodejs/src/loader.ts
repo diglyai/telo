@@ -1,4 +1,4 @@
-import { RuntimeResource } from "@citorun/sdk";
+import { RuntimeResource } from "@telorun/sdk";
 import { evaluate } from "cel-js";
 import { execFile } from "child_process";
 import { createHash } from "crypto";
@@ -6,7 +6,7 @@ import * as fs from "fs/promises";
 import * as yaml from "js-yaml";
 import * as path from "path";
 import { promisify } from "util";
-import { compile } from "@citorun/yaml-cel-templating";
+import { compile } from "@telorun/yaml-cel-templating";
 import { formatAjvErrors, validateRuntimeResource } from "./manifest-schemas.js";
 import { ResourceURI } from "./resource-uri.js";
 import { isTemplateDefinition } from "./template-definition.js";

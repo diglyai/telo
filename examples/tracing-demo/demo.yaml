@@ -9,7 +9,7 @@ mounts:
 kind: Tracing.FileExporter
 metadata:
   name: Traces
-path: ./.cito-debug/traces.ndjson
+path: ./.telo-debug/traces.ndjson
 format: ndjson
 mode: overwrite
 ---

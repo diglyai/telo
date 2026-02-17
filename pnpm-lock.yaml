@@ -14,7 +14,7 @@ importers:
 
   cli/nodejs:
     dependencies:
-      '@citorun/runtime':
+      '@telorun/runtime':
         specifier: workspace:*
         version: link:../../runtime/nodejs
       yargs:
@@ -33,12 +33,12 @@ importers:
 
   modules/assert/nodejs:
     dependencies:
-      '@citorun/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/nodejs
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
+      '@telorun/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -49,7 +49,7 @@ importers:
 
   modules/console/nodejs:
     dependencies:
-      '@citorun/sdk':
+      '@telorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
     devDependencies:
@@ -62,12 +62,12 @@ importers:
 
   modules/data/nodejs:
     dependencies:
-      '@citorun/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/nodejs
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
+      '@telorun/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -78,7 +78,7 @@ importers:
 
   modules/flow/nodejs:
     dependencies:
-      '@citorun/sdk':
+      '@telorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
     devDependencies:
@@ -91,9 +91,6 @@ importers:
 
   modules/http-server/nodejs:
     dependencies:
-      '@citorun/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/nodejs
       '@fastify/swagger':
         specifier: ^9.6.1
         version: 9.6.1
@@ -103,6 +100,9 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
+      '@telorun/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -119,9 +119,6 @@ importers:
 
   modules/javascript/nodejs:
     dependencies:
-      '@citorun/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/nodejs
       '@fastify/swagger':
         specifier: ^9.6.1
         version: 9.6.1
@@ -131,6 +128,9 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
+      '@telorun/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -147,12 +147,12 @@ importers:
 
   modules/pipeline/nodejs:
     dependencies:
-      '@citorun/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/nodejs
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
+      '@telorun/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -163,7 +163,7 @@ importers:
 
   modules/starlark/nodejs:
     dependencies:
-      '@citorun/sdk':
+      '@telorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
       ajv:
@@ -176,13 +176,10 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.30
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
 
   modules/tracing/nodejs:
     dependencies:
-      '@citorun/sdk':
+      '@telorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
     devDependencies:
@@ -195,15 +192,15 @@ importers:
 
   runtime/nodejs:
     dependencies:
-      '@citorun/sdk':
-        specifier: workspace:*
-        version: link:../../sdk/nodejs
-      '@citorun/yaml-cel-templating':
-        specifier: workspace:*
-        version: link:../../yaml-cel-templating/nodejs
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
+      '@telorun/sdk':
+        specifier: workspace:*
+        version: link:../../sdk/nodejs
+      '@telorun/yaml-cel-templating':
+        specifier: workspace:*
+        version: link:../../yaml-cel-templating/nodejs
       ajv:
         specifier: ^8.17.1
         version: 8.17.1

@@ -11,7 +11,7 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: "@citorun/console@1.0.0"
+    package: "@telorun/console@1.0.0"
     entry: "./writeline"
   - runtime: nodejs
     registry: local

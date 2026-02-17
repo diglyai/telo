@@ -1,4 +1,4 @@
-import type { ResourceContext } from "@citorun/sdk";
+import type { ResourceContext } from "@telorun/sdk";
 
 interface Flow {
   metadata: {

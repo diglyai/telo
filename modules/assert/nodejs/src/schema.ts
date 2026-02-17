@@ -1,4 +1,4 @@
-import { ResourceContext } from "@citorun/sdk";
+import { ResourceContext } from "@telorun/sdk";
 import { Static, Type } from "@sinclair/typebox";
 
 export const schema = Type.Object(

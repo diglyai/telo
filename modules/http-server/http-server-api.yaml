@@ -6,7 +6,7 @@ metadata:
 controllers:
   - runtime: nodejs
     registry: npm
-    package: "@citorun/http-server@1.0.0"
+    package: "@telorun/http-server@1.0.0"
     entry: "./http-server-api"
   - runtime: nodejs
     registry: local

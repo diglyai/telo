@@ -1,7 +1,7 @@
 {
-  "name": "@citorun/runtime",
+  "name": "@telorun/runtime",
   "version": "0.0.2",
-  "description": "Cito Runtime - A lightweight, polyglot execution host.",
+  "description": "Telo Runtime - A lightweight, polyglot execution host.",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
@@ -31,8 +31,8 @@
     "cel-js": "^0.8.2",
     "@sinclair/typebox": "^0.34.48",
     "ajv": "^8.17.1",
-    "@citorun/sdk": "workspace:*",
-    "@citorun/yaml-cel-templating": "workspace:*"
+    "@telorun/sdk": "workspace:*",
+    "@telorun/yaml-cel-templating": "workspace:*"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",

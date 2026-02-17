@@ -1,5 +1,5 @@
 {
-  "name": "@citorun/assert",
+  "name": "@telorun/assert",
   "type": "module",
   "exports": {
     "./schema": "./src/schema.ts",
@@ -13,7 +13,7 @@
   ],
   "dependencies": {
     "@sinclair/typebox": "^0.34.48",
-    "@citorun/sdk": "workspace:*"
+    "@telorun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

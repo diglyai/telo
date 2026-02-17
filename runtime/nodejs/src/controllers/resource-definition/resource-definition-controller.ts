@@ -3,7 +3,7 @@ import type {
     ResourceContext,
     ResourceInstance,
     RuntimeResource,
-} from "@citorun/sdk";
+} from "@telorun/sdk";
 import * as path from "path";
 import { formatAjvErrors, validateResourceDefinition } from "../../manifest-schemas.js";
 

@@ -5,13 +5,13 @@ import type {
     ResourceManifest,
     RuntimeErrorCode,
     RuntimeResource,
-} from "@citorun/sdk";
+} from "@telorun/sdk";
 export type {
     ControllerContext,
     ResourceContext,
     ResourceInstance,
     ResourceManifest
-} from "@citorun/sdk";
+} from "@telorun/sdk";
 
 export interface KernelContext {
   kernel: Kernel;
@@ -74,12 +74,12 @@ export interface Kernel {
   readonly exitCode: number;
 }
 
-export class CitoRuntimeError extends Error {
+export class TeloRuntimeError extends Error {
   constructor(
     public code: RuntimeErrorCode,
     message: string,
   ) {
     super(message);
-    this.name = "CitoRuntimeError";
+    this.name = "TeloRuntimeError";
   }
 }

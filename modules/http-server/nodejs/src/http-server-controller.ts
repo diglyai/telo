@@ -1,6 +1,6 @@
 import swagger from "@fastify/swagger";
 import apiReference from "@scalar/fastify-api-reference";
-import type { ResourceContext, ResourceInstance, RuntimeResource } from "@citorun/sdk";
+import type { ResourceContext, ResourceInstance, RuntimeResource } from "@telorun/sdk";
 import Fastify, { FastifyInstance } from "fastify";
 import { HttpServerApi } from "./http-api-controller.js";
 

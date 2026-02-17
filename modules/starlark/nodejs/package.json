@@ -1,5 +1,5 @@
 {
-  "name": "@citorun/starlark",
+  "name": "@telorun/starlark",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -7,15 +7,11 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@citorun/sdk": "workspace:*",
+    "@telorun/sdk": "workspace:*",
     "ajv": "^8.17.1",
     "starlark-webasm": "^1.0.3"
   },
-  "scripts": {
-    "build": "tsc -p tsconfig.lib.json"
-  },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^20.0.0"
   }
 }

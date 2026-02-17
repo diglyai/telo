@@ -1,4 +1,4 @@
-import { RuntimeEvent } from "@citorun/sdk";
+import { RuntimeEvent } from "@telorun/sdk";
 
 type EventHandler = (payload?: any) => void | Promise<void>;
 

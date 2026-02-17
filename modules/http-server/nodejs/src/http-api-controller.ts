@@ -1,4 +1,4 @@
-import { ControllerContext, ResourceContext, ResourceInstance } from "@citorun/sdk";
+import { ControllerContext, ResourceContext, ResourceInstance } from "@telorun/sdk";
 import { Static, Type } from "@sinclair/typebox";
 import { FastifyInstance } from "fastify";
 
