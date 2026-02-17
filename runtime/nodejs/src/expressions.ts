@@ -167,17 +167,6 @@ function resolveValue(
       continue;
     }
 
-    // Skip 'resources' and 'schema' fields for TemplateDefinition
-    // These contain template variables that should only be resolved during instantiation
-    if (
-      options?.isRoot &&
-      id.kind === "TemplateDefinition" &&
-      (key === "resources" || key === "schema")
-    ) {
-      resolved[key] = entry;
-      continue;
-    }
-
     const result = resolveValue(entry, context, id);
     resolved[key] = result.value;
     if (result.updated) {

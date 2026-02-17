@@ -1,0 +1,124 @@
+kind: Runtime.Module
+metadata:
+  name: TemplatingBasics
+  version: 1.0.0
+imports:
+  - ../../modules/template
+  - ../../modules/http-server
+  - ../../modules/data
+  - ../../modules/javascript
+---
+kind: Template.Definition
+metadata:
+  name: TemplatedServer
+  module: TemplatingBasics
+schema:
+  port: { type: number }
+  title: { type: string }
+  version: { type: string }
+  mount:
+    type: array
+    items:
+      type: object
+      properties:
+        path: { type: string }
+        type: { type: string }
+templatedResources:
+  - kind: Http.Server
+    baseUrl: http://localhost:${{ port }}
+    port: "${{ port }}"
+    logger: true
+    openapi:
+      info:
+        title: "${{ title }}"
+        version: "${{ version }}"
+    mounts:
+      - for: "m in mount"
+        do:
+          path: "${{ m.path }}"
+          type: "${{ m.type }}"
+      - path: /hello
+        type: Http.Api.HelloApi
+  - kind: Http.Api
+    metadata:
+      name: HelloApi
+    routes:
+      - request:
+          path: /hello
+          method: GET
+          schema:
+            query:
+              type: object
+              properties:
+                name:
+                  type: string
+              required: ["name"]
+        handler:
+          kind: JavaScript.Script
+          name: SayHello
+          inputs:
+            name: "${{ request.query.name }}" # CEL expression
+        response:
+          status: 200
+          statuses:
+            "200":
+              schema:
+                body:
+                  type: object
+                  properties:
+                    greeting:
+                      type: string
+                    nice:
+                      type: string
+                  required: ["greeting", "nice"]
+                  additionalProperties: false
+              headers:
+                Content-Type: application/json
+              body:
+                greeting: "${{ result.message }}!"
+                nice: "WOW"
+  - kind: JavaScript.Script
+    metadata:
+      name: SayHello
+      module: Example
+    code: |
+      function main({ name }) {
+        return {
+          message: `Hello ${name}!`,
+        }
+      };
+    inputSchema:
+      name:
+        type: string
+    outputSchema:
+      message:
+        type: string
+---
+# Example usage
+kind: TemplatingBasics.TemplatedServer
+metadata:
+  name: MyServer
+  module: TemplatingBasics
+port: 4444
+title: "Templating Basics"
+version: "1.0.0"
+mount:
+  - path: /status
+    type: Http.Api.StatusApi
+---
+kind: Http.Api
+metadata:
+  name: StatusApi
+  module: TemplatingBasics
+routes:
+  - request:
+      path: /status
+      method: GET
+    response:
+      status: 200
+      statuses:
+        "200":
+          headers:
+            Content-Type: application/json
+          body:
+            status: "ok"

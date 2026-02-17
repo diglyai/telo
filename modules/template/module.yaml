@@ -1,6 +1,35 @@
 kind: Runtime.Module
 metadata:
   name: Template
-  version: '1.0.0'
-definitions:
-  - 'template.yaml'
+  version: "1.0.0"
+---
+kind: Runtime.Definition
+metadata:
+  name: TemplateDefinition
+  resourceKind: Definition
+  module: Template
+controllers:
+  - runtime: nodejs
+    registry: npm
+    package: "@telorun/template@1.0.0"
+    entry: "./template"
+  - runtime: nodejs
+    registry: local
+    package: "./nodejs"
+    entry: "./template"
+schema:
+  type: object
+  properties:
+    metadata:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+    schema:
+      type: object
+    templatedResources:
+      type: array
+      items:
+        type: object
+  required: [metadata, templatedResources]

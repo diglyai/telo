@@ -15,11 +15,11 @@ const HttpApiRouteManifest = Type.Object({
       }),
     ),
   }),
-  handler: Type.Object({
+  handler: Type.Optional(Type.Object({
     kind: Type.String(),
     name: Type.String(),
     inputs: Type.Optional(Type.Any()),
-  }),
+  })),
   response: Type.Object({
     status: Type.Union([Type.Number({ minimum: 100, maximum: 599 }), Type.String()]),
     statuses: Type.Record(
@@ -76,7 +76,7 @@ export class HttpServerApi implements ResourceInstance {
   }
 
   private registerRoute(app: FastifyInstance, route: HttpApiRouteManifest) {
-    const handler = resolveHandlerName(route.handler);
+    const handler = route.handler ? resolveHandlerName(route.handler) : null;
     const schema: any = {};
     if (route.request.schema?.query) {
       schema.querystring = route.request.schema?.query;
@@ -125,11 +125,13 @@ export class HttpServerApi implements ResourceInstance {
           url: request.url,
         };
         // validateRequestSchemas(route.request, requestPayload, resolveSchema);
-        const result = await this.ctx.invoke(
-          handler.kind,
-          handler.name,
-          resolveHandlerInputs(route.handler, requestPayload),
-        );
+        const result = handler
+          ? await this.ctx.invoke(
+              handler.kind,
+              handler.name,
+              resolveHandlerInputs(route.handler, requestPayload),
+            )
+          : undefined;
         // Handle response with body/headers mapping
 
         const response = route.response;

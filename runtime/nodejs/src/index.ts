@@ -13,16 +13,4 @@ export type {
     ResourceDefinition
 } from "./types.js";
 
-// Template system exports
-export { extractDefaultsFromSchema, isTemplateDefinition } from "./template-definition.js";
-export type {
-    TemplateContext,
-    TemplateDefinition,
-    TemplateResourceBlueprint
-} from "./template-definition.js";
-export {
-    expandPropertyWithControlFlow,
-    expandTemplates,
-    instantiateTemplate
-} from "./template-expander.js";
 

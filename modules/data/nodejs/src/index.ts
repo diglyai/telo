@@ -1,7 +1,7 @@
-import { RuntimeResource } from "@telorun/sdk";
+import { ResourceInstance } from "@telorun/sdk";
 
-class DataTypeResource implements RuntimeResource {}
+class DataTypeResource implements ResourceInstance {}
 
-export function create(): RuntimeResource {
+export function create() {
   return new DataTypeResource();
 }

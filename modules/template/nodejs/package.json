@@ -1,11 +1,10 @@
 {
-  "name": "@telorun/javascript",
+  "name": "@telorun/template",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "exports": {
-    "./script": "./dist/script.js",
-    "./inline": "./dist/inline.js"
+    "./template": "./dist/template-controller.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json"
@@ -13,10 +12,7 @@
   "dependencies": {
     "@sinclair/typebox": "^0.34.48",
     "@telorun/sdk": "workspace:*",
-    "ajv": "^8.17.1",
-    "fastify": "^5.7.2",
-    "@fastify/swagger": "^9.6.1",
-    "@scalar/fastify-api-reference": "^1.44.6"
+    "@telorun/yaml-cel-templating": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
