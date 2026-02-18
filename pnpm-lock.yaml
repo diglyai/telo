@@ -119,24 +119,9 @@ importers:
 
   modules/javascript/nodejs:
     dependencies:
-      '@fastify/swagger':
-        specifier: ^9.6.1
-        version: 9.6.1
-      '@scalar/fastify-api-reference':
-        specifier: ^1.44.6
-        version: 1.44.6
-      '@sinclair/typebox':
-        specifier: ^0.34.48
-        version: 0.34.48
       '@telorun/sdk':
         specifier: workspace:*
         version: link:../../../sdk/nodejs
-      ajv:
-        specifier: ^8.17.1
-        version: 8.17.1
-      fastify:
-        specifier: ^5.7.2
-        version: 5.7.2
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -229,6 +214,9 @@ importers:
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.1
+      packageurl-js:
+        specifier: ^2.0.1
+        version: 2.0.1
     devDependencies:
       '@types/js-yaml':
         specifier: ^4.0.5
@@ -1800,6 +1788,9 @@ packages:
 
   package-manager-detector@0.2.11:
     resolution: {integrity: sha512-BEnLolu+yuz22S56CU1SUKq3XC3PkwD5wv4ikR4MfGvnRVcmzXR9DwSlW2fEamyTPyXHomBJRzgapeuBvRNzJQ==}
+
+  packageurl-js@2.0.1:
+    resolution: {integrity: sha512-N5ixXjzTy4QDQH0Q9YFjqIWd6zH6936Djpl2m9QNFmDv5Fum8q8BjkpAcHNMzOFE0IwQrFhJWex3AN6kS0OSwg==}
 
   parse-json@5.2.0:
     resolution: {integrity: sha512-ayCKvm/phCGxOkYRSCM82iDwct8/EonSEgCSxWxD7ve6jHggsFl4fZVQBPRNgQoKiuV/odhFrGzQXZwbifC8Rg==}
@@ -4134,6 +4125,8 @@ snapshots:
   package-manager-detector@0.2.11:
     dependencies:
       quansync: 0.2.11
+
+  packageurl-js@2.0.1: {}
 
   parse-json@5.2.0:
     dependencies:

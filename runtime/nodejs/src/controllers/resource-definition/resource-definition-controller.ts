@@ -1,10 +1,10 @@
 import type {
-    ControllerContext,
-    ResourceContext,
-    ResourceInstance,
-    RuntimeResource,
+  ControllerContext,
+  ResourceContext,
+  ResourceInstance,
+  RuntimeResource,
 } from "@telorun/sdk";
-import * as path from "path";
+import { ControllerLoader } from "../../controller-loader.js";
 import { formatAjvErrors, validateResourceDefinition } from "../../manifest-schemas.js";
 
 type ResourceDefinitionResource = RuntimeResource & {
@@ -17,10 +17,7 @@ type ResourceDefinitionResource = RuntimeResource & {
   };
   schema: Record<string, any>;
   events?: string[];
-  controllers?: Array<{
-    runtime: string;
-    entry: string;
-  }>;
+  controllers: Array<string>;
 };
 
 /**
@@ -30,28 +27,22 @@ type ResourceDefinitionResource = RuntimeResource & {
 class ResourceDefinition implements ResourceInstance {
   readonly kind: "ResourceDefinition" = "ResourceDefinition";
 
-  constructor(readonly resource: ResourceDefinitionResource) {}
+  constructor(
+    readonly resource: ResourceDefinitionResource,
+    private controllerLoader: ControllerLoader,
+  ) {}
 
   async init(ctx: ResourceContext) {
-    // Load first controller for now
-    const controller = this.resource.controllers?.[0];
-    if (controller) {
-      // Dynamically import controller module and register it
-      const controllerInstance = await import(
-        path.resolve(path.dirname(this.resource.metadata.source), controller.entry)
-      );
-      if (!controllerInstance || (!controllerInstance.create && !controllerInstance.register)) {
-        throw new Error(
-          `Invalid controller module for ResourceDefinition "${this.resource.metadata.name}": missing create or register function`,
-        );
-      }
-      ctx.registerDefinition(this.resource);
-      await ctx.registerController(
-        this.resource.metadata.module,
-        this.resource.metadata.resourceKind,
-        controllerInstance,
-      );
-    }
+    const controllerInstance = await this.controllerLoader.load(
+      this.resource.controllers,
+      this.resource.metadata.source,
+    );
+    ctx.registerDefinition(this.resource);
+    await ctx.registerController(
+      this.resource.metadata.module,
+      this.resource.metadata.resourceKind,
+      controllerInstance,
+    );
   }
 }
 
@@ -69,7 +60,7 @@ export async function create(resource: any, ctx: ResourceContext): Promise<Resou
 
   // Return a fully-formed ResourceDefinition instance
   const definition = resource as ResourceDefinitionResource;
-  return new ResourceDefinition(definition);
+  return new ResourceDefinition(definition, new ControllerLoader());
 }
 
 export const schema = {

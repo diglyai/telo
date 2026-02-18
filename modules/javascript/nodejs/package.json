@@ -1,22 +1,26 @@
 {
   "name": "@telorun/javascript",
+  "version": "0.1.2",
   "type": "module",
-  "main": "./src/index.ts",
-  "module": "./src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**",
+    "src/**"
+  ],
   "exports": {
-    "./script": "./dist/script.js",
-    "./inline": "./dist/inline.js"
+    "./script": {
+      "types": "./dist/script.d.ts",
+      "bun": "./src/script.ts",
+      "import": "./dist/script.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json"
   },
   "dependencies": {
-    "@sinclair/typebox": "^0.34.48",
-    "@telorun/sdk": "workspace:*",
-    "ajv": "^8.17.1",
-    "fastify": "^5.7.2",
-    "@fastify/swagger": "^9.6.1",
-    "@scalar/fastify-api-reference": "^1.44.6"
+    "@telorun/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

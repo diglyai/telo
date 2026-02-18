@@ -5,12 +5,13 @@ export { Loader } from "./loader.js";
 export { ManifestRegistry as Registry } from "./registry.js";
 export { ResourceURI } from "./resource-uri.js";
 export { SnapshotSerializer } from "./snapshot-serializer.js";
-export { TeloRuntimeError } from "./types.js";
+export { RuntimeError } from "./types.js";
 export type {
     ControllerDefinition,
     ControllerInstance,
-    ExecContext, Kernel as IKernel, KernelContext,
+    ExecContext,
+    Kernel as IKernel,
+    KernelContext,
     ResourceDefinition
 } from "./types.js";
-
 

@@ -13,7 +13,7 @@ import {
   ResourceDefinition,
   ResourceInstance,
   ResourceManifest,
-  TeloRuntimeError,
+  RuntimeError,
 } from "./types.js";
 
 /**
@@ -332,7 +332,7 @@ export class Kernel implements IKernel {
 
         if (!controller.create) {
           // Controller exists but has no create method, skip
-          throw new TeloRuntimeError(
+          throw new RuntimeError(
             "ERR_CONTROLLER_INVALID",
             `Controller for ${kind} does not implement create method`,
           );
@@ -390,7 +390,7 @@ export class Kernel implements IKernel {
       const unhandledList = Array.from(unhandledResources.entries())
         .map(([resource, error]) => `- ${resource}: ${error}`)
         .join("\n");
-      throw new TeloRuntimeError(
+      throw new RuntimeError(
         "ERR_CONTROLLER_NOT_FOUND",
         `Unable to process resources:\n\n${unhandledList}`,
       );
@@ -406,13 +406,13 @@ export class Kernel implements IKernel {
   //   // Lookup resource
   //   const resource = this.manifests.get(kind, name);
   //   if (!resource) {
-  //     throw new TeloRuntimeError("ERR_RESOURCE_NOT_FOUND", `Resource not found: ${urn}`);
+  //     throw new RuntimeError("ERR_RESOURCE_NOT_FOUND", `Resource not found: ${urn}`);
   //   }
 
   //   // Find controller for this Kind
   //   const controller = await this.controllers.getController(kind);
   //   if (!controller) {
-  //     throw new TeloRuntimeError(
+  //     throw new RuntimeError(
   //       "ERR_CONTROLLER_NOT_FOUND",
   //       `No controller registered for Kind: ${kind}`,
   //     );
@@ -437,7 +437,7 @@ export class Kernel implements IKernel {
   //       urn,
   //       error: error instanceof Error ? error.message : String(error),
   //     });
-  //     throw new TeloRuntimeError(
+  //     throw new RuntimeError(
   //       "ERR_EXECUTION_FAILED",
   //       `Execution failed for ${urn}: ${error instanceof Error ? error.message : String(error)}`,
   //     );
@@ -459,13 +459,13 @@ export class Kernel implements IKernel {
   async invoke(module: string, kind: string, name: string, ...args: any[]): Promise<any> {
     const instance: any = this.getResourceByName(module, kind, name);
     if (!instance) {
-      throw new TeloRuntimeError(
+      throw new RuntimeError(
         "ERR_RESOURCE_NOT_FOUND",
         `Resource not found for invocation: ${module}.${kind}.${name}`,
       );
     }
     if (typeof instance !== "object" || typeof instance["invoke"] !== "function") {
-      throw new TeloRuntimeError(
+      throw new RuntimeError(
         "ERR_RESOURCE_NOT_INVOKABLE",
         `Resource ${kind}.${name} does not have an invoke method`,
       );

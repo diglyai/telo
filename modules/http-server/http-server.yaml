@@ -4,14 +4,7 @@ metadata:
   resourceKind: "Server"
   module: "Http"
 controllers:
-  - runtime: nodejs
-    registry: npm
-    package: "@telorun/http-server@1.0.0"
-    entry: "./http-server"
-  - runtime: nodejs
-    registry: local
-    package: "./nodejs"
-    entry: "./http-server"
+  - pkg:npm/@telorun/http-server@>=0.1.0?local_path=./nodejs#http-server
 schema:
   type: "object"
   properties:

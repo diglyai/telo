@@ -1,11 +1,20 @@
 {
   "name": "@telorun/http-server",
+  "version": "0.1.0",
   "type": "module",
-  "main": "./src/index.ts",
-  "module": "./src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "exports": {
-    "./http-server": "./dist/http-server-controller.js",
-    "./http-server-api": "./dist/http-api-controller.js"
+    "./http-server": {
+      "types": "./dist/http-server-controller.d.ts",
+      "bun": "./src/http-server-controller.ts",
+      "import": "./dist/http-server-controller.js"
+    },
+    "./http-server-api": {
+      "types": "./dist/http-api-controller.d.ts",
+      "bun": "./src/http-api-controller.ts",
+      "import": "./dist/http-api-controller.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json"

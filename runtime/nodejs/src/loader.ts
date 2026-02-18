@@ -1,40 +1,55 @@
 import { RuntimeResource } from "@telorun/sdk";
-import { execFile } from "child_process";
-import { createHash } from "crypto";
-import * as fs from "fs/promises";
-import * as yaml from "js-yaml";
-import * as path from "path";
-import { promisify } from "util";
 import { compile } from "@telorun/yaml-cel-templating";
+import * as path from "path";
+import { HttpAdapter } from "./manifest-adapters/http-adapter.js";
+import { LocalFileAdapter } from "./manifest-adapters/local-file-adapter.js";
+import type { ManifestAdapter, ManifestSourceData } from "./manifest-adapters/manifest-adapter.js";
 import { formatAjvErrors, validateRuntimeResource } from "./manifest-schemas.js";
-import { ResourceURI } from "./resource-uri.js";
 import { ResourceManifest } from "./types.js";
 
 /**
- * Loader: Ingests resolved YAML manifests from disk into memory
+ * Loader: Ingests resolved YAML manifests from disk or remote URLs into memory
  */
 export class Loader {
   private static projectRoot: string | null = null;
-  private static npmCacheRoot: string | null = null;
+
+  private readonly adapters: ManifestAdapter[] = [new HttpAdapter(), new LocalFileAdapter()];
+
+  private getAdapter(pathOrUrl: string): ManifestAdapter {
+    const adapter = this.adapters.find((a) => a.supports(pathOrUrl));
+    if (!adapter) {
+      throw new Error(`No manifest adapter found for: ${pathOrUrl}`);
+    }
+    return adapter;
+  }
 
   private static ensureProjectRoot(baseDir: string): void {
     if (!Loader.projectRoot) {
       Loader.projectRoot = path.resolve(baseDir);
-      Loader.npmCacheRoot = path.join(Loader.projectRoot, ".cache", "digly", "npm");
     }
   }
 
-  async loadDirectory(dirPath: string): Promise<ResourceManifest[]> {
-    Loader.ensureProjectRoot(dirPath);
+  resolvePath(base: string, relative: string): string {
+    return this.getAdapter(base).resolveRelative(base, relative);
+  }
+
+  async loadDirectory(pathOrUrl: string): Promise<ResourceManifest[]> {
+    const files = await this.getAdapter(pathOrUrl).readAll(pathOrUrl);
+    Loader.ensureProjectRoot(files[0]?.baseDir ?? process.cwd());
     const resources: RuntimeResource[] = [];
-    await this.walkDirectory(dirPath, resources);
+    for (const file of files) {
+      await this.processFile(file, resources);
+    }
     return this.orderResourcesByKindDependencies(resources);
   }
 
-  async loadManifest(runtimeYamlPath: string): Promise<ResourceManifest[]> {
-    Loader.ensureProjectRoot(path.dirname(runtimeYamlPath));
-    const content = await fs.readFile(runtimeYamlPath, "utf-8");
-    const rawDocs = yaml.loadAll(content);
+  async loadManifest(pathOrUrl: string): Promise<ResourceManifest[]> {
+    const file = await this.getAdapter(pathOrUrl).read(pathOrUrl);
+    if (!Loader.projectRoot) {
+      Loader.ensureProjectRoot(file.baseDir);
+    }
+
+    const rawDocs = file.documents;
     const compileContext = { env: process.env };
 
     const resolved: ResourceManifest[] = [];
@@ -44,7 +59,7 @@ export class Loader {
         compiled = compile(rawDoc, { context: compileContext });
       } catch (error) {
         throw new Error(
-          `Failed to compile manifest in ${runtimeYamlPath}: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to compile manifest in ${file.source}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
       const compiledDocs = Array.isArray(compiled) ? compiled : [compiled];
@@ -53,41 +68,17 @@ export class Loader {
           ...manifest,
           metadata: {
             ...manifest.metadata,
-            source: runtimeYamlPath,
+            source: file.source,
           },
         };
-        resolved.push(await this.resolveControllers(resource));
+        resolved.push(resource);
       }
     }
     return resolved;
   }
 
-  private async walkDirectory(dirPath: string, resources: RuntimeResource[]): Promise<void> {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name);
-
-      if (entry.isDirectory()) {
-        await this.walkDirectory(fullPath, resources);
-      } else if (entry.isFile() && this.isYamlFile(entry.name)) {
-        // Skip runtime.yaml as it's reserved for host configuration
-        if (entry.name === "runtime.yaml") {
-          continue;
-        }
-        await this.loadYamlFile(fullPath, resources);
-      }
-    }
-  }
-
-  private isYamlFile(filename: string): boolean {
-    return filename.endsWith(".yaml") || filename.endsWith(".yml");
-  }
-
-  private async loadYamlFile(filePath: string, resources: RuntimeResource[]): Promise<void> {
-    const content = await fs.readFile(filePath, "utf-8");
-    const documents = yaml.loadAll(content);
-    const absolutePath = path.resolve(filePath);
+  private async processFile(file: ManifestSourceData, resources: RuntimeResource[]): Promise<void> {
+    const documents = file.documents;
     const compileContext = { env: process.env };
 
     for (const rawDoc of documents) {
@@ -96,7 +87,7 @@ export class Loader {
         compiled = compile(rawDoc, { context: compileContext });
       } catch (error) {
         throw new Error(
-          `Failed to compile manifest in ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to compile manifest in ${file.source}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
       const compiledDocs = Array.isArray(compiled) ? compiled : [compiled];
@@ -113,13 +104,12 @@ export class Loader {
           );
         }
 
-        // Assign URI based on file source
         const { kind, name } = resource.metadata;
-        resource.metadata.source = filePath;
-        resource.metadata.uri = ResourceURI.fromFile(absolutePath, kind, name).toString();
+        resource.metadata.source = file.source;
+        resource.metadata.uri = `${file.uriBase}#${kind}.${name}`;
         resource.metadata.generationDepth = 0;
 
-        resources.push(await this.resolveControllers(resource));
+        resources.push(resource);
       }
     }
   }
@@ -135,364 +125,6 @@ export class Loader {
     }
 
     return null;
-  }
-
-  private async resolveControllers(resource: RuntimeResource): Promise<RuntimeResource> {
-    const controllers = (resource as any).controllers;
-    if (!Array.isArray(controllers) || controllers.length === 0) {
-      return resource;
-    }
-
-    const sourcePath = (resource as any).metadata?.source;
-    const baseDir = sourcePath ? path.dirname(sourcePath) : process.cwd();
-    const controllersByRuntime = new Map<string, any[]>();
-    for (const controller of controllers) {
-      const runtime = typeof controller.runtime === "string" ? controller.runtime : "";
-      const group = controllersByRuntime.get(runtime);
-      if (group) {
-        group.push(controller);
-      } else {
-        controllersByRuntime.set(runtime, [controller]);
-      }
-    }
-
-    const resolvedControllers = [];
-    for (const [, group] of controllersByRuntime.entries()) {
-      const hasLocal = group.some(
-        (controller) =>
-          controller.registry === "local" ||
-          (controller.registry && controller.registry.startsWith("file://")),
-      );
-      const candidates = hasLocal
-        ? group.filter(
-            (controller) =>
-              controller.registry === "local" ||
-              (controller.registry && controller.registry.startsWith("file://")),
-          )
-        : group;
-
-      const sorted = [...candidates].sort((a, b) => {
-        const rank = (controller: any) => {
-          if (controller.entry && !controller.package && !controller.registry) {
-            return 0;
-          }
-          const registry = controller.registry;
-          if (registry === "local" || (registry && registry.startsWith("file://"))) {
-            return 1;
-          }
-          return 2;
-        };
-        return rank(a) - rank(b);
-      });
-
-      let resolved = false;
-      let lastError: unknown = null;
-      for (const controller of sorted) {
-        const packageSpec = controller.package;
-        const entry = controller.entry;
-        if (!packageSpec || !entry) {
-          console.log("controller", controller);
-          lastError = new Error(
-            `Controller is missing package or entry (runtime=${controller.runtime ?? "unknown"}, registry=${controller.registry ?? "default"})`,
-          );
-          break;
-        }
-
-        try {
-          const resolvedEntry = await this.resolveControllerEntrypoint(
-            controller.registry,
-            packageSpec,
-            entry,
-            baseDir,
-          );
-          resolvedControllers.push({ ...controller, entry: resolvedEntry });
-          resolved = true;
-          break;
-        } catch (error) {
-          const context = `Failed to resolve controller (runtime=${controller.runtime ?? "unknown"}, registry=${controller.registry ?? "default"}, package=${packageSpec}, entry=${entry})`;
-          const message = error instanceof Error ? `${context}: ${error.message}` : context;
-          lastError = new Error(message);
-        }
-      }
-
-      if (!resolved && lastError) {
-        throw lastError;
-      }
-    }
-
-    return {
-      ...resource,
-      controllers: resolvedControllers,
-    } as RuntimeResource;
-  }
-
-  private async resolveControllerEntrypoint(
-    registry: string | undefined,
-    packageSpec: string,
-    entry: string,
-    baseDir: string,
-  ): Promise<string> {
-    const npmCacheRoot = Loader.npmCacheRoot;
-    if (!npmCacheRoot) {
-      throw new Error("NPM cache root is not initialized");
-    }
-
-    const isLocal = !registry || registry === "local" || registry.startsWith("file://");
-    const resolvedPackageSpec = isLocal
-      ? this.resolveLocalPackageSpec(registry, packageSpec, baseDir)
-      : packageSpec;
-    const registryKey = isLocal ? "local" : registry === "npm" ? "npm" : registry;
-    const cacheKey = createHash("sha256")
-      .update(`${registryKey}|${resolvedPackageSpec}`)
-      .digest("hex")
-      .slice(0, 12);
-    const installDir = path.join(npmCacheRoot, cacheKey);
-
-    const packageName = isLocal
-      ? await this.getLocalPackageName(resolvedPackageSpec)
-      : this.getPackageName(resolvedPackageSpec);
-
-    await this.ensureNpmPackageInstalled(installDir, resolvedPackageSpec, registryKey);
-
-    const packageRoot = this.getInstalledPackageRoot(installDir, packageName);
-    return this.resolvePackageEntry(packageRoot, entry, packageName);
-  }
-
-  private resolveLocalPackageSpec(
-    registry: string | undefined,
-    packageSpec: string,
-    baseDir: string,
-  ): string {
-    if (registry && registry.startsWith("file://")) {
-      const registryPath = registry.slice("file://".length);
-      const basePath = path.isAbsolute(registryPath)
-        ? registryPath
-        : path.resolve(baseDir, registryPath);
-      const resolvedPackage = path.isAbsolute(packageSpec)
-        ? packageSpec
-        : path.resolve(baseDir, packageSpec);
-      if (resolvedPackage === basePath) {
-        return basePath;
-      }
-      return path.resolve(basePath, packageSpec);
-    }
-
-    return path.resolve(baseDir, packageSpec);
-  }
-
-  private async ensureNpmPackageInstalled(
-    installDir: string,
-    packageSpec: string,
-    registry: string,
-  ): Promise<void> {
-    const packageName = this.getPackageName(
-      packageSpec.startsWith(".") || path.isAbsolute(packageSpec)
-        ? await this.getLocalPackageName(packageSpec)
-        : packageSpec,
-    );
-    const packageRoot = this.getInstalledPackageRoot(installDir, packageName);
-    const packageJsonPath = path.join(packageRoot, "package.json");
-    if (await this.pathExists(packageJsonPath)) {
-      return;
-    }
-
-    await fs.mkdir(installDir, { recursive: true });
-    const rootPackageJson = path.join(installDir, "package.json");
-    if (!(await this.pathExists(rootPackageJson))) {
-      await fs.writeFile(
-        rootPackageJson,
-        JSON.stringify({ name: "digly-cache", private: true }, null, 2),
-      );
-    }
-
-    const execFileAsync = promisify(execFile);
-    const args = [
-      "install",
-      "--no-audit",
-      "--no-fund",
-      "--silent",
-      "--prefix",
-      installDir,
-      packageSpec,
-    ];
-    if (registry !== "npm" && registry !== "local") {
-      args.push("--registry", registry);
-    }
-    await execFileAsync("npm", args);
-  }
-
-  private getPackageName(packageSpec: string): string {
-    if (packageSpec.startsWith("@")) {
-      const lastAt = packageSpec.lastIndexOf("@");
-      return lastAt > 0 ? packageSpec.slice(0, lastAt) : packageSpec;
-    }
-    const [name] = packageSpec.split("@");
-    return name;
-  }
-
-  private getInstalledPackageRoot(installDir: string, packageName: string): string {
-    const nameParts = packageName.split("/");
-    return path.join(installDir, "node_modules", ...nameParts);
-  }
-
-  private async getLocalPackageName(packagePath: string): Promise<string> {
-    const packageJsonPath = path.join(packagePath, "package.json");
-    if (!(await this.pathExists(packageJsonPath))) {
-      throw new Error(`Local package missing package.json: ${packagePath}`);
-    }
-    const content = await fs.readFile(packageJsonPath, "utf8");
-    const parsed = JSON.parse(content);
-    if (!parsed?.name) {
-      throw new Error(`Local package missing name in package.json: ${packagePath}`);
-    }
-    return parsed.name;
-  }
-
-  private static readonly isBun = typeof (globalThis as any).Bun !== "undefined";
-
-  /**
-   * For Node.js, resolve .ts paths to their compiled .js equivalents in dist/.
-   * Bun can load .ts directly, so it returns the path unchanged.
-   */
-  private async resolveForRuntime(resolvedPath: string, packageRoot: string): Promise<string> {
-    if (Loader.isBun || !resolvedPath.endsWith(".ts")) {
-      return resolvedPath;
-    }
-    // Try dist/ equivalent: src/foo.ts -> dist/foo.js
-    const relative = path.relative(packageRoot, resolvedPath);
-    const distEquivalent = path.resolve(
-      packageRoot,
-      relative.replace(/^src\//, "dist/").replace(/\.ts$/, ".js"),
-    );
-    if (await this.pathExists(distEquivalent)) {
-      return distEquivalent;
-    }
-    // Fallback: same location but .js
-    const jsPath = resolvedPath.replace(/\.ts$/, ".js");
-    if (await this.pathExists(jsPath)) {
-      return jsPath;
-    }
-    return resolvedPath;
-  }
-
-  private async resolvePackageEntry(
-    packageRoot: string,
-    entry: string,
-    packageName?: string,
-  ): Promise<string> {
-    const packageJsonPath = path.join(packageRoot, "package.json");
-    let resolvedPackageName = packageName;
-    let packageJson: any = null;
-    if (!resolvedPackageName && (await this.pathExists(packageJsonPath))) {
-      const content = await fs.readFile(packageJsonPath, "utf8");
-      try {
-        packageJson = JSON.parse(content);
-        resolvedPackageName = packageJson?.name;
-      } catch {
-        resolvedPackageName = packageName;
-      }
-    } else if (await this.pathExists(packageJsonPath)) {
-      try {
-        packageJson = JSON.parse(await fs.readFile(packageJsonPath, "utf8"));
-      } catch {
-        packageJson = null;
-      }
-    }
-
-    const entryValue = entry.trim();
-    const exportTarget = this.resolvePackageExportTarget(packageJson?.exports, entryValue);
-    if (exportTarget) {
-      const resolved = path.resolve(packageRoot, exportTarget);
-      if (await this.pathExists(resolved)) {
-        return this.resolveForRuntime(resolved, packageRoot);
-      }
-      if (!path.extname(resolved)) {
-        const withJs = `${resolved}.js`;
-        if (await this.pathExists(withJs)) {
-          return withJs;
-        }
-      }
-    }
-    if ((entryValue === "." || entryValue === "./") && packageJson) {
-      const mainFields = ["module", "main"];
-      for (const field of mainFields) {
-        const target = packageJson[field];
-        if (typeof target === "string") {
-          const resolved = path.resolve(packageRoot, target);
-          if (await this.pathExists(resolved)) {
-            return this.resolveForRuntime(resolved, packageRoot);
-          }
-          if (!path.extname(resolved)) {
-            const withJs = `${resolved}.js`;
-            if (await this.pathExists(withJs)) {
-              return withJs;
-            }
-          }
-        }
-      }
-    }
-
-    const directPath = path.resolve(packageRoot, entryValue);
-    if (await this.pathExists(directPath)) {
-      return this.resolveForRuntime(directPath, packageRoot);
-    }
-    if (!path.extname(directPath)) {
-      const withJs = `${directPath}.js`;
-      if (await this.pathExists(withJs)) {
-        return withJs;
-      }
-    }
-
-    throw new Error(`Controller entry "${entryValue}" could not be resolved in ${packageRoot}`);
-  }
-
-  private resolvePackageExportTarget(exportsField: any, entry: string): string | null {
-    if (!exportsField) {
-      return null;
-    }
-
-    const key = entry === "." || entry === "./" ? "." : entry;
-    const target = exportsField[key];
-    return this.resolveExportTargetValue(target);
-  }
-
-  private resolveExportTargetValue(target: any): string | null {
-    if (!target) {
-      return null;
-    }
-    if (typeof target === "string") {
-      return target;
-    }
-    if (Array.isArray(target)) {
-      for (const item of target) {
-        const resolved = this.resolveExportTargetValue(item);
-        if (resolved) {
-          return resolved;
-        }
-      }
-      return null;
-    }
-    if (typeof target === "object") {
-      const preferredKeys = ["import", "default", "require"];
-      for (const key of preferredKeys) {
-        if (target[key]) {
-          const resolved = this.resolveExportTargetValue(target[key]);
-          if (resolved) {
-            return resolved;
-          }
-        }
-      }
-    }
-    return null;
-  }
-
-  private async pathExists(filePath: string): Promise<boolean> {
-    try {
-      await fs.access(filePath);
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   // Validation handled by TypeBox + Ajv schemas.
@@ -581,5 +213,4 @@ export class Loader {
 
     return ordered;
   }
-
 }

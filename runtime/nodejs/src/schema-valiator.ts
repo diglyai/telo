@@ -1,7 +1,7 @@
 import { DataValidator } from "@telorun/sdk";
 import AjvModule from "ajv";
 import { formatAjvErrors } from "./manifest-schemas.js";
-import { TeloRuntimeError } from "./types.js";
+import { RuntimeError } from "./types.js";
 const Ajv = AjvModule.default ?? AjvModule;
 
 export class SchemaValidator {
@@ -31,7 +31,7 @@ export class SchemaValidator {
       validate: (data: any) => {
         const isValid = validate(data);
         if (!isValid) {
-          throw new TeloRuntimeError(
+          throw new RuntimeError(
             "ERR_RESOURCE_NOT_FOUND",
             `Invalid value passed: ${JSON.stringify(data)}. Error: ${formatAjvErrors(validate.errors)}`,
           );

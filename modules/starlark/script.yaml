@@ -4,14 +4,7 @@ metadata:
   resourceKind: Script
   module: Starlark
 controllers:
-  - runtime: nodejs
-    registry: npm
-    package: "@telorun/starlark@1.0.0"
-    entry: "./script"
-  - runtime: nodejs
-    registry: local
-    package: "./nodejs"
-    entry: "./script"
+  - pkg:npm/@telorun/starlark@>=1.0.0?local_path=./nodejs#script
 schema:
   type: object
   properties:

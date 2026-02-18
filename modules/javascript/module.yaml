@@ -9,45 +9,7 @@ metadata:
   resourceKind: "Script"
   module: "JavaScript"
 controllers:
-  - runtime: nodejs
-    registry: npm
-    package: "@telorun/javascript@1.0.0"
-    entry: "./script"
-  - runtime: nodejs
-    registry: local
-    package: "./nodejs"
-    entry: "./script"
-schema:
-  type: "object"
-  properties:
-    metadata:
-      type: "object"
-      properties:
-        name:
-          type: "string"
-      required: ["name"]
-    code:
-      type: "string"
-    inputSchema:
-      type: "object"
-    outputSchema:
-      type: "object"
-  required: ["metadata", "code"]
----
-kind: "Runtime.Definition"
-metadata:
-  name: "InlineScriptDefinition"
-  resourceKind: "InlineScript"
-  module: "JavaScript"
-controllers:
-  - runtime: nodejs
-    registry: npm
-    package: "@telorun/javascript@1.0.0"
-    entry: "./inline"
-  - runtime: nodejs
-    registry: local
-    package: "./nodejs"
-    entry: "./inline"
+  - pkg:npm/@telorun/javascript@>=0.1.0?local_path=./nodejs#script
 schema:
   type: "object"
   properties:

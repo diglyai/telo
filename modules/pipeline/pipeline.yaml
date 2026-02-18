@@ -4,14 +4,7 @@ metadata:
   resourceKind: Job
   module: Pipeline
 controllers:
-  - runtime: nodejs
-    registry: npm
-    package: "@telorun/pipeline@1.0.0"
-    entry: "./job"
-  - runtime: nodejs
-    registry: local
-    package: "./nodejs"
-    entry: "./job"
+  - pkg:npm/@telorun/pipeline@>=1.0.0?local_path=./nodejs#job
 schema:
   type: object
   properties:

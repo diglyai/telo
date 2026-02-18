@@ -74,12 +74,12 @@ export interface Kernel {
   readonly exitCode: number;
 }
 
-export class TeloRuntimeError extends Error {
+export class RuntimeError extends Error {
   constructor(
     public code: RuntimeErrorCode,
     message: string,
   ) {
     super(message);
-    this.name = "TeloRuntimeError";
+    this.name = "RuntimeError";
   }
 }

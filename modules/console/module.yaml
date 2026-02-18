@@ -9,14 +9,7 @@ metadata:
   resourceKind: WriteLine
   module: Console
 controllers:
-  - runtime: nodejs
-    registry: npm
-    package: "@telorun/console@1.0.0"
-    entry: "./writeline"
-  - runtime: nodejs
-    registry: local
-    package: "./nodejs"
-    entry: "./writeline"
+  - pkg:npm/@telorun/console@>=1.0.0?local_path=./nodejs#writeline
 schema:
   type: object
   properties:

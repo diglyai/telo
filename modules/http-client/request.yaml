@@ -4,10 +4,7 @@ metadata:
   resourceKind: Request
   module: HttpClient
 controllers:
-  - runtime: 'node@>=20 <23'
-    entrypoint: './nodejs/request.ts'
-  - runtime: 'bun@>=1.1'
-    entrypoint: './nodejs/request.ts'
+  - pkg:npm/@telorun/http-client@>=1.0.0?local_path=./nodejs#request
 schema:
   type: object
   properties:

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { Kernel } from "@telorun/runtime";
-import * as fs from "fs/promises";
 import * as path from "path";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -25,16 +24,6 @@ async function run(argv: {
   debug: boolean;
   snapshotOnExit: boolean;
 }) {
-  const inputPath = path.resolve(argv.path);
-  let inputStat: Awaited<ReturnType<typeof fs.stat>>;
-  try {
-    inputStat = await fs.stat(inputPath);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`Error reading path: ${inputPath}: ${message}`);
-    process.exit(1);
-  }
-
   const log = createLogger(argv.verbose);
 
   try {
@@ -52,11 +41,7 @@ async function run(argv: {
       log.info(`Event stream enabled: ${eventStreamPath}`);
     }
 
-    if (inputStat.isDirectory()) {
-      await kernel.loadDirectory(inputPath);
-    } else {
-      await kernel.loadFromConfig(inputPath);
-    }
+    await kernel.loadFromConfig(argv.path);
 
     await kernel.start();
     if (kernel.exitCode !== 0) {
@@ -76,7 +61,7 @@ yargs(hideBin(process.argv))
     "Run a Telo runtime from a manifest file or directory",
     (yargs) =>
       yargs.positional("path", {
-        describe: "Path to a runtime.yaml file or directory",
+        describe: "Path to YAML manifest, directory containing module.yaml, or HTTP(S) URL",
         type: "string",
         demandOption: true,
       }),

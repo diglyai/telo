@@ -4,7 +4,7 @@ import { expandValue } from "./expressions.js";
 import { Kernel } from "./kernel.js";
 import { formatAjvErrors } from "./manifest-schemas.js";
 import { SchemaValidator } from "./schema-valiator.js";
-import { TeloRuntimeError } from "./types.js";
+import { RuntimeError } from "./types.js";
 const Ajv = AjvModule.default ?? AjvModule;
 
 export class ResourceContextImpl implements ResourceContext {
@@ -35,7 +35,7 @@ export class ResourceContextImpl implements ResourceContext {
     );
     const isValid = validate(value);
     if (!isValid) {
-      throw new TeloRuntimeError(
+      throw new RuntimeError(
         "ERR_INVALID_VALUE",
         `Invalid value passed: ${JSON.stringify(value)}. Error: ${formatAjvErrors(validate.errors)}`,
       );

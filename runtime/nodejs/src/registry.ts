@@ -1,6 +1,6 @@
 import { RuntimeResource } from "@telorun/sdk";
 import { ResourceURI } from "./resource-uri.js";
-import { ResourceManifest, TeloRuntimeError } from "./types.js";
+import { ResourceManifest, RuntimeError } from "./types.js";
 
 /**
  * Registry: Indexes resources by composite key of Kind and Name
@@ -24,7 +24,7 @@ export class ManifestRegistry {
     const kindMap = this.resources.get(kind)!;
 
     if (kindMap.has(name)) {
-      throw new TeloRuntimeError("ERR_DUPLICATE_RESOURCE", `Duplicate resource: ${kind}.${name}`);
+      throw new RuntimeError("ERR_DUPLICATE_RESOURCE", `Duplicate resource: ${kind}.${name}`);
     }
 
     kindMap.set(name, resource);

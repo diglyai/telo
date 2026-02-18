@@ -1,10 +1,19 @@
 {
   "name": "@telorun/data",
+  "version": "0.0.2",
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
+  "files": [
+    "dist/**",
+    "src/**"
+  ],
   "exports": {
-    "./type": "./src/index.ts"
+    "./type": {
+      "bun": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json"

@@ -9,14 +9,7 @@ metadata:
   resourceKind: Definition
   module: Template
 controllers:
-  - runtime: nodejs
-    registry: npm
-    package: "@telorun/template@1.0.0"
-    entry: "./template"
-  - runtime: nodejs
-    registry: local
-    package: "./nodejs"
-    entry: "./template"
+  - pkg:npm/@telorun/template@>=1.0.0?local_path=./nodejs#template
 schema:
   type: object
   properties:

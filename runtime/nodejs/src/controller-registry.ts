@@ -94,58 +94,6 @@ export class ControllerRegistry {
   }
 
   /**
-   * Load all registered controller loaders
-   * Call this after all definitions are registered but before execution
-   */
-  async loadAllControllers(): Promise<void> {
-    const kinds = Array.from(this.controllerLoaders.keys());
-    for (const kind of kinds) {
-      console.log(`Loading controller for kind: ${kind}`);
-      if (!this.controllersByKind.has(kind)) {
-        const loader = this.controllerLoaders.get(kind);
-        if (loader) {
-          try {
-            const controller = await loader();
-            this.controllersByKind.set(kind, controller);
-          } catch (error) {
-            throw new Error(
-              `Failed to load controller for kind "${kind}": ${error instanceof Error ? error.message : String(error)}`,
-            );
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Execute a resource using its controller
-   */
-  async execute(
-    kind: string,
-    name: string,
-    input: any,
-    ctx: any,
-    resource?: RuntimeResource,
-  ): Promise<any> {
-    const controller = this.getController(kind);
-    if (!controller || !controller.execute) {
-      throw new Error(`No execute handler for kind: ${kind}`);
-    }
-    return controller.execute(name, input, { ...ctx, resource });
-  }
-
-  /**
-   * Compile a resource using its controller
-   */
-  async compile(kind: string, resource: RuntimeResource, ctx: any): Promise<RuntimeResource> {
-    const controller = await this.getController(kind);
-    if (!controller || !controller.compile) {
-      return resource;
-    }
-    return controller.compile(resource, ctx);
-  }
-
-  /**
    * Create a resource instance using its controller
    */
   async create(kind: string, resource: RuntimeResource, ctx: any): Promise<any | null> {

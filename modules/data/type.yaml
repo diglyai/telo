@@ -4,14 +4,7 @@ metadata:
   resourceKind: Type
   module: Data
 controllers:
-  - runtime: nodejs
-    registry: npm
-    package: "@telorun/data@1.0.0"
-    entry: "./type"
-  - runtime: nodejs
-    registry: local
-    package: "./nodejs"
-    entry: "./type"
+  - pkg:npm/@telorun/data@>=0.0.2?local_path=./nodejs#type
 schema:
   type: object
   properties:
@@ -30,7 +23,8 @@ metadata:
   name: ObjectTypeDefinition
   module: Data
   resourceKind: ObjectType
-extends: Data.Type
+controllers:
+  - pkg:npm/@telorun/data@>=0.0.2?local_path=./nodejs#type
 schema:
   type: object
   additionalProperties: true

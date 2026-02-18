@@ -24,7 +24,7 @@ export async function create(resource: ModuleResource, ctx: ResourceContext): Pr
     // Load and register resource definitions from imports
     if (resource.imports && Array.isArray(resource.imports)) {
       for (const importPath of resource.imports) {
-        const defResources = await loader.loadDirectory(path.resolve(moduleBasePath, importPath));
+        const defResources = await loader.loadDirectory(loader.resolvePath(moduleBasePath, importPath));
         for (const defResource of defResources) {
           ctx.registerManifest(defResource);
         }
@@ -33,7 +33,7 @@ export async function create(resource: ModuleResource, ctx: ResourceContext): Pr
     // Load and register resources from definitions and resources paths
     if (resource.definitions && Array.isArray(resource.definitions)) {
       for (const defPath of resource.definitions) {
-        const defResources = await loader.loadManifest(path.resolve(moduleBasePath, defPath));
+        const defResources = await loader.loadManifest(loader.resolvePath(moduleBasePath, defPath));
         for (const defResource of defResources) {
           ctx.registerManifest(defResource);
         }
@@ -42,9 +42,8 @@ export async function create(resource: ModuleResource, ctx: ResourceContext): Pr
 
     if (resource.resources && Array.isArray(resource.resources)) {
       for (const defPath of resource.resources) {
-        const defResources = await loader.loadManifest(
-          path.resolve(moduleBasePath, typeof defPath === "string" ? defPath : defPath.path),
-        );
+        const rawPath = typeof defPath === "string" ? defPath : defPath.path;
+        const defResources = await loader.loadManifest(loader.resolvePath(moduleBasePath, rawPath));
         for (const defResource of defResources) {
           ctx.registerManifest(defResource);
         }

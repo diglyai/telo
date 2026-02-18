@@ -261,7 +261,7 @@ const result = await ctx.invoke("Http.Server", "Example");
 const result = await ctx.invoke("OtherModule.Http.Server", "Example");
 ```
 
-If the target instance doesn't exist or has no `invoke()` method, a `TeloRuntimeError` is thrown.
+If the target instance doesn't exist or has no `invoke()` method, a `RuntimeError` is thrown.
 
 ## 7. Runtime Events
 
@@ -379,8 +379,10 @@ schema: # JSON Schema — validated against each resource before create()
     host: { type: string }
   required: [port]
 controllers:
-  - runtime: "node@>=20"
-    entry: ./controllers/server.js # relative to this definition file
+  # List of PURLs
+  - pkg:npm/@telorun/pipeline@>=1.0.0?local_path=./nodejs#job
+  - pkg:cargo/telorun-pipeline@>=1.0.0?local_path=./rust#job
+  - pkg:golang/github.com/telorun/pipeline@>=1.0.0?local_path=./go#job
 ```
 
 When a `Runtime.Definition` instance initializes, it dynamically imports the controller module and registers it with the kernel.

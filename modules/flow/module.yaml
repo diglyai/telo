@@ -4,14 +4,7 @@ metadata:
   resourceKind: Flow
   module: Runtime
 controllers:
-  - runtime: nodejs
-    registry: npm
-    package: "@telorun/flow@1.0.0"
-    entry: "./flow"
-  - runtime: nodejs
-    registry: local
-    package: "./nodejs"
-    entry: "./flow"
+  - pkg:npm/@telorun/flow@>=1.0.0?local_path=./nodejs#flow
 schema:
   type: object
   properties:
