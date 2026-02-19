@@ -5,9 +5,7 @@
   "description": "Telo Runtime: A lightweight, polyglot execution host.",
   "scripts": {
     "telo": "bun ./cli/nodejs/bin/telo.ts",
-    "changeset": "changeset",
-    "version": "changeset version",
-    "release": "pnpm -r build && changeset publish"
+    "release": "node scripts/release.mjs"
   },
   "packageManager": "pnpm@10.28.2",
   "devDependencies": {

@@ -1,5 +1,6 @@
 {
   "name": "@telorun/flow",
+  "version": "0.1.0",
   "type": "module",
   "main": "./src/flow.ts",
   "module": "./src/flow.ts",
