@@ -36,16 +36,16 @@ routes:
           properties:
             name:
               type: string
-          required: ['name']
+          required: ["name"]
     handler:
       kind: JavaScript.Script
       name: SayHello
       inputs:
-        name: '${{ request.query.name }}' # CEL expression
+        name: "${{ request.query.name }}" # CEL expression
     response:
       status: 200
       statuses:
-        '200':
+        "200":
           schema:
             body:
               type: object
@@ -54,13 +54,13 @@ routes:
                   type: string
                 nice:
                   type: string
-              required: ['greeting', 'nice']
+              required: ["greeting", "nice"]
               additionalProperties: false
           headers:
             Content-Type: application/json
           body:
-            greeting: '${{ result.message }}!'
-            nice: 'WOW'
+            greeting: "${{ result.message }}!"
+            nice: "WOW"
 ---
 kind: JavaScript.Script
 metadata:

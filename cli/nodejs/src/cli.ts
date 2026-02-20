@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Kernel } from "@telorun/runtime";
+import * as fs from "fs";
 import * as path from "path";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -18,11 +19,73 @@ function createLogger(verbose: boolean) {
   };
 }
 
+type WatchHandle = { cleanup: () => void };
+
+function setupWatchMode(kernel: Kernel, log: ReturnType<typeof createLogger>): WatchHandle {
+  const watchers = new Map<string, fs.FSWatcher>();
+  const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  let active = true;
+
+  function watchFile(filePath: string): void {
+    if (!active || watchers.has(filePath)) return;
+    let watcher: fs.FSWatcher;
+    try {
+      watcher = fs.watch(filePath, { persistent: false }, () => {
+        const existing = debounceTimers.get(filePath);
+        if (existing) clearTimeout(existing);
+        debounceTimers.set(
+          filePath,
+          setTimeout(() => {
+            debounceTimers.delete(filePath);
+            watchers.get(filePath)?.close();
+            watchers.delete(filePath);
+            void handleChange(filePath);
+          }, 150),
+        );
+      });
+    } catch {
+      return; // file may not exist yet
+    }
+    watcher.on("error", () => watchers.delete(filePath));
+    watchers.set(filePath, watcher);
+  }
+
+  async function handleChange(filePath: string): Promise<void> {
+    log.info(`[watch] reloading ${filePath}`);
+    try {
+      await kernel.reloadSource(filePath);
+      // Refresh watchers — new files may have been loaded after reload
+      for (const f of kernel.getSourceFiles()) watchFile(f);
+      log.info(log.ok(`[watch] complete`));
+    } catch (err) {
+      log.info(
+        log.error(`[watch] error: ${err instanceof Error ? err.message : String(err)}`),
+      );
+    }
+    // Re-establish watcher regardless of outcome (handles atomic rename saves)
+    setTimeout(() => {
+      if (active) watchFile(filePath);
+    }, 50);
+  }
+
+  function cleanup(): void {
+    active = false;
+    for (const t of debounceTimers.values()) clearTimeout(t);
+    debounceTimers.clear();
+    for (const w of watchers.values()) w.close();
+    watchers.clear();
+  }
+
+  for (const f of kernel.getSourceFiles()) watchFile(f);
+  return { cleanup };
+}
+
 async function run(argv: {
   path: string;
   verbose: boolean;
   debug: boolean;
   snapshotOnExit: boolean;
+  watch: boolean;
 }) {
   const log = createLogger(argv.verbose);
 
@@ -39,6 +102,30 @@ async function run(argv: {
       const eventStreamPath = path.join(debugDir, "events.jsonl");
       await kernel.enableEventStream(eventStreamPath);
       log.info(`Event stream enabled: ${eventStreamPath}`);
+    }
+
+    let watchHandle: WatchHandle | null = null;
+
+    if (argv.watch) {
+      // Acquire a hold BEFORE start() to keep the kernel alive for apps that
+      // don't have their own holds (e.g. script-only manifests).
+      // shutdown() will force-resolve waitForIdle() on Ctrl+C regardless of
+      // how many holds are active (e.g. Http.Server may hold its own).
+      kernel.acquireHold("watch-mode");
+
+      kernel.on("Runtime.Started", () => {
+        const files = kernel.getSourceFiles();
+        log.info(`[watch] watching ${files.length} file(s)`);
+        watchHandle = setupWatchMode(kernel, log);
+      });
+
+      const shutdown = () => {
+        log.info("\n[watch] stopping...");
+        watchHandle?.cleanup();
+        kernel.shutdown();
+      };
+      process.once("SIGINT", shutdown);
+      process.once("SIGTERM", shutdown);
     }
 
     await kernel.loadFromConfig(argv.path);
@@ -83,6 +170,12 @@ yargs(hideBin(process.argv))
     type: "boolean",
     default: false,
     describe: "Capture a snapshot on exit",
+  })
+  .option("watch", {
+    alias: "w",
+    type: "boolean",
+    default: false,
+    describe: "Watch manifest files and reload on change",
   })
   .demandCommand(1, "Please specify a command or path to run")
   .strict()

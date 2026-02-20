@@ -55,7 +55,11 @@ export class Kernel implements IKernel {
    */
   registerChildManifest(parentKey: string, resource: ResourceManifest): void {
     this.initializationQueue.push(resource);
-    const childKey = this.getResourceKey(resource.metadata.module, resource.kind, resource.metadata.name);
+    const childKey = this.getResourceKey(
+      resource.metadata.module,
+      resource.kind,
+      resource.metadata.name,
+    );
     const children = this.resourceChildren.get(parentKey) ?? [];
     children.push(childKey);
     this.resourceChildren.set(parentKey, children);
@@ -250,6 +254,16 @@ export class Kernel implements IKernel {
     });
   }
 
+  /**
+   * Force-resolve waitForIdle() regardless of active holds.
+   * Used for graceful shutdown when external signals (e.g. SIGINT) should
+   * bypass resource holds and proceed directly to teardown.
+   */
+  shutdown(): void {
+    const resolvers = this.idleResolvers.splice(0);
+    for (const resolve of resolvers) resolve();
+  }
+
   hasEventHandlers(event: string): boolean {
     return this.eventBus.hasHandlers(event);
   }
@@ -296,7 +310,11 @@ export class Kernel implements IKernel {
   }
 
   private createResourceContext(resource: ResourceManifest): ResourceContext {
-    const key = this.getResourceKey(resource.metadata.module, resource.kind, resource.metadata.name);
+    const key = this.getResourceKey(
+      resource.metadata.module,
+      resource.kind,
+      resource.metadata.name,
+    );
     return new ResourceContextImpl(this, resource.metadata, undefined, key);
   }
 
@@ -320,6 +338,64 @@ export class Kernel implements IKernel {
       return entry.instance as any;
     }
     return null;
+  }
+
+  /**
+   * Returns the unique set of local file paths from which resources were loaded.
+   * HTTP/HTTPS sources are excluded — they cannot be watched on disk.
+   */
+  getSourceFiles(): string[] {
+    const seen = new Set<string>();
+    for (const { resource } of this.resourceInstances.values()) {
+      const src = resource.metadata.source;
+      if (src && !src.startsWith("http://") && !src.startsWith("https://")) {
+        seen.add(src);
+      }
+    }
+    return Array.from(seen);
+  }
+
+  /**
+   * Reload all resources that were loaded from the given source file.
+   * Safe order: parse first → if parse succeeds, tear down old → init new → run new only.
+   */
+  async reloadSource(sourcePath: string): Promise<void> {
+    // Parse first — bail before touching running resources if the file is invalid
+    const newManifests = await this.loader.loadManifest(sourcePath);
+
+    // Collect keys of resources loaded from this source (in insertion order)
+    const keysFromSource: string[] = [];
+    for (const [key, { resource }] of this.resourceInstances.entries()) {
+      if (resource.metadata.source === sourcePath) {
+        keysFromSource.push(key);
+      }
+    }
+    // Tear down in reverse order (children first via cascade)
+    for (const key of [...keysFromSource].reverse()) {
+      const entry = this.resourceInstances.get(key);
+      if (!entry) continue; // already removed by a cascade
+      await this.teardownResource(
+        entry.resource.metadata.module,
+        entry.resource.kind,
+        entry.resource.metadata.name,
+      );
+    }
+
+    // Queue new manifests and initialize them
+    for (const manifest of newManifests) {
+      this.initializationQueue.push(manifest);
+    }
+    const keysBefore = new Set(this.resourceInstances.keys());
+    await this.initializeResources();
+
+    // Run only newly created instances (not all instances — avoids double-run)
+    const newKeys = Array.from(this.resourceInstances.keys()).filter((k) => !keysBefore.has(k));
+    for (const key of newKeys) {
+      const entry = this.resourceInstances.get(key);
+      if (entry?.instance.run) {
+        await entry.instance.run();
+      }
+    }
   }
 
   private async initializeResources(): Promise<void> {

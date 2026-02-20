@@ -74,6 +74,9 @@ export interface Kernel {
   readonly exitCode: number;
   teardownResource(module: string, kind: string, name: string): Promise<void>;
   registerChildManifest(parentKey: string, resource: ResourceManifest): void;
+  getSourceFiles(): string[];
+  reloadSource(sourcePath: string): Promise<void>;
+  shutdown(): void;
 }
 
 export class RuntimeError extends Error {
