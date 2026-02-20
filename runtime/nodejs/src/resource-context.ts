@@ -12,6 +12,7 @@ export class ResourceContextImpl implements ResourceContext {
     readonly kernel: Kernel,
     private readonly metadata: Record<string, any>,
     private readonly validator: SchemaValidator = new SchemaValidator(),
+    private readonly resourceKey?: string,
   ) {}
 
   createSchemaValidator(schema: any) {
@@ -51,7 +52,19 @@ export class ResourceContextImpl implements ResourceContext {
   }
 
   registerManifest(resource: any): void {
-    this.kernel.registerManifest(resource);
+    if (this.resourceKey) {
+      this.kernel.registerChildManifest(this.resourceKey, resource);
+    } else {
+      this.kernel.registerManifest(resource);
+    }
+  }
+
+  teardownResource(kind: string, name: string): Promise<void> {
+    const parts = kind.split(".");
+    if (parts.length > 2) {
+      return this.kernel.teardownResource(parts[0], parts.slice(1).join("."), name);
+    }
+    return this.kernel.teardownResource(this.metadata.module, kind, name);
   }
 
   getResources(kind: string): RuntimeResource[] {

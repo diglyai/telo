@@ -1,4 +1,8 @@
-import type { ControllerContext, ResourceContext, RuntimeResource } from "@telorun/sdk";
+import type {
+  ResourceContext,
+  ResourceInstance,
+  RuntimeResource
+} from "@telorun/sdk";
 import * as path from "path";
 import { Loader } from "../../loader.js";
 
@@ -9,12 +13,10 @@ type ModuleResource = RuntimeResource & {
   resources?: (string | { path: string })[];
 };
 
-export function register(ctx: ControllerContext): void {
-  // Module controller doesn't need register hook
-  // Processing happens during create phase
-}
-
-export async function create(resource: ModuleResource, ctx: ResourceContext): Promise<null> {
+export async function create(
+  resource: ModuleResource,
+  ctx: ResourceContext,
+): Promise<ResourceInstance> {
   // Get the module base path from the resource's URI or source
   const moduleBasePath = resource.metadata.source
     ? path.dirname(resource.metadata.source)
@@ -24,7 +26,9 @@ export async function create(resource: ModuleResource, ctx: ResourceContext): Pr
     // Load and register resource definitions from imports
     if (resource.imports && Array.isArray(resource.imports)) {
       for (const importPath of resource.imports) {
-        const defResources = await loader.loadDirectory(loader.resolvePath(moduleBasePath, importPath));
+        const defResources = await loader.loadDirectory(
+          loader.resolvePath(moduleBasePath, importPath),
+        );
         for (const defResource of defResources) {
           ctx.registerManifest(defResource);
         }
@@ -50,8 +54,7 @@ export async function create(resource: ModuleResource, ctx: ResourceContext): Pr
       }
     }
 
-    // Module resource doesn't create a runtime instance
-    return null;
+    return {};
   } catch (error) {
     throw new Error(
       `Failed to process Module "${resource.metadata.name}": ${error instanceof Error ? error.message : String(error)}`,

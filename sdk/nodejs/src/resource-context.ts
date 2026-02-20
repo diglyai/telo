@@ -31,4 +31,5 @@ export interface ResourceContext extends ControllerContext {
     controllerInstance: any,
   ): Promise<void>;
   registerDefinition(definition: any): void;
+  teardownResource(kind: string, name: string): Promise<void>;
 }

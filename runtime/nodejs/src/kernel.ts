@@ -34,6 +34,7 @@ export class Kernel implements IKernel {
     { resource: ResourceManifest; instance: ResourceInstance }
   > = new Map();
   private resourceEventBuses: Map<string, EventBus> = new Map();
+  private resourceChildren: Map<string, string[]> = new Map();
   private holdCount = 0;
   private idleResolvers: Array<() => void> = [];
   private _exitCode = 0;
@@ -47,6 +48,50 @@ export class Kernel implements IKernel {
    */
   registerManifest(resource: ResourceManifest): void {
     this.initializationQueue.push(resource);
+  }
+
+  /**
+   * Register a child resource and track the parent-child relationship for cascade teardown
+   */
+  registerChildManifest(parentKey: string, resource: ResourceManifest): void {
+    this.initializationQueue.push(resource);
+    const childKey = this.getResourceKey(resource.metadata.module, resource.kind, resource.metadata.name);
+    const children = this.resourceChildren.get(parentKey) ?? [];
+    children.push(childKey);
+    this.resourceChildren.set(parentKey, children);
+  }
+
+  /**
+   * Tear down a single resource and cascade to its children first
+   */
+  async teardownResource(module: string, kind: string, name: string): Promise<void> {
+    const key = this.getResourceKey(module, kind, name);
+    // Cascade: tear down children in reverse registration order first
+    const childKeys = this.resourceChildren.get(key) ?? [];
+    for (const childKey of [...childKeys].reverse()) {
+      const childEntry = this.resourceInstances.get(childKey);
+      if (childEntry) {
+        await this.teardownResource(
+          childEntry.resource.metadata.module,
+          childEntry.resource.kind,
+          childEntry.resource.metadata.name,
+        );
+      }
+    }
+    this.resourceChildren.delete(key);
+    // Tear down self
+    const entry = this.resourceInstances.get(key);
+    if (!entry) return;
+    const { resource, instance } = entry;
+    if (instance.teardown) {
+      await instance.teardown();
+    }
+    await this.eventBus.emit(
+      `${resource.metadata.module}.${resource.kind}.${resource.metadata.name}.Teardown`,
+      { resource: { kind: resource.kind, name: resource.metadata.name } },
+    );
+    this.resourceInstances.delete(key);
+    this.resourceEventBuses.delete(key);
   }
 
   async registerController(
@@ -214,20 +259,15 @@ export class Kernel implements IKernel {
   }
 
   async teardownResources(): Promise<void> {
-    const entries = Array.from(this.resourceInstances.entries());
-    for (const [key, entry] of entries) {
-      const { resource, instance } = entry;
-      if (instance.teardown) {
-        await instance.teardown();
-        await this.eventBus.emit(
-          `${resource.metadata.module}.${resource.kind}.${resource.metadata.name}.Teardown`,
-          {
-            resource: { kind: resource.kind, name: resource.metadata.name },
-          },
-        );
-      }
-      this.resourceInstances.delete(key);
-      this.resourceEventBuses.delete(key);
+    const keys = Array.from(this.resourceInstances.keys()).reverse();
+    for (const key of keys) {
+      const entry = this.resourceInstances.get(key);
+      if (!entry) continue; // already removed by a cascade
+      await this.teardownResource(
+        entry.resource.metadata.module,
+        entry.resource.kind,
+        entry.resource.metadata.name,
+      );
     }
   }
 
@@ -256,11 +296,8 @@ export class Kernel implements IKernel {
   }
 
   private createResourceContext(resource: ResourceManifest): ResourceContext {
-    return new ResourceContextImpl(
-      this,
-      resource.metadata,
-      // this.createControllerContext(resource.kind),
-    );
+    const key = this.getResourceKey(resource.metadata.module, resource.kind, resource.metadata.name);
+    return new ResourceContextImpl(this, resource.metadata, undefined, key);
   }
 
   getResourcesByKind(kind: string): RuntimeResource[] {

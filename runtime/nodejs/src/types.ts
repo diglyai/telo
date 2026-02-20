@@ -72,6 +72,8 @@ export interface Kernel {
   waitForIdle(): Promise<void>;
   requestExit(code: number): void;
   readonly exitCode: number;
+  teardownResource(module: string, kind: string, name: string): Promise<void>;
+  registerChildManifest(parentKey: string, resource: ResourceManifest): void;
 }
 
 export class RuntimeError extends Error {
