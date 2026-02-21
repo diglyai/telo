@@ -1,9 +1,10 @@
-import { ResourceContext, RuntimeEvent, RuntimeResource } from "@telorun/sdk";
+import { ResourceContext, RuntimeEvent, RuntimeResource, isContextProvider } from "@telorun/sdk";
 import * as path from "path";
+import { BootContextRegistry } from "./boot-context-registry.js";
 import { ControllerRegistry } from "./controller-registry.js";
 import { EventStream } from "./event-stream.js";
 import { EventBus } from "./events.js";
-import { evaluateCel, expandValue } from "./expressions.js";
+import { evaluateCel, expandValue, resolveManifestWithContext } from "./expressions.js";
 import { Loader } from "./loader.js";
 import { ResourceContextImpl } from "./resource-context.js";
 import { SchemaValidator } from "./schema-valiator.js";
@@ -38,6 +39,7 @@ export class Kernel implements IKernel {
   private holdCount = 0;
   private idleResolvers: Array<() => void> = [];
   private _exitCode = 0;
+  private bootContextRegistry = new BootContextRegistry();
 
   constructor() {
     this.setupEventStreaming();
@@ -455,16 +457,43 @@ export class Kernel implements IKernel {
           if (!controller.schema || !controller.schema.type) {
             throw new Error(`No schema defined for ${kind} controller`);
           }
-          schemaValidator.compile(controller.schema).validate(resource);
-          // Create resource instance
-          const instance = await controller.create(resource, this.createResourceContext(resource));
+
+          // AOT: resolve static boot-context expressions before schema validation
+          // and controller creation. This is a no-op until at least one provider
+          // has registered its context.
+          let resolvedResource = resource;
+          if (this.bootContextRegistry.hasProviders()) {
+            const bootContext = this.bootContextRegistry.buildContext(
+              resource.kind,
+              resource.metadata.name,
+              resource,
+            );
+            resolvedResource = resolveManifestWithContext(resource, bootContext);
+          }
+
+          schemaValidator.compile(controller.schema).validate(resolvedResource);
+          // Create resource instance using the resolved manifest
+          const instance = await controller.create(
+            resolvedResource,
+            this.createResourceContext(resolvedResource),
+          );
 
           if (instance) {
             if (instance.init) {
-              await instance.init(this.createResourceContext(resource));
+              await instance.init(this.createResourceContext(resolvedResource));
             }
-            this.resourceInstances.set(key, { resource, instance });
-            createdResources.push({ kind, resource, instance });
+            // Register ContextProvider after init() — init may populate context state
+            if (isContextProvider(instance)) {
+              this.bootContextRegistry.register(
+                resource.kind,
+                resource.metadata.name,
+                resource.metadata.module,
+                resource.grants as string[] | undefined,
+                instance.provideContext(),
+              );
+            }
+            this.resourceInstances.set(key, { resource: resolvedResource, instance });
+            createdResources.push({ kind, resource: resolvedResource, instance });
             handledThisPass.push({ kind, resource });
             resourceErrors.delete(resourceId);
           }
@@ -475,6 +504,10 @@ export class Kernel implements IKernel {
               r.metadata.name !== resource.metadata.name,
           );
         } catch (error) {
+          // Security violations are fatal — never retry
+          if (error instanceof RuntimeError && error.code === "ERR_VISIBILITY_DENIED") {
+            throw error;
+          }
           // Creation failed - track latest error and retry later
           resourceErrors.set(
             resourceId,

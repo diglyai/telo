@@ -79,13 +79,13 @@ Conditionally includes or excludes a block.
 
 ```yaml
 database:
-  $if: 'enable_persistence'
+  $if: "enable_persistence"
   $then:
-    type: 'postgres'
-    storage: '100gi'
+    type: "postgres"
+    storage: "100gi"
   $else:
-    type: 'sqlite'
-    storage: '0'
+    type: "sqlite"
+    storage: "0"
 ```
 
 ### 3.3. Iteration (`$for` / `$do`)
@@ -119,7 +119,7 @@ Used within `$for/$do` for object-mode iteration when keys need to be computed a
 ```yaml
 # Map Key Generation
 labels:
-  $for: 'k, v in extra_tags'
+  $for: "k, v in extra_tags"
   $do:
     $key:
       $eval: "custom-${{ k }}"
@@ -138,9 +138,9 @@ Loads and renders an external YAML file.
 
 ```yaml
 service:
-  $include: './templates/microservice.yaml'
+  $include: "./templates/microservice.yaml"
   $with:
-    name: 'user-auth'
+    name: "user-auth"
     port: 8080
 ```
 
@@ -153,8 +153,8 @@ Stops processing and returns an error if a condition is not met.
   - `$msg`: (Optional) Error string.
 
 ```yaml
-$assert: 'replicas <= 10'
-$msg: 'You cannot request more than 10 replicas.'
+$assert: "replicas <= 10"
+$msg: "You cannot request more than 10 replicas."
 ```
 
 ### 3.7. Schema Definition (`$schema`)
@@ -212,7 +212,7 @@ $let:
 apiVersion: v1
 kind: List
 items:
-  - $for: 'svc in services'
+  - $for: "svc in services"
     $do:
       $let:
         full_name: "svc.name + '-' + region"
@@ -223,27 +223,26 @@ items:
         name:
           $eval: "${{ full_name }}"
         labels:
-          $for: 'k, v in default_tags'
+          $for: "k, v in default_tags"
           $do:
             $key:
               $eval: "${{ k }}"
             $value:
               $eval: "${{ v }}"
 
-      spec:
-        $if: 'is_ha'
-        $then:
-          type: LoadBalancer
-          replicas: 3
-        $else:
-          type: ClusterIP
-          replicas: 1
+      $if: "is_ha"
+      $then:
+        type: LoadBalancer
+        replicas: 3
+      $else:
+        type: ClusterIP
+        replicas: 1
 
-        ports:
-          - port: 80
-            targetPort: 8080
+      ports:
+        - port: 80
+          targetPort: 8080
 
-  - $include: 'common/monitoring-agent.yaml'
+  - $include: "common/monitoring-agent.yaml"
     $with:
       cluster_domain:
         $eval: "${{ domain }}"

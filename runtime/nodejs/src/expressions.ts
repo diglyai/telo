@@ -268,6 +268,31 @@ function isDeferredExpressionError(message: string, expr: string): boolean {
   return message.includes('Identifier "') && message.includes("not found");
 }
 
+/**
+ * Resolve all non-deferred CEL expressions in a resource manifest using the
+ * provided boot context. Expressions referencing `request.*` or `result.*` are
+ * left untouched — they will be resolved at request time by the runtime.
+ *
+ * Missing identifiers that are not deferred prefixes will throw, which is
+ * intentional: if a consumer's manifest references a boot-context identifier
+ * that is absent from the context, it is a configuration error.
+ *
+ * @param manifest - The raw (pre-creation) ResourceManifest
+ * @param context  - CEL evaluation context built by BootContextRegistry.buildContext()
+ * @returns A new manifest object with all resolvable `${{ }}` templates replaced
+ */
+export function resolveManifestWithContext(
+  manifest: ResourceManifest,
+  context: Record<string, any>,
+): ResourceManifest {
+  const id: ResourceId = {
+    kind: manifest.kind,
+    name: (manifest.metadata?.name as string | undefined) ?? '(unknown)',
+  };
+  const { value } = resolveValue(manifest, context, id, { isRoot: true });
+  return value as ResourceManifest;
+}
+
 function evaluateCelWithError(expr: string, context: Record<string, any>, id: ResourceId): unknown {
   try {
     return evaluateCel(expr, context);
