@@ -5,7 +5,10 @@
   "main": "./src/flow.ts",
   "module": "./src/flow.ts",
   "exports": {
-    "./flow": "./dist/flow.js"
+    "./flow": {
+      "bun": "./src/flow.ts",
+      "import": "./dist/flow.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json"

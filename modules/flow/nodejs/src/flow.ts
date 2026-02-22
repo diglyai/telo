@@ -21,17 +21,15 @@ class Flow {
 
   async init(): Promise<void> {
     for (const step of this.resource.steps) {
-      if (step.invoke.kind && !step.invoke.name) {
-        const name = "Unnamed";
+      if (step.invoke.kind) {
         this.ctx.registerManifest({
           ...step.invoke,
           metadata: {
-            name,
             module: this.resource.metadata.module,
             ...step.invoke.metadata,
           },
         });
-        step.invoke = { kind: step.invoke.kind, name };
+        step.invoke = { kind: step.invoke.kind, name: step.invoke.metadata.name };
       }
     }
     this.ctx.on(this.resource.trigger.event, async () => {
@@ -41,22 +39,23 @@ class Flow {
   }
 
   private async executeSteps(): Promise<void> {
-    const context: any = {};
+    const context: Record<string, any> = {};
     for (const step of this.resource.steps) {
-      try {
-        const id =
-          typeof step.invoke === "string" ? step.invoke : `${step.invoke.kind}.${step.invoke.name}`;
-        const [module, kind, name] = id.split(".");
-        const result = await this.ctx.invoke(
-          `${module}.${kind}`,
-          name,
-          this.ctx.expandValue(step.input || {}, context),
-        );
-        context[step.name] = {
-          output: result,
-        };
-      } catch (error) {
-        throw error;
+      const { kind, name } = step.invoke;
+      const result = await this.ctx.invoke(kind, name, context);
+      if (result != null) {
+        // Store result in context under the kind hierarchy + name path
+        // e.g. kind="Console.ReadLine", name="ReadUsername"
+        // → context.Console.ReadLine.ReadUsername = result
+        const parts = kind.split(".");
+        let cursor = context;
+        for (const part of parts) {
+          if (!cursor[part] || typeof cursor[part] !== "object") {
+            cursor[part] = {};
+          }
+          cursor = cursor[part];
+        }
+        cursor[name] = result;
       }
     }
   }

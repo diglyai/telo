@@ -1,0 +1,7 @@
+kind: Runtime.Module
+metadata:
+  name: 'Config'
+  version: '0.1.0'
+resources:
+  - 'variable.yaml'
+  - 'secret.yaml'

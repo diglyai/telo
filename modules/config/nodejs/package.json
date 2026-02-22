@@ -1,0 +1,31 @@
+{
+  "name": "@telorun/config",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./variable-controller": {
+      "types": "./dist/variable-controller.d.ts",
+      "bun": "./src/variable-controller.ts",
+      "import": "./dist/variable-controller.js"
+    },
+    "./secret-controller": {
+      "types": "./dist/secret-controller.d.ts",
+      "bun": "./src/secret-controller.ts",
+      "import": "./dist/secret-controller.js"
+    }
+  },
+  "files": [
+    "dist/**",
+    "src/**"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json"
+  },
+  "dependencies": {
+    "@telorun/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

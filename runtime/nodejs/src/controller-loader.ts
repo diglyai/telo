@@ -34,8 +34,23 @@ export class ControllerLoader {
     const localPath = (qualifiers as any)?.get("local_path");
     const cacheKey = createHash("sha256").update(purlCandidates[0]).digest("hex").slice(0, 12);
     const installDir = path.join(npmCacheRoot, cacheKey);
-    await this.ensureNpmPackageInstalled(installDir, `${namespace}/${name}@${versionSpec}`);
-    const packageRoot = this.getInstalledPackageRoot(installDir, `${namespace}/${name}`);
+
+    let packageRoot: string;
+    const isLocalManifest = baseUri && !baseUri.startsWith("http://") && !baseUri.startsWith("https://");
+    if (localPath && isLocalManifest) {
+      const manifestDir = path.dirname(baseUri);
+      const resolvedLocalPath = path.resolve(manifestDir, localPath);
+      if (await this.pathExists(resolvedLocalPath)) {
+        packageRoot = resolvedLocalPath;
+      } else {
+        await this.ensureNpmPackageInstalled(installDir, `${namespace}/${name}@${versionSpec}`);
+        packageRoot = this.getInstalledPackageRoot(installDir, `${namespace}/${name}`);
+      }
+    } else {
+      await this.ensureNpmPackageInstalled(installDir, `${namespace}/${name}@${versionSpec}`);
+      packageRoot = this.getInstalledPackageRoot(installDir, `${namespace}/${name}`);
+    }
+
     const entryFile = await this.resolvePackageEntry(packageRoot, entry ? `./${entry}` : ".");
     const instance = await import(entryFile);
     if (!instance || (!instance.create && !instance.register)) {
@@ -206,7 +221,7 @@ export class ControllerLoader {
       return null;
     }
     if (typeof target === "object") {
-      const preferredKeys = ["import", "default", "require"];
+      const preferredKeys = isBun ? ["bun", "import", "default", "require"] : ["import", "default", "require"];
       for (const key of preferredKeys) {
         if (target[key]) {
           const resolved = this.resolveExportTargetValue(target[key]);
