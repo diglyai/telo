@@ -2,6 +2,7 @@ packages:
   - cli/*
   - modules/*/*
   - modules/*/*/*
+  - pages
   - runtime/*
   - sdk/*
   - yaml-cel-templating/*

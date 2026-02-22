@@ -1,10 +1,10 @@
 # ⚡ Telo
 
-The open-source runtime for declarative backends.
+Runtime for declarative backends.
 
 Telo is an execution engine (Micro-Kernel) that runs logic defined entirely in YAML manifests. Instead of writing imperative backend code, you define your routes, databases, schemas, and AI workflows as atomic, interconnected YAML documents. Telo takes those manifests and runs them.
 
-Built to be language-agnostic and infinitely extensible, Telo is the open-source engine that powers [DiglyAI](https://digly.ai).
+Built to be language-agnostic and infinitely extensible,.
 
 🔮 The Meaning of Telo
 
