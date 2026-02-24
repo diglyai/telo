@@ -61,10 +61,12 @@ export class ResourceContextImpl implements ResourceContext {
 
   registerManifest(resource: any): void {
     if (this.resourceKey) {
-      this.kernel.registerChildManifest(this.resourceKey, resource);
-    } else {
-      this.kernel.registerManifest(resource);
+      if (!resource.metadata) {
+        resource.metadata = {};
+      }
+      resource.metadata.parent = this.resourceKey;
     }
+    this.kernel.registerManifest(resource);
   }
 
   teardownResource(kind: string, name: string): Promise<void> {

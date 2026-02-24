@@ -6,6 +6,7 @@ export interface ResourceManifest {
   metadata: {
     name: string;
     module: string;
+    parent?: string;
     [key: string]: any;
   };
   [key: string]: any;

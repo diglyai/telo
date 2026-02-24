@@ -3,6 +3,7 @@ export interface RuntimeResource {
   metadata: {
     name: string;
     module: string;
+    parent?: string;
     [key: string]: any;
   };
 }

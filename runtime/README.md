@@ -28,6 +28,7 @@ interface RuntimeResource {
   metadata: {
     name: string; // unique within kind + module
     module: string; // which Runtime.Module declared this resource
+    parent?: string; // resource key of the owning parent (set automatically for children of Flow, Job, Template, etc.)
     [key: string]: any; // custom labels or annotations
   };
   [key: string]: any; // kind-specific configuration fields
@@ -427,6 +428,7 @@ Additional metadata fields set by the Loader:
 interface ResourceMetadata {
   name: string; // user-provided
   module: string; // which Runtime.Module owns this resource
+  parent?: string; // resource key of the parent (e.g. "Example.Runtime.Flow.MyFlow")
   uri: string; // loader-assigned absolute URI
   generationDepth: number; // 0 = loaded from file; 1+ = template-generated
   source: string; // absolute path of the source file

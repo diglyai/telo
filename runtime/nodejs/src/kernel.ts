@@ -47,25 +47,12 @@ export class Kernel implements IKernel {
   }
 
   /**
-   * Register a resource dynamically during initialization
+   * Register a resource dynamically during initialization.
+   * If metadata.parent is set, the parent-child relationship is tracked
+   * automatically for cascade teardown.
    */
   registerManifest(resource: ResourceManifest): void {
     this.initializationQueue.push(resource);
-  }
-
-  /**
-   * Register a child resource and track the parent-child relationship for cascade teardown
-   */
-  registerChildManifest(parentKey: string, resource: ResourceManifest): void {
-    this.initializationQueue.push(resource);
-    const childKey = this.getResourceKey(
-      resource.metadata.module,
-      resource.kind,
-      resource.metadata.name,
-    );
-    const children = this.resourceChildren.get(parentKey) ?? [];
-    children.push(childKey);
-    this.resourceChildren.set(parentKey, children);
   }
 
   /**
@@ -520,6 +507,12 @@ export class Kernel implements IKernel {
               );
             }
             this.resourceInstances.set(key, { resource: resolvedResource, instance });
+            // Track parent-child relationship from metadata.parent
+            if (resolvedResource.metadata.parent) {
+              const children = this.resourceChildren.get(resolvedResource.metadata.parent) ?? [];
+              children.push(key);
+              this.resourceChildren.set(resolvedResource.metadata.parent, children);
+            }
             createdResources.push({ kind, resource: resolvedResource, instance });
             handledThisPass.push({ kind, resource });
             resourceErrors.delete(resourceId);
