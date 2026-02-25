@@ -6,3 +6,6 @@ packages:
   - runtime/*
   - sdk/*
   - yaml-cel-templating/*
+
+onlyBuiltDependencies:
+  - bun

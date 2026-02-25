@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# Test runner script that discovers and runs all YAML test files in tests/ directory
+
+TESTS_DIR="tests"
+PASSED=0
+FAILED=0
+FAILED_TESTS=()
+
+# Check if tests directory exists
+if [ ! -d "$TESTS_DIR" ]; then
+    echo "❌ Tests directory '$TESTS_DIR' not found"
+    exit 1
+fi
+
+# Find all .yaml files in tests directory
+echo "🔍 Discovering tests in $TESTS_DIR/..."
+TEST_FILES=()
+for file in "$TESTS_DIR"/*.yaml; do
+    if [ -f "$file" ]; then
+        TEST_FILES+=("$file")
+    fi
+done
+
+if [ ${#TEST_FILES[@]} -eq 0 ]; then
+    echo "⚠️  No test files found in $TESTS_DIR/"
+    exit 1
+fi
+
+TEST_COUNT=${#TEST_FILES[@]}
+echo "📋 Found $TEST_COUNT test(s)"
+echo ""
+
+# Run each test
+for test_file in "${TEST_FILES[@]}"; do
+    test_name=$(basename "$test_file")
+    echo "▶️  Running: $test_name"
+    
+    # Run test and capture output
+    if output=$(pnpm run telo "$test_file" 2>&1); then
+        echo "✅ PASSED: $test_name"
+        ((PASSED++))
+    else
+        echo "❌ FAILED: $test_name"
+        ((FAILED++))
+        FAILED_TESTS+=("$test_name")
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📋 Test output:"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "$output"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    fi
+    echo ""
+done
+
+# Print summary
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 Test Summary"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Passed: $PASSED"
+echo "❌ Failed: $FAILED"
+echo "📈 Total:  $((PASSED + FAILED))"
+echo ""
+
+# Print failed tests if any
+if [ $FAILED -gt 0 ]; then
+    echo "Failed tests:"
+    for test in "${FAILED_TESTS[@]}"; do
+        echo "  - $test"
+    done
+    echo ""
+    exit 1
+fi
+
+echo "✨ All tests passed!"
+exit 0
