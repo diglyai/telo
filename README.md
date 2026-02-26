@@ -139,7 +139,7 @@ metadata:
 regions: ['us-east-1', 'us-west-2', 'eu-central-1']
 ```
 
-See [TEMPLATES.md](./runtime/TEMPLATES.md) for comprehensive documentation.
+See [TEMPLATES.md](./yaml-cel-templating/README.md) for comprehensive documentation.
 
 ## Status
 
@@ -147,40 +147,40 @@ This repository is an **early prototype** of the Telo runtime and specs. It is i
 
 ## Why
 
-Modern platforms often spend disproportionate effort on technical mechanics-wiring frameworks, managing infrastructure, and negotiating toolchains-while the original business problem gets delayed or diluted. Telo Runtime pushes in the opposite direction: it treats runtime execution as a stable, predictable host so teams can concentrate on the **business logic and outcomes** instead of the plumbing.
+Modern platforms often spend disproportionate effort on technical mechanics-wiring frameworks, managing infrastructure, and negotiating toolchains-while the original business problem gets delayed or diluted. Telo pushes in the opposite direction: it treats kernel execution as a stable, predictable host so teams can concentrate on the **business logic and outcomes** instead of the plumbing.
 
 By separating "what the system should do" from "how it is hosted", the runtime reduces friction for domain‑level changes. Teams can move faster on product requirements, experiment more safely, and keep conversations centered on value delivered rather than implementation trivia.
 
-Telo also aims to **join forces across all programming language communities**, so the best ideas, patterns, and implementations can converge into a shared runtime truth without forcing everyone into a single stack.
+Telo also aims to **join forces across all programming language communities**, so the best ideas, patterns, and implementations can converge into a shared kernel truth without forcing everyone into a single stack.
 
 YAML also makes the system more **AI‑friendly** than traditional programming languages: it is explicit, structured, and easier for tools to generate, review, and transform without losing intent.
 
 ## Modularity
 
-Telo Runtime is built around **modules** that own specific resource kinds. A module is loaded from a manifest, declares which kinds it implements, and then receives only the resources of those kinds. This keeps concerns isolated and lets teams compose systems from focused building blocks rather than monolithic services.
+Telo is built around **modules** that own specific resource kinds. A module is loaded from a manifest, declares which kinds it implements, and then receives only the resources of those kinds. This keeps concerns isolated and lets teams compose systems from focused building blocks rather than monolithic services.
 
-At runtime, execution is always routed by **Kind.Name**. The kernel resolves the Kind to its owning module and hands off execution. Modules can call back into the kernel to execute other resources, enabling composition without tight coupling.
+At kernel execution time, execution is always routed by **Kind.Name**. The kernel resolves the Kind to its owning module and hands off execution. Modules can call back into the kernel to execute other resources, enabling composition without tight coupling.
 
 ## Architecture
 
 The architecture is inspired by Kubernetes-style manifests: declarative resources, explicit kinds, and a control plane that routes work based on those definitions.
 Those manifest were taken to the next level by allowing them to run inside a standalone runtime host.
 
-## Runtime Details
+## Kernel Details
 
-Implementation details, loading rules, and the runtime manifest specification live in `runtime/README.md`.
+Implementation details, loading rules, and the kernel manifest specification live in `kernel/README.md`.
 
 ## See more at
 
-- [Telo Runtime](./runtime/README.md)
-- [Template System](./yaml-cel-templating//README.md)
+- [Telo Kernel](./kernel/README.md)
+- [Template System](./yaml-cel-templating/README.md)
 - [Telo SDK for module authors](sdk/README.md)
 - [Modules](modules/README.md)
   - [HttpServer](modules/http-server/README.md)
 
 ## License
 
-See [LICENSE](./LICENSE).
+See [LICENSE](https://github.com/diglyai/telo/blob/main/LICENSE).
 
 ## Contribution Note
 

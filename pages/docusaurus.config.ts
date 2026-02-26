@@ -3,7 +3,7 @@ import type { Config } from "@docusaurus/types";
 
 const config: Config = {
   title: "Telo",
-  tagline: "The ultimate runtime for declarative backends.",
+  tagline: "The ultimate kernel for declarative backends.",
   url: "https://telo.run",
   baseUrl: process.env.BASE_URL ?? "/",
   trailingSlash: false,
@@ -21,9 +21,11 @@ const config: Config = {
           routeBasePath: "/",
           include: [
             "README.md",
-            "runtime/README.md",
+            "kernel/README.md",
             "yaml-cel-templating/README.md",
             "modules/README.md",
+            "modules/http-server/README.md",
+            "modules/http-client/README.md",
             "modules/studio/README.md",
             "sdk/README.md",
             "sdk/nodejs/README.md",
@@ -42,7 +44,7 @@ const config: Config = {
     navbar: {
       title: "⚡ Telo",
       items: [
-        { to: "/runtime/", label: "Runtime", position: "left" },
+        { to: "/kernel/", label: "Kernel", position: "left" },
         { to: "/yaml-cel-templating/", label: "Templating", position: "left" },
         { to: "/modules/", label: "Modules", position: "left" },
         { to: "/sdk/", label: "SDK", position: "left" },

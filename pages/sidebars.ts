@@ -1,35 +1,37 @@
-import type { SidebarsConfig } from '@docusaurus/plugin-content-docs'
+import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 
 const sidebars: SidebarsConfig = {
   docs: [
-    { type: 'doc', id: 'README', label: 'Introduction' },
+    { type: "doc", id: "README", label: "Introduction" },
     {
-      type: 'category',
-      label: 'Runtime',
-      items: [{ type: 'doc', id: 'runtime/README', label: 'Specification' }],
+      type: "category",
+      label: "Kernel",
+      items: [{ type: "doc", id: "kernel/README", label: "Specification" }],
     },
     {
-      type: 'category',
-      label: 'Templating',
-      items: [{ type: 'doc', id: 'yaml-cel-templating/README', label: 'CEL-YAML Specification' }],
+      type: "category",
+      label: "Templating",
+      items: [{ type: "doc", id: "yaml-cel-templating/README", label: "CEL-YAML Specification" }],
     },
     {
-      type: 'category',
-      label: 'Modules',
+      type: "category",
+      label: "Modules",
       items: [
-        { type: 'doc', id: 'modules/README', label: 'Overview' },
-        { type: 'doc', id: 'modules/studio/README', label: 'Studio' },
+        { type: "doc", id: "modules/README", label: "Overview" },
+        { type: "doc", id: "modules/http-server/README", label: "HTTP Server" },
+        { type: "doc", id: "modules/http-client/README", label: "HTTP Client" },
+        { type: "doc", id: "modules/studio/README", label: "Studio" },
       ],
     },
     {
-      type: 'category',
-      label: 'SDK',
+      type: "category",
+      label: "SDK",
       items: [
-        { type: 'doc', id: 'sdk/README', label: 'Overview' },
-        { type: 'doc', id: 'sdk/nodejs/README', label: 'Node.js' },
+        { type: "doc", id: "sdk/README", label: "Overview" },
+        { type: "doc", id: "sdk/nodejs/README", label: "Node.js" },
       ],
     },
   ],
-}
+};
 
-export default sidebars
+export default sidebars;

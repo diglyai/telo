@@ -1,6 +1,6 @@
 # Telo SDK (Node.js)
 
-The Node.js SDK provides the authoring surface for Telo modules. It defines the shared contracts (types and lifecycle interfaces) that modules use to plug into the runtime, so module code stays consistent across implementations.
+The Node.js SDK provides the authoring surface for Telo modules. It defines the shared contracts (types and lifecycle interfaces) that modules use to plug into the kernel, so module code stays consistent across implementations.
 
 ## What It Provides
 
@@ -14,10 +14,10 @@ Early prototype. APIs and contracts are still evolving. The API surface - includ
 
 ## When to Use It
 
-Use the SDK when building or extending Telo modules. It is not the runtime itself; it is the contract layer that keeps module behavior consistent and predictable.
+Use the SDK when building or extending Telo modules. It is not the kernel itself; it is the contract layer that keeps module behavior consistent and predictable.
 
 ## Related Docs
 
-- Runtime overview: `runtime/README.md`
+- Kernel overview: `kernel/README.md`
 - Built‑in modules: `modiles/`
 - SDKs index: `sdk/README.md`

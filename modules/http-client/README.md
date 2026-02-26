@@ -2,14 +2,14 @@
 
 ## Overview
 
-The `Http.Request` (and optionally `Http.Client`) definitions represent outgoing HTTP calls made by the Telo runtime to external services.
+The `Http.Request` (and optionally `Http.Client`) definitions represent outgoing HTTP calls made by the Telo kernel to external services.
 Because different programming languages implement HTTP clients differently (e.g., `fetch` in Node.js, `reqwest` in Rust), all Telo HTTP Client modules MUST adhere to this exact behavior to ensure cross-language compatibility.
 
 ---
 
 ## 1. The Request Contract (Input Serialization)
 
-When the Telo runtime executes an `Http.Request`, the underlying module must construct the outgoing request according to strict rules.
+When the Telo kernel executes an `Http.Request`, the underlying module must construct the outgoing request according to strict rules.
 
 - **Headers Normalization:** All header keys provided in the manifest MUST be normalized to lowercase before sending.
 - **Query Parameters:** If `query` is provided as an object, the module MUST safely URL-encode the keys and values and append them to the `url`.
@@ -48,11 +48,11 @@ The output of an `Http.Request` becomes available to the Telo engine (e.g., for 
 
 ## 3. Error Handling Contract (Network vs. HTTP)
 
-It is crucial to differentiate between an HTTP error (the external server responded) and a Network error (the runtime couldn't reach the server).
+It is crucial to differentiate between an HTTP error (the external server responded) and a Network error (the kernel couldn't reach the server).
 
 ### 3.1. HTTP Status Errors (4xx and 5xx)
 
-- **Standard:** By default, HTTP status codes like `400`, `404`, or `500` **MUST NOT** throw a runtime execution error.
+- **Standard:** By default, HTTP status codes like `400`, `404`, or `500` **MUST NOT** throw a kernel execution error.
 - They are considered successful _network_ executions. The module MUST return the standard Telo Response Object with the respective `status` code. It is up to the Telo manifest author to handle these via CEL mappings (e.g., `${{ result.status == 200 ? result.body : throw('API Failed') }}`).
 
 ### 3.2. Network & Engine Errors

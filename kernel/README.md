@@ -1,4 +1,4 @@
-# Telo Runtime
+# Telo Kernel
 
 **Status:** Early prototype. The API surface — including YAML shapes — may change at any time without notice.
 
@@ -8,9 +8,9 @@
 
 ## 1. Core Concepts
 
-The Telo Runtime is a **declarative execution host**. You describe resources in YAML; the runtime loads them, wires up controllers, and keeps the process alive until all work is done.
+The Telo Kernel is a **declarative execution host**. You describe resources in YAML; the kernel loads them, wires up controllers, and keeps the process alive until all work is done.
 
-The runtime performs three functions:
+The kernel performs three functions:
 
 - **Loader:** Reads YAML files, compiles them through the CEL-YAML templating engine, and resolves controller entrypoints.
 - **Registry:** Indexes resource instances by a composite key of `module.Kind.name`.
@@ -289,9 +289,9 @@ Teardown events are emitted by the kernel:
 {module}.{Kind}.{name}.Teardown
 ```
 
-### 7.3 Runtime Holds (Keepalive Leases)
+### 7.3 Kernel Holds (Keepalive Leases)
 
-The runtime exits when there is no more work to do. Modules and resources prevent exit by acquiring a **hold**:
+The kernel exits when there is no more work to do. Modules and resources prevent exit by acquiring a **hold**:
 
 ```typescript
 const release = ctx.acquireHold("http-server");
@@ -335,7 +335,7 @@ resources:
 
 The expansion loop runs up to 10 iterations to support templates that instantiate other templates.
 
-**For full template documentation see [TEMPLATES.md](./TEMPLATES.md).**
+**For full template documentation see [../yaml-cel-templating/README.md](../yaml-cel-templating/README.md).**
 
 ## 9. Module System
 

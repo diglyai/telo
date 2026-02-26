@@ -1,4 +1,4 @@
-# @telorun/runtime
+# @telorun/kernel
 
 ## 0.2.3
 

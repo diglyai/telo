@@ -1,7 +1,7 @@
 # Testing
 
 Tests for Telo manifests and controllers use Telo resources to orchestrate execution and verify outputs. In other words Telo is used to test Telo.
-This allows tests to be defined once for every runtime implementation.
+This allows tests to be defined once for every kernel implementation.
 
 ## Quick Start
 
@@ -282,5 +282,5 @@ kernel.execute("Pipeline.Job.TestCalculator", {})
 ## See Also
 
 - [Examples](../examples/) - Complete working test examples
-- [Runtime Documentation](../runtime/README.md) - How Telo runtime works
+- [Kernel Documentation](../kernel/README.md) - How Telo kernel works
 - [Module Documentation](../modules/README.md) - Module structure and resources

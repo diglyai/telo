@@ -1,6 +1,6 @@
 # Agents
 
-Before making any decisions or changes read [README.md](./README.md) for context about the Telo project and [runtime/README.md](runtime/README.md) for Telo Runtime information.
+Before making any decisions or changes read [README.md](./README.md) for context about the Telo project and [kernel/README.md](kernel/README.md) for Telo Kernel information.
 
 Prefer clean code that is easy to read and maintain. Avoid clever or complex solutions unless absolutely necessary.
 

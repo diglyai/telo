@@ -4,7 +4,7 @@
 
 The `Http.Server` and `Http.Api` manifests in Telo are designed to be strictly **language-agnostic** and **framework-agnostic**. To maintain the "Zero Lock-in" promise, the underlying HTTP engine (e.g., Fastify in Node.js, Actix in Rust) is treated purely as an implementation detail.
 
-All HTTP modules integrated into the Telo runtime **must** adhere to this behavioral contract. This ensures that a YAML manifest written today will execute with exactly the same I/O and validation behavior regardless of the underlying language or framework.
+All HTTP modules integrated into the Telo kernel **must** adhere to this behavioral contract. This ensures that a YAML manifest written today will execute with exactly the same I/O and validation behavior regardless of the underlying language or framework.
 
 ---
 
