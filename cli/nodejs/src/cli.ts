@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { Kernel } from "@telorun/runtime";
+import { Kernel } from "@telorun/kernel";
 import * as fs from "fs";
 import * as path from "path";
 import yargs from "yargs";

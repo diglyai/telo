@@ -3,7 +3,7 @@ packages:
   - modules/*/*
   - modules/*/*/*
   - pages
-  - runtime/*
+  - kernel/*
   - sdk/*
   - yaml-cel-templating/*
 

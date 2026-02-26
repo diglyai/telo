@@ -17,9 +17,9 @@ importers:
 
   cli/nodejs:
     dependencies:
-      '@telorun/runtime':
+      '@telorun/kernel':
         specifier: workspace:*
-        version: link:../../runtime/nodejs
+        version: link:../../kernel/nodejs
       yargs:
         specifier: ^17.7.2
         version: 17.7.2
@@ -30,6 +30,40 @@ importers:
       '@types/yargs':
         specifier: ^17.0.33
         version: 17.0.35
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
+  kernel/nodejs:
+    dependencies:
+      '@sinclair/typebox':
+        specifier: ^0.34.48
+        version: 0.34.48
+      '@telorun/sdk':
+        specifier: workspace:*
+        version: link:../../sdk/nodejs
+      '@telorun/yaml-cel-templating':
+        specifier: workspace:*
+        version: link:../../yaml-cel-templating/nodejs
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
+      cel-js:
+        specifier: ^0.8.2
+        version: 0.8.2
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.1
+      packageurl-js:
+        specifier: ^2.0.1
+        version: 2.0.1
+    devDependencies:
+      '@types/js-yaml':
+        specifier: ^4.0.5
+        version: 4.0.9
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.30
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
@@ -230,40 +264,6 @@ importers:
         version: 3.9.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       typescript:
         specifier: ^5.9.3
-        version: 5.9.3
-
-  runtime/nodejs:
-    dependencies:
-      '@sinclair/typebox':
-        specifier: ^0.34.48
-        version: 0.34.48
-      '@telorun/sdk':
-        specifier: workspace:*
-        version: link:../../sdk/nodejs
-      '@telorun/yaml-cel-templating':
-        specifier: workspace:*
-        version: link:../../yaml-cel-templating/nodejs
-      ajv:
-        specifier: ^8.17.1
-        version: 8.17.1
-      cel-js:
-        specifier: ^0.8.2
-        version: 0.8.2
-      js-yaml:
-        specifier: ^4.1.0
-        version: 4.1.1
-      packageurl-js:
-        specifier: ^2.0.1
-        version: 2.0.1
-    devDependencies:
-      '@types/js-yaml':
-        specifier: ^4.0.5
-        version: 4.0.9
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.30
-      typescript:
-        specifier: ^5.0.0
         version: 5.9.3
 
   sdk/nodejs:

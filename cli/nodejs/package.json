@@ -25,7 +25,7 @@
     "runtime"
   ],
   "dependencies": {
-    "@telorun/runtime": "workspace:*",
+    "@telorun/kernel": "workspace:*",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
