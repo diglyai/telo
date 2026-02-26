@@ -9,7 +9,12 @@ const config: Config = {
   trailingSlash: false,
 
   onBrokenLinks: "warn",
-  onBrokenMarkdownLinks: "warn",
+
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: "warn",
+    },
+  },
 
   presets: [
     [
@@ -21,6 +26,7 @@ const config: Config = {
           routeBasePath: "/",
           include: [
             "README.md",
+            "cli/README.md",
             "kernel/README.md",
             "yaml-cel-templating/README.md",
             "modules/README.md",

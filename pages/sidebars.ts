@@ -3,15 +3,14 @@ import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 const sidebars: SidebarsConfig = {
   docs: [
     { type: "doc", id: "README", label: "Introduction" },
+    { type: "doc", id: "cli/README", label: "Telo CLI" },
     {
       type: "category",
       label: "Kernel",
-      items: [{ type: "doc", id: "kernel/README", label: "Specification" }],
-    },
-    {
-      type: "category",
-      label: "Templating",
-      items: [{ type: "doc", id: "yaml-cel-templating/README", label: "CEL-YAML Specification" }],
+      items: [
+        { type: "doc", id: "kernel/README", label: "Specification" },
+        { type: "doc", id: "yaml-cel-templating/README", label: "CEL-YAML Specification" },
+      ],
     },
     {
       type: "category",
