@@ -4,6 +4,7 @@ import * as path from "path";
 import { HttpAdapter } from "./manifest-adapters/http-adapter.js";
 import { LocalFileAdapter } from "./manifest-adapters/local-file-adapter.js";
 import type { ManifestAdapter, ManifestSourceData } from "./manifest-adapters/manifest-adapter.js";
+import { RegistryAdapter } from "./manifest-adapters/registry-adapter.js";
 import { formatAjvErrors, validateRuntimeResource } from "./manifest-schemas.js";
 import { ResourceManifest } from "./types.js";
 
@@ -13,7 +14,7 @@ import { ResourceManifest } from "./types.js";
 export class Loader {
   private static projectRoot: string | null = null;
 
-  private readonly adapters: ManifestAdapter[] = [new HttpAdapter(), new LocalFileAdapter()];
+  private readonly adapters: ManifestAdapter[] = [new HttpAdapter(), new RegistryAdapter(), new LocalFileAdapter()];
 
   private getAdapter(pathOrUrl: string): ManifestAdapter {
     const adapter = this.adapters.find((a) => a.supports(pathOrUrl));
