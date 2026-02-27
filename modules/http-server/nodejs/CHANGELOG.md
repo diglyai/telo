@@ -1,5 +1,13 @@
 # @telorun/http-server
 
+## 0.1.3
+
+### Patch Changes
+
+- Automated release.
+- Updated dependencies
+  - @telorun/sdk@0.2.4
+
 ## 0.1.2
 
 ### Patch Changes

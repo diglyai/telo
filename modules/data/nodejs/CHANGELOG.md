@@ -1,5 +1,13 @@
 # @telorun/data
 
+## 0.0.5
+
+### Patch Changes
+
+- Automated release.
+- Updated dependencies
+  - @telorun/sdk@0.2.4
+
 ## 0.0.4
 
 ### Patch Changes
