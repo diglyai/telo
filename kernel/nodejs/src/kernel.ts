@@ -559,6 +559,7 @@ export class Kernel implements IKernel {
     // After all passes complete, check for unhandled resources
     if (unhandledResources.size > 0) {
       const unhandledList = Array.from(unhandledResources.entries())
+        .reverse() // Most relevant errors (root causes) are last in the list, so reverse to show them first
         .map(([resource, error]) => `- ${resource}: ${error}`)
         .join("\n");
       throw new RuntimeError(

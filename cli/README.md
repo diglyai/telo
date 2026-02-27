@@ -47,6 +47,13 @@ Load and run a Telo manifest.
 Create a file `server.yaml`:
 
 ```yaml
+kind: Runtime.Module
+metadata:
+  name: Example
+imports:
+  - https://raw.githubusercontent.com/diglyai/telo/refs/heads/main/modules/http-server/module.yaml
+  - https://raw.githubusercontent.com/diglyai/telo/refs/heads/main/modules/javascript/module.yaml
+---
 kind: Http.Server
 metadata:
   name: MyServer
@@ -73,8 +80,10 @@ routes:
         }
     response:
       status: 200
-      body:
-        message: "${{ result.message }}"
+      statuses:
+        200:
+          body:
+            message: "${{ result.message }}"
 ```
 
 Run it:

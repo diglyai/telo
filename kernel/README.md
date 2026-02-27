@@ -381,13 +381,15 @@ schema: # JSON Schema — validated against each resource before create()
     host: { type: string }
   required: [port]
 controllers:
-  # List of PURLs
+  # Ordered list of Package URL (PURL) candidates — first match for the current runtime is used
   - pkg:npm/@telorun/pipeline@>=1.0.0?local_path=./nodejs#job
   - pkg:cargo/telorun-pipeline@>=1.0.0?local_path=./rust#job
   - pkg:golang/github.com/telorun/pipeline@>=1.0.0?local_path=./go#job
 ```
 
-When a `Runtime.Definition` instance initializes, it dynamically imports the controller module and registers it with the kernel.
+When a `Runtime.Definition` instance initializes, it resolves and loads the controller module
+and registers it with the kernel. For the full resolution algorithm (local path, host
+node_modules, registry cache) and PURL format, see [CONTROLLERS.md](CONTROLLERS.md).
 
 ### 9.3 Module Loading Flow
 

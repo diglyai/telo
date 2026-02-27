@@ -13,6 +13,25 @@ type ModuleResource = RuntimeResource & {
   resources?: (string | { path: string })[];
 };
 
+/**
+ * Check if a path is a URL (http:// or https://)
+ */
+function isUrl(pathOrUrl: string): boolean {
+  return pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://");
+}
+
+/**
+ * Resolve a path relative to a base, handling both local paths and URLs
+ */
+function resolvePath(loader: Loader, base: string, relative: string): string {
+  // If the relative path is actually a URL, return it as-is
+  if (isUrl(relative)) {
+    return relative;
+  }
+  // Otherwise, resolve it relative to the base
+  return loader.resolvePath(base, relative);
+}
+
 export async function create(
   resource: ModuleResource,
   ctx: ResourceContext,
@@ -26,9 +45,8 @@ export async function create(
     // Load and register resource definitions from imports
     if (resource.imports && Array.isArray(resource.imports)) {
       for (const importPath of resource.imports) {
-        const defResources = await loader.loadDirectory(
-          loader.resolvePath(moduleBasePath, importPath),
-        );
+        const resolvedPath = resolvePath(loader, moduleBasePath, importPath);
+        const defResources = await loader.loadDirectory(resolvedPath);
         for (const defResource of defResources) {
           ctx.registerManifest(defResource);
         }
@@ -37,7 +55,8 @@ export async function create(
     // Load and register resources from definitions and resources paths
     if (resource.definitions && Array.isArray(resource.definitions)) {
       for (const defPath of resource.definitions) {
-        const defResources = await loader.loadManifest(loader.resolvePath(moduleBasePath, defPath));
+        const resolvedPath = resolvePath(loader, moduleBasePath, defPath);
+        const defResources = await loader.loadManifest(resolvedPath);
         for (const defResource of defResources) {
           ctx.registerManifest(defResource);
         }
@@ -47,7 +66,8 @@ export async function create(
     if (resource.resources && Array.isArray(resource.resources)) {
       for (const defPath of resource.resources) {
         const rawPath = typeof defPath === "string" ? defPath : defPath.path;
-        const defResources = await loader.loadManifest(loader.resolvePath(moduleBasePath, rawPath));
+        const resolvedPath = resolvePath(loader, moduleBasePath, rawPath);
+        const defResources = await loader.loadManifest(resolvedPath);
         for (const defResource of defResources) {
           ctx.registerManifest(defResource);
         }

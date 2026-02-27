@@ -15,13 +15,7 @@ const HttpApiRouteManifest = Type.Object({
       }),
     ),
   }),
-  handler: Type.Optional(
-    Type.Object({
-      kind: Type.String(),
-      name: Type.String(),
-      inputs: Type.Optional(Type.Any()),
-    }),
-  ),
+  handler: Type.Optional(Type.Any()), // Any handler shape is allowed - will be processed in create()
   response: Type.Object({
     status: Type.Union([Type.Number({ minimum: 100, maximum: 599 }), Type.String()]),
     statuses: Type.Record(
@@ -214,12 +208,42 @@ export class HttpServerApi implements ResourceInstance {
   }
 }
 
-export async function create(
-  resource: HttpApiManifest,
-  ctx: ResourceContext,
-): Promise<HttpServerApi> {
+export async function create(resource: any, ctx: ResourceContext): Promise<HttpServerApi> {
+  // First validate with a permissive schema (handler can be any shape)
   ctx.validateSchema(resource, HttpApiManifest);
-  return new HttpServerApi(ctx, resource);
+  // Process routes and register unnamed handlers as child resources
+  let handlerCounter = 0;
+  const processedRoutes = (resource.routes || []).map((route: any) => {
+    if (!route.handler) {
+      return route;
+    }
+
+    // Check if handler is unnamed (inline handler)
+    if (typeof route.handler === "object" && !route.handler.name) {
+      // Use resolveChildren to register the unnamed handler and get its normalized reference
+      const resolvedHandler = ctx.resolveChildren(route.handler, `__handler_${handlerCounter++}`);
+
+      // Return route with the resolved handler reference
+      return {
+        ...route,
+        handler: {
+          kind: resolvedHandler.kind,
+          name: resolvedHandler.name,
+          inputs: route.handler.inputs,
+        },
+      };
+    }
+
+    return route;
+  });
+
+  // Create the API instance with processed routes
+  const processedResource: HttpApiManifest = {
+    ...resource,
+    routes: processedRoutes,
+  };
+
+  return new HttpServerApi(ctx, processedResource);
 }
 
 function resolveHandlerName(handler: any): { kind: string; name: string } {
@@ -227,15 +251,13 @@ function resolveHandlerName(handler: any): { kind: string; name: string } {
     const [kind, name] = handler.split("/");
     return { kind, name };
   }
-  if (
-    handler &&
-    typeof handler === "object" &&
-    typeof handler.name === "string" &&
-    typeof handler.kind === "string"
-  ) {
-    return { name: handler.name, kind: handler.kind };
+  if (handler && typeof handler === "object" && typeof handler.kind === "string") {
+    // name should always be present after create() processes the routes
+    // but fallback gracefully if it's not
+    const name = handler.name || `__unnamed_${Math.random().toString(36).slice(2, 9)}`;
+    return { name, kind: handler.kind };
   }
-  throw new Error("Unable to resolve handler");
+  throw new Error("Unable to resolve handler - handler must have a 'kind' property");
 }
 
 function resolveHandlerInputs(handler: any, requestContext: Record<string, any>): any {

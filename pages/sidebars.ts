@@ -9,6 +9,7 @@ const sidebars: SidebarsConfig = {
       label: "Kernel",
       items: [
         { type: "doc", id: "kernel/README", label: "Specification" },
+        { type: "doc", id: "kernel/CONTROLLERS", label: "Controllers" },
         { type: "doc", id: "yaml-cel-templating/README", label: "CEL-YAML Specification" },
       ],
     },

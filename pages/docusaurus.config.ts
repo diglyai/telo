@@ -28,6 +28,7 @@ const config: Config = {
             "README.md",
             "cli/README.md",
             "kernel/README.md",
+            "kernel/CONTROLLERS.md",
             "yaml-cel-templating/README.md",
             "modules/README.md",
             "modules/http-server/README.md",
@@ -51,7 +52,6 @@ const config: Config = {
       title: "⚡ Telo",
       items: [
         { to: "/kernel/", label: "Kernel", position: "left" },
-        { to: "/yaml-cel-templating/", label: "Templating", position: "left" },
         { to: "/modules/", label: "Modules", position: "left" },
         { to: "/sdk/", label: "SDK", position: "left" },
         {

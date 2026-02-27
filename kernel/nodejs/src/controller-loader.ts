@@ -43,12 +43,22 @@ export class ControllerLoader {
       if (await this.pathExists(resolvedLocalPath)) {
         packageRoot = resolvedLocalPath;
       } else {
+        const nodeModulesPath = await this.findInNodeModules(`${namespace}/${name}`);
+        if (nodeModulesPath) {
+          packageRoot = nodeModulesPath;
+        } else {
+          await this.ensureNpmPackageInstalled(installDir, `${namespace}/${name}@${versionSpec}`);
+          packageRoot = this.getInstalledPackageRoot(installDir, `${namespace}/${name}`);
+        }
+      }
+    } else {
+      const nodeModulesPath = await this.findInNodeModules(`${namespace}/${name}`);
+      if (nodeModulesPath) {
+        packageRoot = nodeModulesPath;
+      } else {
         await this.ensureNpmPackageInstalled(installDir, `${namespace}/${name}@${versionSpec}`);
         packageRoot = this.getInstalledPackageRoot(installDir, `${namespace}/${name}`);
       }
-    } else {
-      await this.ensureNpmPackageInstalled(installDir, `${namespace}/${name}@${versionSpec}`);
-      packageRoot = this.getInstalledPackageRoot(installDir, `${namespace}/${name}`);
     }
 
     const entryFile = await this.resolvePackageEntry(packageRoot, entry ? `./${entry}` : ".");
@@ -257,6 +267,21 @@ export class ControllerLoader {
       return jsPath;
     }
     return resolvedPath;
+  }
+
+  private async findInNodeModules(packageName: string): Promise<string | null> {
+    const nameParts = packageName.split("/");
+    const candidates = [
+      path.join(process.cwd(), "node_modules", ...nameParts),
+      path.join(process.cwd(), "node_modules", ".pnpm", "node_modules", ...nameParts),
+    ];
+    for (const candidate of candidates) {
+      const packageJsonPath = path.join(candidate, "package.json");
+      if (await this.pathExists(packageJsonPath)) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   private async pathExists(filePath: string): Promise<boolean> {
