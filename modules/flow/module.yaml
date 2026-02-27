@@ -2,6 +2,7 @@ kind: Runtime.Definition
 metadata:
   name: Flow
   module: Runtime
+  version: 1.0.0
 capabilities:
   - executable
 controllers:

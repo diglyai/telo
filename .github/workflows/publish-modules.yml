@@ -1,0 +1,67 @@
+name: Publish Standard Modules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "modules/*/module.yaml"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install yq
+        uses: mikefarah/yq@v4.44.3
+
+      - name: Configure AWS CLI for Cloudflare R2
+        run: |
+          aws configure set aws_access_key_id "${{ secrets.R2_ACCESS_KEY_ID }}"
+          aws configure set aws_secret_access_key "${{ secrets.R2_SECRET_ACCESS_KEY }}"
+          aws configure set default.region auto
+
+      - name: Publish module.yaml files
+        env:
+          R2_ENDPOINT: "${{ secrets.R2_ENDPOINT }}"
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          set -euo pipefail
+
+          for module_file in modules/*/module.yaml; do
+            module_name=$(basename "$(dirname "$module_file")")
+
+            # Extract version from first YAML document only (some files have multiple --- docs)
+            version=$(yq 'select(di == 0) | .metadata.version' "$module_file")
+
+            if [[ -z "$version" || "$version" == "null" ]]; then
+              echo "WARNING: Missing metadata.version in $module_file, skipping"
+              continue
+            fi
+
+            target_key="std/${module_name}/${version}/module.yaml"
+            echo "Processing: $module_file → s3://${R2_BUCKET}/${target_key}"
+
+            # Fail if file already exists in R2
+            if aws s3api head-object \
+                --endpoint-url "$R2_ENDPOINT" \
+                --bucket "$R2_BUCKET" \
+                --key "$target_key" \
+                2>/dev/null; then
+              echo "ERROR: $target_key already exists in R2. Refusing to overwrite."
+              exit 1
+            fi
+
+            # Upload
+            aws s3api put-object \
+              --endpoint-url "$R2_ENDPOINT" \
+              --bucket "$R2_BUCKET" \
+              --key "$target_key" \
+              --body "$module_file"
+
+            echo "Uploaded: $target_key"
+          done
+
+          echo "All modules published successfully."
