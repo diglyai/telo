@@ -2,10 +2,12 @@ import { ResourceContext, RuntimeEvent, RuntimeResource, isContextProvider } fro
 import * as path from "path";
 import { BootContextRegistry } from "./boot-context-registry.js";
 import { ControllerRegistry } from "./controller-registry.js";
+import { EvaluationContext } from "./evaluation-context.js";
 import { EventStream } from "./event-stream.js";
 import { EventBus } from "./events.js";
-import { evaluateCel, expandValue, resolveManifestWithContext } from "./expressions.js";
+import { evaluateCel, expandValue } from "./expressions.js";
 import { Loader } from "./loader.js";
+import { ModuleContextRegistry } from "./module-context-registry.js";
 import { ResourceContextImpl } from "./resource-context.js";
 import { SchemaValidator } from "./schema-valiator.js";
 import {
@@ -40,6 +42,7 @@ export class Kernel implements IKernel {
   private idleResolvers: Array<() => void> = [];
   private _exitCode = 0;
   private bootContextRegistry = new BootContextRegistry();
+  private moduleContextRegistry = new ModuleContextRegistry();
   private readonly sharedSchemaValidator = new SchemaValidator();
 
   constructor() {
@@ -122,6 +125,14 @@ export class Kernel implements IKernel {
 
   registerCapability(name: string, schema?: Record<string, any>): void {
     this.controllers.registerCapability(name, schema);
+  }
+
+  registerModuleContext(
+    moduleName: string,
+    variables: Record<string, unknown>,
+    secrets: Record<string, unknown>,
+  ): void {
+    this.moduleContextRegistry.setVariablesAndSecrets(moduleName, variables, secrets);
   }
 
   isCapabilityRegistered(name: string): boolean {
@@ -482,18 +493,15 @@ export class Kernel implements IKernel {
             throw new Error(`No schema defined for ${kind} controller`);
           }
 
-          // AOT: resolve static boot-context expressions before schema validation
-          // and controller creation. This is a no-op until at least one provider
-          // has registered its context.
-          let resolvedResource = resource;
-          if (this.bootContextRegistry.hasProviders()) {
-            const bootContext = this.bootContextRegistry.buildContext(
-              resource.kind,
-              resource.metadata.name,
-              resource,
-            );
-            resolvedResource = resolveManifestWithContext(resource, bootContext);
-          }
+          // AOT: resolve expressions against the merged module + boot context.
+          // Module context provides flat namespaces (variables, secrets, resources, imports).
+          // Boot context (ContextProvider instances) overlays on top.
+          const moduleCtx = this.moduleContextRegistry.getContext(resource.metadata.module);
+          const bootCtx = this.bootContextRegistry.hasProviders()
+            ? this.bootContextRegistry.buildContext(resource.kind, resource.metadata.name, resource)
+            : {};
+          const evalCtx = moduleCtx.merge(bootCtx);
+          let resolvedResource = evalCtx.expand(resource) as ResourceManifest;
 
           this.sharedSchemaValidator.compile(controller.schema).validate(resolvedResource);
           // Create resource instance using the resolved manifest
@@ -514,6 +522,15 @@ export class Kernel implements IKernel {
                 resource.metadata.module,
                 resource.grants as string[] | undefined,
                 instance.provideContext(),
+              );
+            }
+            // Register module variables/secrets so child resources can use
+            // ${{ variables.X }} and ${{ secrets.X }} in subsequent passes.
+            if (resource.kind === "Kernel.Module") {
+              this.moduleContextRegistry.setVariablesAndSecrets(
+                resource.metadata.name,
+                extractFlatValues(resolvedResource.variables),
+                extractFlatValues(resolvedResource.secrets),
               );
             }
             this.resourceInstances.set(key, { resource: resolvedResource, instance });
@@ -714,4 +731,25 @@ export class Kernel implements IKernel {
       return originalEmit(event, payload);
     };
   }
+}
+
+/**
+ * Extract only primitive/scalar values from a manifest map.
+ * Skips entries that look like JSON Schema property definitions (objects with a
+ * "type" key) — those are schema declarations, not runtime values.
+ * This is MVP behavior; once the Import controller injects actual values this
+ * function becomes unnecessary.
+ */
+function extractFlatValues(map: unknown): Record<string, unknown> {
+  if (!map || typeof map !== "object" || Array.isArray(map)) {
+    return {};
+  }
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(map as Record<string, unknown>)) {
+    if (value !== null && typeof value === "object" && "type" in (value as object)) {
+      continue;
+    }
+    result[key] = value;
+  }
+  return result;
 }

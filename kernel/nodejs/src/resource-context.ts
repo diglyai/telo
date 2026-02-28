@@ -1,6 +1,6 @@
 import { NoopValidator, ResourceContext, RuntimeResource } from "@telorun/sdk";
 import AjvModule from "ajv";
-import { expandValue } from "./expressions.js";
+import { EvaluationContext } from "./evaluation-context.js";
 import { Kernel } from "./kernel.js";
 import { formatAjvErrors } from "./manifest-schemas.js";
 import { SchemaValidator } from "./schema-valiator.js";
@@ -183,11 +183,11 @@ export class ResourceContextImpl implements ResourceContext {
   }
 
   evaluateCel(expression: string, context: Record<string, any>): unknown {
-    throw new Error("Method evaluateCel not implemented.");
+    return new EvaluationContext(context).evaluate(expression);
   }
 
   expandValue(value: any, context: Record<string, any>) {
-    return expandValue(value, context);
+    return new EvaluationContext(context).expand(value);
   }
 
   async emitEvent(event: string, payload?: any) {

@@ -79,6 +79,11 @@ export interface Kernel {
   getSourceFiles(): string[];
   reloadSource(sourcePath: string): Promise<void>;
   shutdown(): void;
+  registerModuleContext(
+    moduleName: string,
+    variables: Record<string, unknown>,
+    secrets: Record<string, unknown>,
+  ): void;
 }
 
 export class RuntimeError extends Error {
