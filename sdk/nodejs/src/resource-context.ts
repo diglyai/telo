@@ -28,14 +28,13 @@ export interface ResourceContext extends ControllerContext {
   createSchemaValidator(schema: any): DataValidator;
   registerSchema(name: string, schema: object): void;
   lookupSchema(name: string): object | undefined;
-  registerController(
-    moduleName: string,
-    kindName: string,
-    controllerInstance: any,
-  ): Promise<void>;
+  registerController(moduleName: string, kindName: string, controllerInstance: any): Promise<void>;
   registerDefinition(definition: any): void;
   registerCapability(name: string, schema?: Record<string, any>): void;
   isCapabilityRegistered(name: string): boolean;
   getCapabilitySchema(name: string): Record<string, any> | null | undefined;
   teardownResource(kind: string, name: string): Promise<void>;
+  stdin: NodeJS.ReadableStream;
+  stdout: NodeJS.WritableStream;
+  stderr: NodeJS.WritableStream;
 }

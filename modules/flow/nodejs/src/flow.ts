@@ -34,20 +34,12 @@ class Flow {
   }
 
   private async executeSteps(): Promise<void> {
-    const context: Record<string, any> = {};
+    const outputs: Record<string, any> = {};
     for (const step of this.resource.steps) {
       const { kind, name } = step.invoke;
-      const input = this.ctx.expandValue(step.inputs || {}, context);
-      const result = await this.ctx.invoke(kind, name, { ...context, ...input });
-      if (result != null && name) {
-        const parts = kind.split(".");
-        let cursor = context;
-        for (const part of parts) {
-          if (!cursor[part]) cursor[part] = {};
-          cursor = cursor[part];
-        }
-        cursor[name] = result;
-      }
+      const input = this.ctx.expandValue(step.inputs || {}, { outputs });
+      const result = await this.ctx.invoke(kind, name, input);
+      outputs[name] = result;
     }
   }
 }

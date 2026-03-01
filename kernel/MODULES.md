@@ -111,7 +111,63 @@ inputs:
 
 ---
 
-## 4. Import and Usage (`kind: Import`)
+## 4. Root Module
+
+A **Root Module** is the designated entry point of an application. It is the only module in the dependency graph that is bootstrapped directly by the Telo runtime (e.g., via a CLI target or deployment configuration), and it is the **only** module that has access to the host's environment variables via the `env` object.
+
+### 4.1 The `env` Capability
+
+The `env` object represents the host process's environment variables and is **exclusively available** in Root Module documents. Child modules are deliberately isolated from the host environment — they can only receive values that are explicitly passed through their declared `variables` and `secrets` contract. This is a core security boundary of the module system.
+
+- **Available in**: Root Module documents only (`kind: Module` and `kind: Import` declared in the root module's files).
+- **Unavailable in**: Any non-root module, regardless of nesting depth.
+- **Usage**: `${{ env.VARIABLE_NAME }}` in any CEL expression within the root module.
+
+### 4.2 Designating a Root Module
+
+A module is designated as the root externally — by the deployment target, CLI invocation, or platform configuration — not by a flag inside the YAML itself. Any module can serve as a root, but a module graph can only have one root entry point per running instance.
+
+### 4.3 Example
+
+The primary purpose of the Root Module is to bridge the host environment to its child modules' contracts, keeping secrets out of child module files entirely.
+
+```yaml
+# main.yaml (The Root Module)
+kind: Module
+metadata:
+  name: acme-backend-root
+  version: 1.0.0
+
+---
+# The root module imports the payment gateway and injects host environment
+# variables into the child module's explicit contract.
+kind: Import
+metadata:
+  name: PaymentGateway
+source: acme/payment-gateway@1.2.0
+variables:
+  upstreamProviderUrl: "https://api.stripe.com"
+  retryTimeoutMs: 5000
+secrets:
+  # The 'env' capability is available here because this is the root module.
+  # It securely maps host environment variables to the child's secret contract.
+  providerApiKey: "${{ env.STRIPE_SECRET_KEY }}"
+  webhookSignature: "${{ env.STRIPE_WEBHOOK_SECRET }}"
+
+---
+kind: Import
+metadata:
+  name: UserService
+source: acme/user-service@1.0.0
+variables:
+  dbConnectionString: "${{ env.DATABASE_URL }}"
+```
+
+The child modules (`acme/payment-gateway`, `acme/user-service`) never declare or reference `env`. They only declare their inputs as typed `variables` and `secrets`, keeping them fully portable and environment-agnostic.
+
+---
+
+## 5. Import and Usage (`kind: Import`)
 
 To utilize an external package, a project declares a dependency using `kind: Import`. The import acts as a local proxy.
 

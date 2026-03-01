@@ -2,10 +2,8 @@ import { ResourceContext, RuntimeEvent, RuntimeResource, isContextProvider } fro
 import * as path from "path";
 import { BootContextRegistry } from "./boot-context-registry.js";
 import { ControllerRegistry } from "./controller-registry.js";
-import { EvaluationContext } from "./evaluation-context.js";
 import { EventStream } from "./event-stream.js";
 import { EventBus } from "./events.js";
-import { evaluateCel, expandValue } from "./expressions.js";
 import { Loader } from "./loader.js";
 import { ModuleContextRegistry } from "./module-context-registry.js";
 import { ResourceContextImpl } from "./resource-context.js";
@@ -343,9 +341,8 @@ export class Kernel implements IKernel {
         void this.eventBus.emit(namespaced, payload);
       },
       acquireHold: (reason?: string) => this.acquireHold(reason),
-      evaluateCel: (expression: string, context: Record<string, any>) =>
-        evaluateCel(expression, context),
-      expandValue: (value: any, context: Record<string, any>) => expandValue(value, context),
+      expandValue: (value: any, context: Record<string, any>) =>
+        this.moduleContextRegistry.getContext(kind).merge(context).expand(value),
       requestExit: (code: number) => this.requestExit(code),
     };
   }
@@ -356,7 +353,13 @@ export class Kernel implements IKernel {
       resource.kind,
       resource.metadata.name,
     );
-    return new ResourceContextImpl(this, resource.metadata, this.sharedSchemaValidator, key);
+    return new ResourceContextImpl(
+      this,
+      this.moduleContextRegistry.getContext(resource.metadata.module),
+      resource.metadata,
+      this.sharedSchemaValidator,
+      key,
+    );
   }
 
   getResourcesByKind(kind: string): RuntimeResource[] {
@@ -496,13 +499,13 @@ export class Kernel implements IKernel {
           // AOT: resolve expressions against the merged module + boot context.
           // Module context provides flat namespaces (variables, secrets, resources, imports).
           // Boot context (ContextProvider instances) overlays on top.
-          const moduleCtx = this.moduleContextRegistry.getContext(resource.metadata.module);
-          const bootCtx = this.bootContextRegistry.hasProviders()
-            ? this.bootContextRegistry.buildContext(resource.kind, resource.metadata.name, resource)
-            : {};
-          const evalCtx = moduleCtx.merge(bootCtx);
-          let resolvedResource = evalCtx.expand(resource) as ResourceManifest;
-
+          // const moduleCtx = this.moduleContextRegistry.getContext(resource.metadata.module);
+          // const bootCtx = this.bootContextRegistry.hasProviders()
+          //   ? this.bootContextRegistry.buildContext(resource.kind, resource.metadata.name, resource)
+          //   : {};
+          // const evalCtx = moduleCtx.merge(bootCtx);
+          // let resolvedResource = evalCtx.expand(resource) as ResourceManifest;
+          const resolvedResource = resource; // Skip expansion for now - controllers can handle at runtime
           this.sharedSchemaValidator.compile(controller.schema).validate(resolvedResource);
           // Create resource instance using the resolved manifest
           const instance = await controller.create(

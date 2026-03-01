@@ -13,11 +13,6 @@ function collectSecretValues(secrets: Record<string, unknown>): Set<string> {
   return values;
 }
 
-function isIdentifierNotFoundError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.includes('Identifier "') && message.includes("not found");
-}
-
 function redactSecrets(message: string, secretValues: Set<string>): string {
   if (secretValues.size === 0) return message;
   const sorted = Array.from(secretValues).sort((a, b) => b.length - a.length);
@@ -85,8 +80,7 @@ export class EvaluationContext {
    * Returns a new base EvaluationContext — 'other' wins on key conflict.
    */
   merge(other: EvaluationContext | Record<string, unknown>): EvaluationContext {
-    const otherCtx =
-      other instanceof EvaluationContext ? other.context : other;
+    const otherCtx = other instanceof EvaluationContext ? other.context : other;
     const otherSecrets =
       other instanceof EvaluationContext ? other.secretValues : new Set<string>();
     const merged = Object.assign(Object.create(null), this.context, otherCtx) as Record<
@@ -104,36 +98,16 @@ export class EvaluationContext {
 
     const exact = value.match(EXACT_TEMPLATE_REGEX);
     if (exact) {
-      try {
-        return this.evaluate(exact[1]);
-      } catch (error) {
-        if (isIdentifierNotFoundError(error)) {
-          return value; // defer — leave ${{ expr }} unchanged
-        }
-        throw error;
-      }
+      return this.evaluate(exact[1]);
     }
 
-    let deferred = false;
-    const result = value.replace(TEMPLATE_REGEX, (_match, expr: string) => {
-      try {
-        const resolved = this.evaluate(expr);
-        if (resolved === null || resolved === undefined) {
-          return "";
-        }
-        return String(resolved);
-      } catch (error) {
-        if (isIdentifierNotFoundError(error)) {
-          deferred = true;
-          return _match; // leave ${{ expr }} in place
-        }
-        throw error;
+    return value.replace(TEMPLATE_REGEX, (_match, expr: string) => {
+      const resolved = this.evaluate(expr);
+      if (resolved === null || resolved === undefined) {
+        return "";
       }
+      return String(resolved);
     });
-
-    // If any part was deferred, return the partially-resolved string as-is
-    // so the expression can be retried with a fuller context later.
-    return deferred ? value : result;
   }
 }
 
@@ -165,10 +139,7 @@ export class ModuleContext extends EvaluationContext {
 export class ExecutionContext extends EvaluationContext {
   constructor(moduleCtx: ModuleContext, execProps: Record<string, unknown>) {
     super(
-      Object.assign(Object.create(null), moduleCtx.context, execProps) as Record<
-        string,
-        unknown
-      >,
+      Object.assign(Object.create(null), moduleCtx.context, execProps) as Record<string, unknown>,
       moduleCtx.secretValues,
     );
   }

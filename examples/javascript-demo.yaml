@@ -4,13 +4,13 @@ metadata:
   version: 1.0.0
   description: A demo module showcasing JavaScript scripts
 imports:
-  - ../../modules/flow
-  - ../../modules/javascript
-  - ../../modules/console
+  - ../modules/flow
+  - ../modules/javascript
+  - ../modules/console
 ---
 kind: JavaScript.Script
 metadata:
-  name: ExampleJavaScriptScript
+  name: MultiplyBy2
   module: JavaScriptDemo
 code: |
   function main({ value }) {
@@ -37,9 +37,9 @@ steps:
       value: 42
     invoke:
       kind: JavaScript.Script
-      name: ExampleJavaScriptScript
+      name: MultiplyBy2
   - inputs:
-      result: ${{ Step1.outputs.result }}
+      result: ${{ outputs.MultiplyBy2.result }}
     invoke:
       kind: Console.WriteLine
       inputSchema:

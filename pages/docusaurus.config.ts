@@ -32,6 +32,7 @@ const config: Config = {
             "kernel/CONTROLLERS.md",
             "kernel/EVALUATION_CONTEXT.md",
             "kernel/MODULES.md",
+            "kernel/MODULE_GRANTS.md",
             "yaml-cel-templating/README.md",
             "modules/README.md",
             "modules/http-server/README.md",

@@ -39,8 +39,8 @@ kind: Config.Secret
 metadata:
   name: DbPass
   module: Example
-value:
-  $eval: env.DB_PASSWORD
+source:
+  env: DB_PASSWORD
 ---
 kind: Console.WriteLine
 metadata:

@@ -1,15 +1,17 @@
 import { NoopValidator, ResourceContext, RuntimeResource } from "@telorun/sdk";
 import AjvModule from "ajv";
-import { EvaluationContext } from "./evaluation-context.js";
+import { EvaluationContext, ModuleContext } from "./evaluation-context.js";
 import { Kernel } from "./kernel.js";
 import { formatAjvErrors } from "./manifest-schemas.js";
 import { SchemaValidator } from "./schema-valiator.js";
 import { RuntimeError } from "./types.js";
+
 const Ajv = AjvModule.default ?? AjvModule;
 
 export class ResourceContextImpl implements ResourceContext {
   constructor(
     readonly kernel: Kernel,
+    private readonly moduleContext: ModuleContext,
     private readonly metadata: Record<string, any>,
     private readonly validator: SchemaValidator = new SchemaValidator(),
     private readonly resourceKey?: string,
@@ -187,7 +189,7 @@ export class ResourceContextImpl implements ResourceContext {
   }
 
   expandValue(value: any, context: Record<string, any>) {
-    return new EvaluationContext(context).expand(value);
+    return this.moduleContext.merge(context).expand(value);
   }
 
   async emitEvent(event: string, payload?: any) {

@@ -2,6 +2,6 @@ kind: Kernel.Module
 metadata:
   name: "Config"
   version: "0.1.0"
-resources:
+imports:
   - "variable.yaml"
   - "secret.yaml"

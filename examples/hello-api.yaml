@@ -3,8 +3,8 @@ metadata:
   name: Example
   version: 1.0.0
 imports:
-  - std/http-server@1.0.1
-  - std/javascript@1.0.0
+  - ../modules/http-server
+  - ../modules/javascript
 ---
 kind: Http.Server
 metadata:

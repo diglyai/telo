@@ -11,6 +11,7 @@ const sidebars: SidebarsConfig = {
         { type: "doc", id: "kernel/README", label: "Specification" },
         { type: "doc", id: "kernel/CONTROLLERS", label: "Controllers" },
         { type: "doc", id: "kernel/MODULES", label: "Module Specification" },
+        { type: "doc", id: "kernel/MODULE_GRANTS", label: "Module Grants Specification" },
         { type: "doc", id: "kernel/EVALUATION_CONTEXT", label: "Evaluation Context" },
         { type: "doc", id: "yaml-cel-templating/README", label: "CEL-YAML Specification" },
       ],
