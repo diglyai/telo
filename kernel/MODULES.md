@@ -18,7 +18,35 @@ The `Module` kind acts as the manifest and public interface for the package. It 
 
 ---
 
-## 2. Resource Association and Namespaces
+## 2. Including External Manifests
+
+A module can load additional manifests from other files into the same module scope using the `include` field. This allows splitting a large module definition across multiple files while keeping them logically united under one module.
+
+```yaml
+kind: Module
+metadata:
+  name: user-service
+  version: 1.0.0
+
+includes:
+  - routes.yaml
+  - repositories.yaml
+
+variables:
+  dbConnectionString:
+    type: string
+
+exports:
+  apiInstance: "${{ resources.UserApi }}"
+```
+
+All resources defined in included files behave as if they were declared in the same file — they share the same module namespace and have access to the same `variables`, `secrets`, and `resources` context. Included files must not redeclare a `kind: Module` manifest.
+
+Resources in included files that omit `metadata.module` are automatically bound to the including module, rather than the `default` module. Explicitly setting `metadata.module` on a resource in an included file still takes precedence.
+
+---
+
+## 3. Resource Association and Namespaces
 
 Resources (such as HTTP APIs, worker scripts, or message queues) are isolated within namespaces dictated by their module. The `metadata.module` property establishes this relationship.
 
@@ -29,7 +57,7 @@ Resources (such as HTTP APIs, worker scripts, or message queues) are isolated wi
 - **PascalCase** for Resource Types (`kind`), e.g., `Http.Api`.
 - **PascalCase** for Instances (Resources & Imports), e.g., `UserApi`.
 
-### 2.1 Referencing Resources
+### 3.1 Referencing Resources
 
 Resources interact via the target's `name` and `kind`.
 
@@ -38,7 +66,7 @@ Resources interact via the target's `name` and `kind`.
 
 ---
 
-## 3. Definition Example
+## 4. Definition Example
 
 This example demonstrates an application module requiring a connection string and an optional payment key. It exposes a health URL and the API instance itself.
 
@@ -111,11 +139,11 @@ inputs:
 
 ---
 
-## 4. Root Module
+## 5. Root Module
 
 A **Root Module** is the designated entry point of an application. It is the only module in the dependency graph that is bootstrapped directly by the Telo runtime (e.g., via a CLI target or deployment configuration), and it is the **only** module that has access to the host's environment variables via the `env` object.
 
-### 4.1 The `env` Capability
+### 5.1 The `env` Capability
 
 The `env` object represents the host process's environment variables and is **exclusively available** in Root Module documents. Child modules are deliberately isolated from the host environment — they can only receive values that are explicitly passed through their declared `variables` and `secrets` contract. This is a core security boundary of the module system.
 
@@ -123,11 +151,11 @@ The `env` object represents the host process's environment variables and is **ex
 - **Unavailable in**: Any non-root module, regardless of nesting depth.
 - **Usage**: `${{ env.VARIABLE_NAME }}` in any CEL expression within the root module.
 
-### 4.2 Designating a Root Module
+### 5.2 Designating a Root Module
 
 A module is designated as the root externally — by the deployment target, CLI invocation, or platform configuration — not by a flag inside the YAML itself. Any module can serve as a root, but a module graph can only have one root entry point per running instance.
 
-### 4.3 Example
+### 5.3 Example
 
 The primary purpose of the Root Module is to bridge the host environment to its child modules' contracts, keeping secrets out of child module files entirely.
 
@@ -167,7 +195,7 @@ The child modules (`acme/payment-gateway`, `acme/user-service`) never declare or
 
 ---
 
-## 5. Import and Usage (`kind: Import`)
+## 6. Import and Usage (`kind: Import`)
 
 To utilize an external package, a project declares a dependency using `kind: Import`. The import acts as a local proxy.
 
