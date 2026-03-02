@@ -13,12 +13,15 @@ if [ ! -d "$TESTS_DIR" ]; then
     exit 1
 fi
 
-# Find all .yaml files in tests directory
+# Find all .yaml files in tests directory, optionally filtered by partial path
+FILTER="${1:-}"
 echo "🔍 Discovering tests in $TESTS_DIR/..."
 TEST_FILES=()
 for file in "$TESTS_DIR"/*.yaml; do
     if [ -f "$file" ]; then
-        TEST_FILES+=("$file")
+        if [ -z "$FILTER" ] || [[ "$file" == *"$FILTER"* ]]; then
+            TEST_FILES+=("$file")
+        fi
     fi
 done
 

@@ -1,0 +1,34 @@
+kind: Kernel.Module
+metadata:
+  name: CanImportModuleWithAlias
+  version: 1.0.0
+---
+kind: Kernel.Import
+metadata:
+  name: MyConsole
+  module: CanImportModuleWithAlias
+source: ../examples/configurable-console.yaml
+variables:
+  product:
+    id: "123e4567-e89b-12d3-a456-426614174000"
+    name: "Test Product"
+    price: 19.99
+    inStock: true
+secrets:
+  password: "supersecret"
+---
+kind: Kernel.Import
+metadata:
+  name: MyAssert
+  module: CanImportModuleWithAlias
+source: ../modules/assert
+---
+kind: MyAssert.Events
+metadata:
+  name: VerifyConfigurableConsoleEvents
+  module: CanImportModuleWithAlias
+filter:
+  - type: "*"
+expect:
+  - event: ExampleConsole.Console.WriteLine.*.Invoked
+    payload: {}

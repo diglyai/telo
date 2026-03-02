@@ -150,6 +150,10 @@ export class Kernel implements IKernel {
     this.moduleContextRegistry.setImport(declaringModule, alias, exports);
   }
 
+  registerModuleAlias(declaringModule: string, alias: string, targetModule: string): void {
+    this.moduleContextRegistry.setAliasModule(declaringModule, alias, targetModule);
+  }
+
   isCapabilityRegistered(name: string): boolean {
     return this.controllers.isCapabilityRegistered(name);
   }
@@ -508,7 +512,16 @@ export class Kernel implements IKernel {
           continue;
         }
 
-        const controller = this.controllers.getControllerOrUndefined(kind);
+        const declaringModule = resource.metadata.module ?? "default";
+        let resolvedKind = kind;
+        if (kind.includes(".")) {
+          const dotIdx = kind.indexOf(".");
+          const prefix = kind.slice(0, dotIdx);
+          const realModule = this.moduleContextRegistry.resolveAlias(declaringModule, prefix);
+          if (realModule) resolvedKind = `${realModule}.${kind.slice(dotIdx + 1)}`;
+        }
+
+        const controller = this.controllers.getControllerOrUndefined(resolvedKind);
 
         if (!controller) {
           // No controller and no definition - track error and skip for now

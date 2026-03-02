@@ -42,6 +42,10 @@ export async function create(
     }
   }
 
+  // Record the alias → real module name mapping so the kernel can resolve
+  // alias-prefixed kinds (e.g. MyAssert.Events → Assert.Events).
+  (ctx as any).registerModuleAlias(declaringModule, alias, targetModule);
+
   // Register all manifests (idempotent — kernel deduplicates by resource key).
   for (const manifest of manifests) {
     ctx.registerManifest(manifest);

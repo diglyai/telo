@@ -27,6 +27,9 @@ export class ModuleContextRegistry {
   /** Module names explicitly declared via a kind: Kernel.Module manifest. */
   private readonly declaredModules = new Set<string>();
 
+  /** Per-declaring-module map of import alias → real module name. */
+  private readonly aliasToModule = new Map<string, Map<string, string>>();
+
   /**
    * Mark a module name as declared. Called by the kernel whenever a
    * kind: Kernel.Module manifest is registered so that getContext() can
@@ -74,6 +77,26 @@ export class ModuleContextRegistry {
   ): void {
     const entry = this.getOrCreate(moduleName);
     entry.resources = { ...entry.resources, [resourceName]: props };
+  }
+
+  /**
+   * Record that `alias` in `declaringModule` refers to `targetModule`.
+   * Called by the Import controller so the kernel can resolve alias-prefixed kinds.
+   */
+  setAliasModule(declaringModule: string, alias: string, targetModule: string): void {
+    let aliases = this.aliasToModule.get(declaringModule);
+    if (!aliases) {
+      aliases = new Map();
+      this.aliasToModule.set(declaringModule, aliases);
+    }
+    aliases.set(alias, targetModule);
+  }
+
+  /**
+   * Return the real module name for `alias` in `declaringModule`, or undefined.
+   */
+  resolveAlias(declaringModule: string, alias: string): string | undefined {
+    return this.aliasToModule.get(declaringModule)?.get(alias);
   }
 
   /**
