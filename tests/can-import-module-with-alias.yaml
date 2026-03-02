@@ -32,3 +32,18 @@ filter:
 expect:
   - event: ExampleConsole.Console.WriteLine.*.Invoked
     payload: {}
+---
+kind: MyAssert.ModuleContext
+metadata:
+  name: VerifyConfigurableConsoleModuleContext
+  module: CanImportModuleWithAlias
+imports:
+  MyConsole:
+    variables:
+      product:
+        id: "123e4567-e89b-12d3-a456-426614174000"
+        name: "Test Product"
+        price: 19.991
+        inStock: true
+    secrets:
+      password: "supersecret"

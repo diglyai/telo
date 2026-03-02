@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     "./schema": "./src/schema.ts",
-    "./events": "./src/events.ts"
+    "./events": "./src/events.ts",
+    "./module-context": "./src/module-context.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json"

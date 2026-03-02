@@ -120,6 +120,11 @@ function buildReport(name: string, captured: CapturedEvent[], expect: ExpectEntr
 export async function create(manifest: AssertManifest, ctx: ResourceContext) {
   const captured: CapturedEvent[] = [];
   const filters = manifest.filter ?? [{ type: "*" }];
+  let appStarted = false;
+
+  ctx.on("Kernel.Started", () => {
+    appStarted = true;
+  });
 
   ctx.on("*", (event) => {
     if (filters.some((f) => matchesPattern(f.type, event.name))) {
@@ -128,6 +133,7 @@ export async function create(manifest: AssertManifest, ctx: ResourceContext) {
   });
 
   ctx.on("Kernel.Stopping", () => {
+    if (!appStarted) return;
     const report = buildReport(manifest.metadata.name, captured, manifest.expect);
     if (report) {
       if (report.passed) {

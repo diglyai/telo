@@ -138,6 +138,10 @@ export class Kernel implements IKernel {
     return this.moduleContextRegistry.getContext(moduleName);
   }
 
+  resolveModuleAlias(declaringModule: string, alias: string): string | undefined {
+    return this.moduleContextRegistry.resolveAlias(declaringModule, alias);
+  }
+
   declareModule(moduleName: string): void {
     this.moduleContextRegistry.declareModule(moduleName);
   }

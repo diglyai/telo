@@ -39,20 +39,14 @@ for test_file in "${TEST_FILES[@]}"; do
     test_name=$(basename "$test_file")
     echo "▶️  Running: $test_name"
     
-    # Run test and capture output
-    if output=$(pnpm run telo "$test_file" 2>&1); then
+    # Run test directly (no capture) so ANSI colors are preserved
+    if pnpm run telo "$test_file" 2>&1; then
         echo "✅ PASSED: $test_name"
         ((PASSED++))
     else
         echo "❌ FAILED: $test_name"
         ((FAILED++))
         FAILED_TESTS+=("$test_name")
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "📋 Test output:"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "$output"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     fi
     echo ""
 done
