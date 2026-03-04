@@ -1,17 +1,16 @@
 import { ModuleContext } from "./evaluation-context.js";
 
-const EMPTY: Readonly<Record<string, unknown>> = Object.freeze({});
-
 function emptyModuleContext(): ModuleContext {
-  return new ModuleContext({}, {}, {}, {});
+  return new ModuleContext({}, {}, {});
 }
 
 /**
  * Per-module ModuleContext store, keyed by module name.
  *
- * Accumulates variables, secrets, resources, and imports for each module
- * during the initialization phase. Used by the kernel to build the flat
- * CEL evaluation context for resources within a module.
+ * Accumulates variables, secrets, and resources for each module during the
+ * initialization phase. Imported modules are stored under resources.<alias>
+ * alongside local resources. Used by the kernel to build the flat CEL
+ * evaluation context for resources within a module.
  */
 export class ModuleContextRegistry {
   private readonly store = new Map<
@@ -20,7 +19,6 @@ export class ModuleContextRegistry {
       variables: Record<string, unknown>;
       secrets: Record<string, unknown>;
       resources: Record<string, unknown>;
-      imports: Record<string, unknown>;
     }
   >();
 
@@ -46,7 +44,6 @@ export class ModuleContextRegistry {
         variables: {},
         secrets: {},
         resources: {},
-        imports: {},
       });
     }
     return this.store.get(moduleName)!;
@@ -100,19 +97,6 @@ export class ModuleContextRegistry {
   }
 
   /**
-   * Register or update an imported module's exported properties under an alias
-   * in the module's `imports` namespace. Called by the Import controller.
-   */
-  setImport(
-    moduleName: string,
-    alias: string,
-    exports: Record<string, unknown>,
-  ): void {
-    const entry = this.getOrCreate(moduleName);
-    entry.imports = { ...entry.imports, [alias]: exports };
-  }
-
-  /**
    * Return a ModuleContext for the given module name.
    *
    * If the module has been declared (a kind: Kernel.Module manifest was
@@ -142,7 +126,6 @@ export class ModuleContextRegistry {
       entry.variables,
       entry.secrets,
       entry.resources,
-      entry.imports,
     );
   }
 

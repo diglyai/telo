@@ -68,10 +68,12 @@ export async function create(
   const moduleCtx: ModuleContext = (ctx as any).getModuleContext(targetModule);
   const evaluatedExports = evaluateExports(moduleManifest.exports ?? {}, moduleCtx);
 
-  // Register evaluated exports as imports.<alias> in the declaring module context.
-  (ctx as any).registerModuleImport(declaringModule, alias, evaluatedExports);
-
-  return {};
+  // Return a ResourceInstance whose snapshot() surfaces the exported values.
+  // The kernel's generic setResource() call stores them under resources.<alias>
+  // in the declaring module's evaluation context — no separate imports namespace needed.
+  return {
+    snapshot: () => evaluatedExports,
+  };
 }
 
 function validateRequiredInputs(

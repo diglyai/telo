@@ -112,20 +112,20 @@ export class EvaluationContext {
 }
 
 /**
- * The boot-time, module-scoped context layer. Four reserved namespaces:
- * variables, secrets, resources, imports.
+ * The boot-time, module-scoped context layer. Three reserved namespaces:
+ * variables, secrets, resources.
  *
- * Builds its context record from the four namespaces and passes it to the
+ * Builds its context record from the three namespaces and passes it to the
  * base class. Secret values are extracted for automatic redaction.
+ * Imported modules are surfaced under resources.<alias> alongside local resources.
  */
 export class ModuleContext extends EvaluationContext {
   constructor(
     readonly variables: Record<string, unknown>,
     readonly secrets: Record<string, unknown>,
     readonly resources: Record<string, unknown>,
-    readonly imports: Record<string, unknown>,
   ) {
-    super({ variables, secrets, resources, imports }, collectSecretValues(secrets));
+    super({ variables, secrets, resources }, collectSecretValues(secrets));
   }
 }
 

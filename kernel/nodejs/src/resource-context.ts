@@ -200,14 +200,6 @@ export class ResourceContextImpl implements ResourceContext {
     return this.kernel.getModuleContext(moduleName);
   }
 
-  registerModuleImport(
-    declaringModule: string,
-    alias: string,
-    exports: Record<string, unknown>,
-  ): void {
-    this.kernel.registerModuleImportInContext(declaringModule, alias, exports);
-  }
-
   registerModuleAlias(declaringModule: string, alias: string, targetModule: string): void {
     this.kernel.registerModuleAlias(declaringModule, alias, targetModule);
   }

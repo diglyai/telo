@@ -146,14 +146,6 @@ export class Kernel implements IKernel {
     this.moduleContextRegistry.declareModule(moduleName);
   }
 
-  registerModuleImportInContext(
-    declaringModule: string,
-    alias: string,
-    exports: Record<string, unknown>,
-  ): void {
-    this.moduleContextRegistry.setImport(declaringModule, alias, exports);
-  }
-
   registerModuleAlias(declaringModule: string, alias: string, targetModule: string): void {
     this.moduleContextRegistry.setAliasModule(declaringModule, alias, targetModule);
   }

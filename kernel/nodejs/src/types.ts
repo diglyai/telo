@@ -86,11 +86,6 @@ export interface Kernel {
     secrets: Record<string, unknown>,
   ): void;
   getModuleContext(moduleName: string): ModuleContext;
-  registerModuleImportInContext(
-    declaringModule: string,
-    alias: string,
-    exports: Record<string, unknown>,
-  ): void;
 }
 
 export class RuntimeError extends Error {
