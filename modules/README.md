@@ -6,7 +6,7 @@ Here you can find standard Telo modules ready to use by the kernel. Each module 
 
 Modules own specific **resource kinds**. A kernel manifest composes multiple modules into one host, and execution is routed by Kind to the owning module. This keeps the system modular and lets teams add or replace capabilities without changing the core kernel.
 
-For a full explanation of how modules are defined, imported, and composed, see the [Module Specification](../kernel/MODULES.md).
+For a full explanation of how modules are defined, imported, and composed, see the [Module Specification](../kernel/modules.md).
 
 ## Included Modules
 
