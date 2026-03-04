@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import AjvModule, { ErrorObject } from "ajv";
+import addFormats from "ajv-formats";
 const Ajv = AjvModule.default ?? AjvModule;
 
 export const RuntimeResourceSchema = Type.Object(
@@ -29,6 +30,7 @@ export const ResourceDefinitionSchema = Type.Object(
 );
 
 const ajv = new Ajv({ allErrors: true, strict: false });
+addFormats.default(ajv);
 
 export const validateRuntimeResource = ajv.compile(RuntimeResourceSchema);
 export const validateResourceDefinition = ajv.compile(ResourceDefinitionSchema);

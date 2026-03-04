@@ -1,0 +1,179 @@
+kind: Kernel.Module
+metadata:
+  name: HttpClientTest
+  version: 1.0.0
+---
+kind: Kernel.Import
+metadata:
+  name: Http
+source: ../modules/http-client
+---
+kind: Kernel.Import
+metadata:
+  name: Pipeline
+source: ../modules/pipeline
+---
+kind: Kernel.Import
+metadata:
+  name: Assert
+source: ../modules/assert
+---
+# Shared Http.Client with baseUrl for tests that exercise client resolution
+kind: Http.Client
+metadata:
+  name: PlaceholderApi
+  module: HttpClientTest
+baseUrl: https://jsonplaceholder.typicode.com
+timeout: 10000
+---
+# Test 1: GET with absolute URL — verifies status + JSON body deserialization
+kind: Pipeline.Job
+metadata:
+  name: TestGetAbsoluteUrl
+  module: HttpClientTest
+steps:
+  - name: FetchTodo
+    inputs: {}
+    invoke:
+      kind: Http.Request
+      url: https://jsonplaceholder.typicode.com/todos/1
+      method: GET
+
+  - name: AssertGetResponse
+    inputs:
+      status: "${{ FetchTodo.outputs.status }}"
+      id: "${{ FetchTodo.outputs.body.id }}"
+    invoke:
+      kind: Assert.Schema
+      schema:
+        type: object
+        properties:
+          status:
+            type: integer
+            const: 200
+          id:
+            type: integer
+            const: 1
+        required:
+          - status
+          - id
+---
+# Test 2: GET with Http.Client (relative URL) — verifies baseUrl merging
+kind: Pipeline.Job
+metadata:
+  name: TestGetWithClient
+  module: HttpClientTest
+steps:
+  - name: FetchUser
+    inputs: {}
+    invoke:
+      kind: Http.Request
+      client: PlaceholderApi
+      url: /users/1
+      method: GET
+
+  - name: AssertClientResponse
+    inputs:
+      status: "${{ FetchUser.outputs.status }}"
+      id: "${{ FetchUser.outputs.body.id }}"
+    invoke:
+      kind: Assert.Schema
+      schema:
+        type: object
+        properties:
+          status:
+            type: integer
+            const: 200
+          id:
+            type: integer
+            const: 1
+        required:
+          - status
+          - id
+---
+# Test 3: POST with JSON body — verifies serialization + 201 response
+kind: Pipeline.Job
+metadata:
+  name: TestPostWithJsonBody
+  module: HttpClientTest
+steps:
+  - name: CreatePost
+    inputs: {}
+    invoke:
+      kind: Http.Request
+      url: https://jsonplaceholder.typicode.com/posts
+      method: POST
+      body:
+        title: Hello
+        body: World
+        userId: 1
+
+  - name: AssertPostResponse
+    inputs:
+      status: "${{ CreatePost.outputs.status }}"
+      title: "${{ CreatePost.outputs.body.title }}"
+    invoke:
+      kind: Assert.Schema
+      schema:
+        type: object
+        properties:
+          status:
+            type: integer
+            const: 201
+          title:
+            type: string
+            const: Hello
+        required:
+          - status
+          - title
+---
+# Test 4: 4xx response must NOT throw — returns response object per spec section 3.1
+kind: Pipeline.Job
+metadata:
+  name: TestNotFoundDoesNotThrow
+  module: HttpClientTest
+steps:
+  - name: FetchMissing
+    inputs: {}
+    invoke:
+      kind: Http.Request
+      url: https://jsonplaceholder.typicode.com/todos/999999
+      method: GET
+
+  - name: AssertNotFoundGraceful
+    inputs:
+      status: "${{ FetchMissing.outputs.status }}"
+    invoke:
+      kind: Assert.Schema
+      schema:
+        type: object
+        properties:
+          status:
+            type: integer
+            const: 404
+        required:
+          - status
+---
+kind: Assert.Events
+metadata:
+  name: VerifyAllInvocations
+  module: HttpClientTest
+filter:
+  - type: "*"
+expect:
+  - event: HttpClientTest.Http.Request.*.Invoked
+    payload:
+      outputs:
+        status: 200
+  - event: HttpClientTest.Http.Request.*.Invoked
+    payload:
+      outputs:
+        status: 200
+  - event: HttpClientTest.Http.Request.*.Invoked
+    payload:
+      outputs:
+        status: 201
+  - event: HttpClientTest.Http.Request.*.Invoked
+    payload:
+      outputs:
+        status: 404

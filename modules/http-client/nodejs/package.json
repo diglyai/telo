@@ -1,0 +1,28 @@
+{
+  "name": "@telorun/http-client",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./http-client": {
+      "bun": "./src/http-client-controller.ts",
+      "import": "./dist/http-client-controller.js"
+    },
+    "./http-request": {
+      "bun": "./src/http-request-controller.ts",
+      "import": "./dist/http-request-controller.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json"
+  },
+  "files": [
+    "dist/**"
+  ],
+  "dependencies": {
+    "@telorun/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -142,6 +142,19 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  modules/http-client/nodejs:
+    dependencies:
+      '@telorun/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/nodejs
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.30
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
   modules/http-server/nodejs:
     dependencies:
       '@fastify/swagger':
@@ -217,25 +230,6 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.30
-
-  modules/template/nodejs:
-    dependencies:
-      '@sinclair/typebox':
-        specifier: ^0.34.48
-        version: 0.34.48
-      '@telorun/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/nodejs
-      '@telorun/yaml-cel-templating':
-        specifier: workspace:*
-        version: link:../../../yaml-cel-templating/nodejs
-    devDependencies:
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.30
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
 
   modules/tracing/nodejs:
     dependencies:
