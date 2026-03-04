@@ -52,17 +52,6 @@ export class HttpServerApi implements ResourceInstance {
   async init() {}
 
   register(app: FastifyInstance, prefix = "") {
-    // Register custom error handler for validation errors
-    app.setErrorHandler((error, request, reply) => {
-      const mappedError = convertFastifyValidationError(error);
-      if (mappedError) {
-        reply.code(400);
-        return reply.send(mappedError);
-      }
-      // Let Fastify handle other errors normally
-      throw error;
-    });
-
     if (prefix) {
       app.register(
         async (scoped) => {
@@ -107,15 +96,10 @@ export class HttpServerApi implements ResourceInstance {
       (acc, status) => {
         const statusConfig = route.response.statuses[status];
         if (statusConfig.schema) {
-          acc[status] = {};
-          if (statusConfig.schema.query) {
-            acc[status].querystring = statusConfig.schema.query;
-          }
           if (statusConfig.schema.body) {
-            acc[status].body = statusConfig.schema.body;
-          }
-          if (statusConfig.schema.headers) {
-            acc[status].headers = statusConfig.schema.headers;
+            acc[status] = statusConfig.schema.body;
+          } else {
+            acc[status] = {};
           }
         }
         return acc;
@@ -323,72 +307,6 @@ function normalizeHeaders(headers: Record<string, any>): Record<string, any> {
     normalized[key.toLowerCase()] = value;
   }
   return normalized;
-}
-
-/**
- * Converts Fastify validation errors to standardized Telo format
- * Returns null if the error is not a validation error
- */
-function convertFastifyValidationError(error: any): Record<string, any> | null {
-  // Check if this is a Fastify validation error
-  if (!error || typeof error !== "object" || error.code !== "FST_ERR_VALIDATION") {
-    return null;
-  }
-
-  const message = error.message || "";
-  const details = [];
-
-  // Parse Fastify validation error message to extract location and field
-  // Format examples:
-  // "querystring must have required property 'name'"
-  // "body must be object"
-  // "params.userId must be string"
-
-  let location = "body"; // default
-  let fieldPath = "";
-  let validationMessage = "Validation failed";
-
-  // Try to extract location from message
-  if (message.includes("querystring")) {
-    location = "query";
-  } else if (message.includes("params")) {
-    location = "params";
-  } else if (message.includes("headers")) {
-    location = "headers";
-  } else if (message.includes("body")) {
-    location = "body";
-  }
-
-  // Extract field name from "must have required property 'fieldName'" pattern
-  const requiredMatch = message.match(/must have required property '([^']+)'/);
-  if (requiredMatch) {
-    fieldPath = requiredMatch[1];
-    validationMessage = `is a required property`;
-  } else {
-    // Extract field from "fieldName must be" pattern
-    const fieldMatch = message.match(/^(?:querystring|body|params|headers)\.?(\w+)\s/);
-    if (fieldMatch) {
-      fieldPath = fieldMatch[1];
-    }
-    validationMessage = message
-      .replace(/^(?:querystring|body|params|headers)\.?\w*\s/, "")
-      .replace(" must ", " ");
-  }
-
-  if (fieldPath || message) {
-    details.push({
-      location,
-      path: fieldPath,
-      message: validationMessage,
-    });
-  }
-
-  return {
-    error: "ValidationError",
-    message: "Request validation failed",
-    status: 400,
-    details,
-  };
 }
 
 /**

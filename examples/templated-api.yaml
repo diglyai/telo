@@ -1,0 +1,76 @@
+kind: Kernel.Module
+metadata:
+  name: templated-server
+  version: 1.0.0
+exports:
+  HelloApi: "${{ resources.HelloApi }}"
+---
+kind: Kernel.Import
+metadata:
+  name: Http
+  module: templated-server
+source: ../modules/http-server
+---
+kind: Kernel.Import
+metadata:
+  name: JavaScript
+  module: templated-server
+source: ../modules/javascript
+---
+kind: Http.Api
+metadata:
+  name: HelloApi
+  module: templated-server
+routes:
+  - request:
+      path: /hello
+      method: GET
+      schema:
+        query:
+          type: object
+          properties:
+            name:
+              type: string
+          required: ["name"]
+    handler:
+      kind: JavaScript.Script
+      name: SayHello
+      inputs:
+        name: "${{ request.query.name }}" # CEL expression
+    response:
+      status: 200
+      statuses:
+        "200":
+          schema:
+            body:
+              type: object
+              properties:
+                greeting:
+                  type: string
+                nice:
+                  type: string
+              required: ["greeting", "nice"]
+              additionalProperties: false
+          headers:
+            Content-Type: application/json
+          body:
+            greeting: "${{ result.message }}!"
+            nice: "WOW"
+---
+kind: JavaScript.Script
+metadata:
+  name: SayHello
+  module: templated-server
+code: |
+  function main({ name }) {
+    return {
+      message: `Hello ${name}!`,
+    }
+  };
+inputSchema:
+  name:
+    type: string
+outputSchema:
+  message:
+    type: string
+---

@@ -1,0 +1,33 @@
+kind: Kernel.Module
+metadata:
+  name: templated-api-usage
+  version: 1.0.0
+---
+kind: Kernel.Import
+metadata:
+  name: Http
+  module: templated-api-usage
+source: ../modules/http-server
+---
+kind: Kernel.Import
+metadata:
+  name: Templated
+  module: templated-api-usage
+source: ./templated-api.yaml
+---
+kind: Http.Server
+metadata:
+  name: TemplatedApiServer
+  module: templated-api-usage
+baseUrl: http://localhost:8845
+port: 8845
+logger: true
+openapi:
+  info:
+    title: "Templated API Example"
+    version: "1.0.0"
+mounts:
+  - path: /v1
+    type: Templated.HelloApi
+  - path: /v2
+    type: Templated.HelloApi

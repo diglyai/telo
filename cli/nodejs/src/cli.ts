@@ -3,6 +3,7 @@
 import { Kernel } from "@telorun/kernel";
 import * as fs from "fs";
 import * as path from "path";
+import { fileURLToPath } from "url";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -24,21 +25,23 @@ type WatchHandle = { cleanup: () => void };
 function setupWatchMode(kernel: Kernel, log: ReturnType<typeof createLogger>): WatchHandle {
   const watchers = new Map<string, fs.FSWatcher>();
   const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const reloading = new Set<string>();
   let active = true;
 
   function watchFile(filePath: string): void {
     if (!active || watchers.has(filePath)) return;
+    // getSourceFiles() returns file:// URLs; fs.watch needs a filesystem path
+    const fsPath = filePath.startsWith("file://") ? fileURLToPath(filePath) : filePath;
     let watcher: fs.FSWatcher;
     try {
-      watcher = fs.watch(filePath, { persistent: false }, () => {
+      watcher = fs.watch(fsPath, () => {
+        if (!active) return;
         const existing = debounceTimers.get(filePath);
         if (existing) clearTimeout(existing);
         debounceTimers.set(
           filePath,
           setTimeout(() => {
             debounceTimers.delete(filePath);
-            watchers.get(filePath)?.close();
-            watchers.delete(filePath);
             void handleChange(filePath);
           }, 150),
         );
@@ -46,24 +49,31 @@ function setupWatchMode(kernel: Kernel, log: ReturnType<typeof createLogger>): W
     } catch {
       return; // file may not exist yet
     }
-    watcher.on("error", () => watchers.delete(filePath));
+    watcher.on("error", () => {
+      // OS invalidated the watch (e.g. file deleted). Remove and re-establish.
+      if (watchers.get(filePath) === watcher) {
+        watchers.delete(filePath);
+        setTimeout(() => { if (active) watchFile(filePath); }, 50);
+      }
+    });
     watchers.set(filePath, watcher);
   }
 
   async function handleChange(filePath: string): Promise<void> {
+    // Prevent concurrent reloads for the same file
+    if (reloading.has(filePath)) return;
+    reloading.add(filePath);
     log.info(`[watch] reloading ${filePath}`);
     try {
       await kernel.reloadSource(filePath);
-      // Refresh watchers — new files may have been loaded after reload
+      // Watch any new files that appeared after reload
       for (const f of kernel.getSourceFiles()) watchFile(f);
       log.info(log.ok(`[watch] complete`));
     } catch (err) {
       log.info(log.error(`[watch] error: ${err instanceof Error ? err.message : String(err)}`));
+    } finally {
+      reloading.delete(filePath);
     }
-    // Re-establish watcher regardless of outcome (handles atomic rename saves)
-    setTimeout(() => {
-      if (active) watchFile(filePath);
-    }, 50);
   }
 
   function cleanup(): void {

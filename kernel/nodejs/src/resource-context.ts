@@ -1,5 +1,6 @@
 import { NoopValidator, ResourceContext, RuntimeResource } from "@telorun/sdk";
 import AjvModule from "ajv";
+import addFormats from "ajv-formats";
 import { EvaluationContext, ModuleContext } from "./evaluation-context.js";
 import { Kernel } from "./kernel.js";
 import { formatAjvErrors } from "./manifest-schemas.js";
@@ -38,6 +39,7 @@ export class ResourceContextImpl implements ResourceContext {
 
   validateSchema(value: any, schema: any) {
     const ajv = new Ajv();
+    addFormats.default(ajv);
     const validate = ajv.compile(
       "type" in schema && typeof schema.type === "string"
         ? schema

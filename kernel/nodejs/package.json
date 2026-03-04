@@ -27,13 +27,14 @@
     "manifest"
   ],
   "dependencies": {
-    "js-yaml": "^4.1.0",
-    "cel-js": "^0.8.2",
-    "packageurl-js": "^2.0.1",
     "@sinclair/typebox": "^0.34.48",
-    "ajv": "^8.17.1",
     "@telorun/sdk": "workspace:*",
-    "@telorun/yaml-cel-templating": "workspace:*"
+    "@telorun/yaml-cel-templating": "workspace:*",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "cel-js": "^0.8.2",
+    "js-yaml": "^4.1.0",
+    "packageurl-js": "^2.0.1"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",

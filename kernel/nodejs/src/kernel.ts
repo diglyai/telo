@@ -164,7 +164,7 @@ export class Kernel implements IKernel {
   private async loadBuiltinDefinitions(): Promise<void> {
     // Declare built-in module namespaces upfront so getContext() can distinguish
     // "not yet populated" from a completely unknown module name.
-    this.moduleContextRegistry.declareModule("Kernel");  // system resources
+    this.moduleContextRegistry.declareModule("Kernel"); // system resources
     this.moduleContextRegistry.declareModule("default"); // user resources with no module field
 
     this.controllers.registerDefinition({
@@ -379,11 +379,7 @@ export class Kernel implements IKernel {
 
   private createResourceContext(resource: ResourceManifest): ResourceContext {
     const moduleName: string = resource.metadata.module ?? "default";
-    const key = this.getResourceKey(
-      moduleName,
-      resource.kind,
-      resource.metadata.name,
-    );
+    const key = this.getResourceKey(moduleName, resource.kind, resource.metadata.name);
     return new ResourceContextImpl(
       this,
       this.moduleContextRegistry.getContext(moduleName),
@@ -403,11 +399,12 @@ export class Kernel implements IKernel {
     return resources;
   }
 
-  getResourceByName(module: string, kind: string, name: string): RuntimeResource | null {
-    const key = this.getResourceKey(module, kind, name);
-    const entry = this.resourceInstances.get(key);
-    if (entry) {
-      return entry.instance as any;
+  getResourceByName(declaringModule: string, alias: string, name: string): RuntimeResource | null {
+    const realModule = this.moduleContextRegistry.resolveAlias(declaringModule, alias) ?? alias;
+    for (const { resource, instance } of this.resourceInstances.values()) {
+      if (resource.metadata.module === realModule && resource.metadata.name === name) {
+        return instance as RuntimeResource;
+      }
     }
     return null;
   }
@@ -646,7 +643,8 @@ export class Kernel implements IKernel {
   }
 
   async invoke(module: string, kind: string, name: string, ...args: any[]): Promise<any> {
-    const instance: any = this.getResourceByName(module, kind, name);
+    const key = this.getResourceKey(module, kind, name);
+    const instance: any = this.resourceInstances.get(key)?.instance;
     if (!instance) {
       throw new RuntimeError(
         "ERR_RESOURCE_NOT_FOUND",

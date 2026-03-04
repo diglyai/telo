@@ -2,10 +2,7 @@ import type { ResourceContext, ResourceInstance } from "@telorun/sdk";
 import { ModuleContext } from "../../evaluation-context.js";
 import { Loader } from "../../loader.js";
 
-export async function create(
-  resource: any,
-  ctx: ResourceContext,
-): Promise<ResourceInstance> {
+export async function create(resource: any, ctx: ResourceContext): Promise<ResourceInstance> {
   const alias = resource.metadata.name as string;
   const declaringModule: string = resource.metadata.module ?? "default";
   const loader = new Loader();
@@ -20,9 +17,7 @@ export async function create(
   // Find the kind: Module manifest to learn the target module name and contract.
   const moduleManifest = manifests.find((m: any) => m.kind === "Kernel.Module");
   if (!moduleManifest) {
-    throw new Error(
-      `No kind: Module manifest found in source "${resource.source as string}"`,
-    );
+    throw new Error(`No kind: Module manifest found in source "${resource.source as string}"`);
   }
   const targetModule: string = moduleManifest.metadata.name;
 
@@ -36,8 +31,8 @@ export async function create(
     if (declaredModule && declaredModule !== targetModule) {
       throw new Error(
         `Resource '${manifest.metadata?.name ?? "(unnamed)"}' (kind: ${manifest.kind}) inside module '${targetModule}' ` +
-        `has metadata.module: '${declaredModule}', but the module is named '${targetModule}'. ` +
-        `Update metadata.module to '${targetModule}'.`,
+          `has metadata.module: '${declaredModule}', but the module is named '${targetModule}'. ` +
+          `Update metadata.module to '${targetModule}'.`,
       );
     }
   }
@@ -84,9 +79,7 @@ function validateRequiredInputs(
   for (const [key, def] of Object.entries(schemaDefs)) {
     const isRequired = typeof def === "object" && def !== null && !("default" in def);
     if (isRequired && !(key in provided)) {
-      throw new Error(
-        `Required ${kind} input "${key}" not provided for module import`,
-      );
+      throw new Error(`Required ${kind} input "${key}" not provided for module import`);
     }
   }
 }

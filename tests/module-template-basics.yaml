@@ -1,0 +1,39 @@
+kind: Kernel.Module
+metadata:
+  name: Test
+---
+kind: Kernel.Import
+metadata:
+  name: Http
+  module: Test
+source: ../modules/http-server
+---
+kind: Kernel.Import
+metadata:
+  name: TemplatingBasics
+  module: Test
+source: ../examples/templated-api.yaml
+variables:
+  port: 4444
+  title: "Templating Basics"
+  version: "1.0.0"
+  mount:
+    - path: /status
+      type: Http.Api.StatusApi
+---
+kind: Http.Api
+metadata:
+  name: StatusApi
+  module: Test
+routes:
+  - request:
+      path: /status
+      method: GET
+    response:
+      status: 200
+      statuses:
+        "200":
+          headers:
+            Content-Type: application/json
+          body:
+            status: "ok"

@@ -1,6 +1,7 @@
 import swagger from "@fastify/swagger";
 import apiReference from "@scalar/fastify-api-reference";
 import type { ResourceContext, ResourceInstance, RuntimeResource } from "@telorun/sdk";
+import addFormats from "ajv-formats";
 import Fastify, { FastifyInstance } from "fastify";
 import { HttpServerApi } from "./http-api-controller.js";
 
@@ -86,15 +87,25 @@ class HttpServer implements ResourceInstance {
     if (!this.port) {
       throw new Error("Http.Server port is required");
     }
-    this.app = Fastify({ logger: true });
+    this.app = Fastify({ logger: true, ajv: { plugins: [addFormats.default as any] } });
   }
 
   async init() {
-    this.setupPlugins();
+    await this.setupPlugins();
     this.setupRoutes();
   }
 
   private async setupPlugins() {
+    // Register custom error handler for validation errors
+    this.app.setErrorHandler((error, request, reply) => {
+      const mappedError = convertFastifyValidationError(error);
+      if (mappedError) {
+        reply.code(400);
+        return reply.send(mappedError);
+      }
+      // Let Fastify handle other errors normally
+      throw error;
+    });
     if (this.resource.openapi) {
       const servers = [];
       // const routesByName = new Map<string, HttpRouteResource>();
@@ -127,7 +138,7 @@ class HttpServer implements ResourceInstance {
       const type = mount.type || "";
       const { kind, name } = parseType(type);
       const prefix = mount.path || "";
-
+      console.log("kind", kind, "name", name, "prefix", prefix);
       const api: HttpServerApi = this.ctx.getResourcesByName(kind, name) as any;
 
       if (!api) {
@@ -180,4 +191,70 @@ function parseType(type: string): { kind: string; name: string } {
     return { kind: "", name: "" };
   }
   return { kind: type.slice(0, separator), name: type.slice(separator + 1) };
+}
+
+/**
+ * Converts Fastify validation errors to standardized Telo format
+ * Returns null if the error is not a validation error
+ */
+function convertFastifyValidationError(error: any): Record<string, any> | null {
+  // Check if this is a Fastify validation error
+  if (!error || typeof error !== "object" || error.code !== "FST_ERR_VALIDATION") {
+    return null;
+  }
+
+  const message = error.message || "";
+  const details = [];
+
+  // Parse Fastify validation error message to extract location and field
+  // Format examples:
+  // "querystring must have required property 'name'"
+  // "body must be object"
+  // "params.userId must be string"
+
+  let location = "body"; // default
+  let fieldPath = "";
+  let validationMessage = "Validation failed";
+
+  // Try to extract location from message
+  if (message.includes("querystring")) {
+    location = "query";
+  } else if (message.includes("params")) {
+    location = "params";
+  } else if (message.includes("headers")) {
+    location = "headers";
+  } else if (message.includes("body")) {
+    location = "body";
+  }
+
+  // Extract field name from "must have required property 'fieldName'" pattern
+  const requiredMatch = message.match(/must have required property '([^']+)'/);
+  if (requiredMatch) {
+    fieldPath = requiredMatch[1];
+    validationMessage = `is a required property`;
+  } else {
+    // Extract field from "fieldName must be" pattern
+    const fieldMatch = message.match(/^(?:querystring|body|params|headers)\.?(\w+)\s/);
+    if (fieldMatch) {
+      fieldPath = fieldMatch[1];
+    }
+    validationMessage = message
+      .replace(/^(?:querystring|body|params|headers)\.?\w*\s/, "")
+      .replace(" must ", " ");
+  }
+
+  if (fieldPath || message) {
+    details.push({
+      location,
+      path: fieldPath,
+      message: validationMessage,
+    });
+  }
+
+  return {
+    error: "ValidationError",
+    message: "Request validation failed",
+    status: 400,
+    details,
+  };
 }

@@ -8,12 +8,8 @@ const sidebars: SidebarsConfig = {
       type: "category",
       label: "Kernel",
       items: [
-        { type: "doc", id: "kernel/README", label: "Specification" },
-        { type: "doc", id: "kernel/CONTROLLERS", label: "Controllers" },
-        { type: "doc", id: "kernel/MODULES", label: "Module Specification" },
-        { type: "doc", id: "kernel/MODULE_GRANTS", label: "Module Grants Specification" },
-        { type: "doc", id: "kernel/EVALUATION_CONTEXT", label: "Evaluation Context" },
-        { type: "doc", id: "yaml-cel-templating/README", label: "CEL-YAML Specification" },
+        { type: "doc", id: "guides/style-guide", label: "Style Guide" },
+        { type: "doc", id: "guides/templating", label: "Templating" },
       ],
     },
     {
@@ -28,6 +24,18 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
+      label: "Kernel",
+      items: [
+        { type: "doc", id: "kernel/README", label: "Specification" },
+        { type: "doc", id: "kernel/CONTROLLERS", label: "Controllers" },
+        { type: "doc", id: "kernel/MODULES", label: "Module Specification" },
+        { type: "doc", id: "kernel/MODULE_GRANTS", label: "Module Grants Specification" },
+        { type: "doc", id: "kernel/EVALUATION_CONTEXT", label: "Evaluation Context" },
+        { type: "doc", id: "yaml-cel-templating/README", label: "CEL-YAML Specification" },
+      ],
+    },
+    {
+      type: "category",
       label: "Module Development",
       items: [
         { type: "doc", id: "sdk/README", label: "SDK" },
@@ -35,7 +43,6 @@ const sidebars: SidebarsConfig = {
         { type: "doc", id: "tests/README", label: "Testing" },
       ],
     },
-    { type: "doc", id: "STYLEGUIDE", label: "Style Guide" },
   ],
 };
 

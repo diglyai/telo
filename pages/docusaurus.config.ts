@@ -26,7 +26,8 @@ const config: Config = {
           routeBasePath: "/",
           include: [
             "README.md",
-            "STYLEGUIDE.md",
+            "guides/style-guide.md",
+            "guides/templating.md",
             "cli/README.md",
             "kernel/README.md",
             "kernel/CONTROLLERS.md",
@@ -68,7 +69,7 @@ const config: Config = {
     },
     footer: {
       style: "dark",
-      copyright: `Copyright © ${new Date().getFullYear()} DiglyAI. Released under the MIT License.`,
+      copyright: `Copyright © ${new Date().getFullYear()} DiglyAI. Released under the Fair-code License.`,
     },
   } satisfies Preset.ThemeConfig,
 };

@@ -71,6 +71,10 @@ export class Loader {
       }
       const compiledDocs = Array.isArray(compiled) ? compiled : [compiled];
       for (const manifest of compiledDocs) {
+        if (manifest === null) {
+          // Ignore empty documents
+          continue;
+        }
         const resource: ResourceManifest = {
           ...manifest,
           metadata: {

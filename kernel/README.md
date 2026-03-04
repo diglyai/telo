@@ -18,24 +18,6 @@ The kernel performs three functions:
 
 **Module loading and resource discovery** happen during the load phase, before any resource is initialized.
 
-## 2. Resource Format
-
-Every YAML document must have `kind` and `metadata.name`. All configuration lives at the top level — there is no `spec` wrapper.
-
-```typescript
-interface RuntimeResource {
-  kind: string; // e.g. "Http.Server", "JavaScript.Script"
-  metadata: {
-    name: string; // unique within kind + module
-    module: string; // which Kernel.Module declared this resource
-    [key: string]: any; // custom labels or annotations
-  };
-  [key: string]: any; // kind-specific configuration fields
-}
-```
-
-Multiple YAML documents can live in one file, separated by `---`.
-
 ## 3. CEL-YAML Templating
 
 Before a manifest object is processed, it is compiled by the **CEL-YAML templating engine** (`@telorun/yaml-cel-templating`). This runs as part of loading — any compilation error halts the boot sequence immediately.
@@ -47,25 +29,11 @@ resources:
   - ${{ env.MY_MANIFEST_PATH }}
 ```
 
-### 3.1 Directives
-
-Directives are keys that start with `$`. They are evaluated in a fixed priority order within any YAML mapping:
-
-| Directive                 | Purpose                                                       |
-| ------------------------- | ------------------------------------------------------------- |
-| `$schema`                 | Validate parent-scope data against a JSON Schema              |
-| `$let`                    | Define variables scoped to the current object and descendants |
-| `$assert` / `$msg`        | Fail with an error if a CEL condition is false                |
-| `$if` / `$then` / `$else` | Conditional blocks                                            |
-| `$for` / `$do`            | Iterate over a collection                                     |
-| `$include` / `$with`      | Include an external YAML file _(not yet implemented)_         |
-
 ### 3.2 Interpolation
 
 String values support two equivalent syntaxes:
 
 - `${{ expr }}` — primary syntax used throughout Telo
-- `${ expr }` — alternate shorthand
 
 When the entire string is a single interpolation, the result preserves the CEL type (integer, boolean, etc.). Mixed strings are coerced to string.
 
@@ -75,23 +43,25 @@ When the entire string is a single interpolation, the result preserves the CEL t
 
 ### 4.1 Overview
 
-```
+````
+
 loadFromConfig(path)
-  └── loadBuiltinDefinitions()       # register Kernel.Definition + Kernel.Module controllers
-  └── loader.loadManifest(path)      # yaml.loadAll → compile() → queue
+└── loadBuiltinDefinitions() # register Kernel.Definition + Kernel.Module controllers
+└── loader.loadManifest(path) # yaml.loadAll → compile() → queue
 
 start()
-  ├── register()                     # call register() on all known controllers
-  ├── initializeResources()          # multi-pass create + init loop (max 10 passes)
-  ├── emit Kernel.Initialized
-  ├── emit Kernel.Starting
-  ├── runInstances()                 # call run() on all instances
-  ├── emit Kernel.Started
-  ├── waitForIdle()                  # block until hold count reaches 0
-  └── [finally]
-      ├── emit Kernel.Stopping
-      ├── teardownResources()        # call teardown() on all instances
-      └── emit Kernel.Stopped
+├── register() # call register() on all known controllers
+├── initializeResources() # multi-pass create + init loop (max 10 passes)
+├── emit Kernel.Initialized
+├── emit Kernel.Starting
+├── runInstances() # call run() on all instances
+├── emit Kernel.Started
+├── waitForIdle() # block until hold count reaches 0
+└── [finally]
+├── emit Kernel.Stopping
+├── teardownResources() # call teardown() on all instances
+└── emit Kernel.Stopped
+
 ```
 
 ### 4.2 Step 1 — Load
@@ -118,15 +88,16 @@ Before initializing any resource, `start()` calls `register(ctx)` on every contr
 Resources may depend on other resources being initialized first (e.g. `Kernel.Module` registers new kinds, which other resources need). The kernel resolves this with a multi-pass loop:
 
 ```
+
 unhandled = all resources in initialization queue
 pass = 1
 
 while pass <= 10 and unhandled is not empty:
-  handledThisPass = []
+handledThisPass = []
 
-  for each resource in unhandled:
-    controller = lookup controller for resource.kind
-    if not found: skip (try next pass)
+for each resource in unhandled:
+controller = lookup controller for resource.kind
+if not found: skip (try next pass)
 
     validate resource against controller.schema   # FAIL on error
     instance = controller.create(resource, ctx)   # FAIL on error
@@ -135,11 +106,12 @@ while pass <= 10 and unhandled is not empty:
       store instance in registry
       mark resource as handled
 
-  remove handled resources from unhandled
-  if nothing was handled this pass: break
-  pass++
+remove handled resources from unhandled
+if nothing was handled this pass: break
+pass++
 
 if unhandled is not empty: FAIL boot with list of unresolved resources
+
 ```
 
 **Key invariants:**
@@ -156,14 +128,16 @@ After all resources are initialized, the kernel calls `run()` on every instance 
 ### 4.6 Event Order Example
 
 ```
-Kernel.Initialized                            # all create()+init() done
-Kernel.Starting                               # about to call run()
-Kernel.Started                                # all run() called
-Kernel.Blocked                                # first hold acquired
+
+Kernel.Initialized # all create()+init() done
+Kernel.Starting # about to call run()
+Kernel.Started # all run() called
+Kernel.Blocked # first hold acquired
 ...
-Kernel.Unblocked                              # last hold released
+Kernel.Unblocked # last hold released
 Kernel.Stopping
 Kernel.Stopped
+
 ```
 
 ### 4.7 Error Scenarios
@@ -175,93 +149,6 @@ All of the following halt boot immediately:
 3. **Creation failure** — `controller.create()` throws.
 4. **Initialization failure** — `instance.init()` throws.
 5. **Unhandled resource** — after 10 passes, a resource's kind has no controller.
-
-## 5. Controller Interface
-
-A controller module exports some or all of:
-
-```typescript
-// Called once before any resource is initialized
-export function register(ctx: ControllerContext): void | Promise<void>;
-
-// Called once per resource of this kind; return null to skip instance tracking
-export function create(
-  resource: RuntimeResource,
-  ctx: ResourceContext,
-): ResourceInstance | null | Promise<ResourceInstance | null>;
-```
-
-The returned `ResourceInstance` may define any of:
-
-```typescript
-type ResourceInstance = {
-  init?(ctx?: ResourceContext): void | Promise<void>;
-  run?(): void | Promise<void>;
-  invoke?(input: any): any | Promise<any>;
-  teardown?(): void | Promise<void>;
-  snapshot?(): Record<string, any> | Promise<Record<string, any>>;
-};
-```
-
-Lifecycle order: `create()` → `init()` → `run()` → _(process alive)_ → `teardown()`.
-
-### 5.1 ControllerContext
-
-Passed to `register()`:
-
-```typescript
-interface ControllerContext {
-  on(event: string, handler: (event: RuntimeEvent) => void | Promise<void>): void;
-  once(event: string, handler: (event: RuntimeEvent) => void | Promise<void>): void;
-  off(event: string, handler: (event: RuntimeEvent) => void | Promise<void>): void;
-  emit(event: string, payload?: any): void;
-  acquireHold(reason?: string): () => void;
-  requestExit(code: number): void;
-  evaluateCel(expression: string, context: Record<string, any>): unknown;
-  expandValue(value: any, context: Record<string, any>): any;
-}
-```
-
-### 5.2 ResourceContext
-
-Passed to `create()` and `init()` — extends `ControllerContext` with resource-level operations:
-
-```typescript
-interface ResourceContext extends ControllerContext {
-  // Intelo another resource
-  invoke(kind: string, name: string, ...args: any[]): Promise<any>;
-
-  // Query the registry
-  getResources(kind: string): RuntimeResource[];
-  getResourcesByName(kind: string, name: string): RuntimeResource | null;
-
-  // Dynamically register resources during initialization (used by Kernel.Module)
-  registerManifest(resource: any): void;
-  registerController(moduleName: string, kindName: string, controller: any): Promise<void>;
-  registerDefinition(definition: any): void;
-
-  // Schema helpers
-  validateSchema(value: any, schema: any): void;
-  createSchemaValidator(schema: any): DataValidator;
-
-  // Event helpers
-  emitEvent(event: string, payload?: any): Promise<void>;
-}
-```
-
-## 6. Invocation Model
-
-Resources call each other through `ctx.invoke()`. The kernel routes the call to the named instance's `invoke()` method:
-
-```typescript
-// From inside a controller — same-module invocation:
-const result = await ctx.invoke("Http.Server", "Example");
-
-// Cross-module invocation — prefix the kind with the module name:
-const result = await ctx.invoke("OtherModule.Http.Server", "Example");
-```
-
-If the target instance doesn't exist or has no `invoke()` method, a `RuntimeError` is thrown.
 
 ## 7. Runtime Events
 
@@ -286,8 +173,10 @@ Controllers can emit events via `ctx.emit(event, payload)`. If `event` contains 
 Teardown events are emitted by the kernel:
 
 ```
+
 {module}.{Kind}.{name}.Teardown
-```
+
+````
 
 ### 7.3 Kernel Holds (Keepalive Leases)
 
@@ -305,62 +194,6 @@ release();
 ### 7.4 Exit Codes
 
 Controllers request a non-zero exit code via `ctx.requestExit(code)`. The kernel uses the highest requested code on exit.
-
-## 8. Built-in TemplateDefinition
-
-`TemplateDefinition` is a built-in resource kind that generates concrete resources at load time using CEL-based control flow. Expansion happens inside `loadDirectory()` before the kernel sees any resources.
-
-```yaml
-kind: TemplateDefinition
-metadata:
-  name: ApiServer
-schema:
-  type: object
-  properties:
-    name: { type: string, default: "api" }
-    port: { type: integer, default: 8080 }
-    regions:
-      type: array
-      items: { type: string }
-      default: ["us-east", "eu-west"]
-  required: [name, port]
-resources:
-  - for: "region in regions"
-    kind: Http.Server
-    metadata:
-      name: "${{ name }}-${{ region }}"
-    port: ${{ port }}
-    region: "${{ region }}"
-```
-
-The expansion loop runs up to 10 iterations to support templates that instantiate other templates.
-
-**For full template documentation see [../yaml-cel-templating/README.md](../yaml-cel-templating/README.md).**
-
-## 9. Module System
-
-### 9.1 Kernel.Module Resource
-
-A `Kernel.Module` resource declares a module's imports and resource files:
-
-```yaml
-kind: Kernel.Module
-metadata:
-  name: MyApp # module namespace — propagated as metadata.module on all owned resources
-  version: 1.0.0
-imports: # directories to load as sub-modules (via loadDirectory)
-  - ./my-module
-  - ../../shared/http-module
-definitions: # definition YAML files (Kernel.Definition resources)
-  - definitions/my-type.yaml
-resources: # resource YAML files
-  - resources/config.yaml
-  - resources/routes.yaml
-```
-
-`imports` are resolved with `loader.loadDirectory()` (walks for YAML files, expands templates). `definitions` and `resources` are resolved with `loader.loadManifest()` (compiles through yaml-cel-templating).
-
-The `Kernel.Module` controller itself returns `null` from `create()` — it has no runtime instance, only load-time side effects.
 
 ### 9.2 Kernel.Definition Resource
 
@@ -444,11 +277,10 @@ interface ResourceMetadata {
 telo [--verbose] [--debug] [--snapshot-on-exit] <module.yaml|directory>
 ```
 
-| Flag                 | Effect                                           |
-| -------------------- | ------------------------------------------------ |
-| `--verbose`          | Log all events to stdout                         |
-| `--debug`            | Stream all events to `.digly-debug/events.jsonl` |
-| `--snapshot-on-exit` | _(reserved; not yet implemented)_                |
+| Flag        | Effect                                           |
+| ----------- | ------------------------------------------------ |
+| `--verbose` | Log all events to stdout                         |
+| `--debug`   | Stream all events to `.digly-debug/events.jsonl` |
 
 ### 12.2 Event Streaming
 
@@ -486,12 +318,3 @@ const instance: ResourceInstance = {
   },
 };
 ```
-
-## 13. Implementer Summary
-
-- **Resource key:** `module.Kind.name` — all three parts are required.
-- **Schema-agnostic kernel:** The kernel validates resources against the controller's declared schema but does not interpret field semantics.
-- **Multi-pass initialization:** Up to 10 passes allow modules that register new kinds to be processed before resources of those kinds.
-- **Invocation, not URN dispatch:** Resources call each other via `ctx.invoke(kind, name, ...args)`, not via URN strings.
-- **Hold-based keepalive:** The process exits when all holds are released. Long-lived resources must acquire a hold in `init()` or `run()` and release it in `teardown()`.
-- **CEL-YAML compile step:** Every YAML document is fully compiled before it reaches the kernel. Controllers receive clean, resolved objects — no `$`-directives remain at runtime.
