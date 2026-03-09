@@ -1,5 +1,13 @@
 # @telorun/kernel
 
+## 0.2.5
+
+### Patch Changes
+
+- Automated release.
+- Updated dependencies
+  - @telorun/sdk@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes
