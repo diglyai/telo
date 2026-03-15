@@ -6,6 +6,7 @@ import type {
 } from "@telorun/sdk";
 import { ControllerLoader } from "../../controller-loader.js";
 import { formatAjvErrors, validateResourceDefinition } from "../../manifest-schemas.js";
+import { createTemplateController } from "./resource-template-controller.js";
 
 type ResourceDefinitionResource = RuntimeResource & {
   kind: "Definition";
@@ -17,7 +18,7 @@ type ResourceDefinitionResource = RuntimeResource & {
   schema: Record<string, any>;
   capabilities: string[];
   events?: string[];
-  controllers: Array<string>;
+  controllers?: Array<string>;
 };
 
 /**
@@ -40,6 +41,16 @@ class ResourceDefinition implements ResourceInstance {
         );
       }
       await ctx.getCapabilityDefinition(cap)?.onDefinition?.(this.resource as any, ctx);
+    }
+    if (!this.resource.controllers?.length) {
+      const controllerInstance = createTemplateController(this.resource as any);
+      ctx.registerDefinition(this.resource);
+      await ctx.registerController(
+        this.resource.metadata.module,
+        this.resource.metadata.name,
+        controllerInstance,
+      );
+      return;
     }
     ctx.emit("ControllerLoading", { controllers: this.resource.controllers });
     try {

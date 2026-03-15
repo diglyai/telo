@@ -1,0 +1,130 @@
+kind: Kernel.Module
+metadata:
+  name: CanUseCrud
+  version: 1.0.0
+targets:
+  - Run
+---
+kind: Kernel.Import
+metadata:
+  name: Sql
+  module: CanUseCrud
+source: ../../sql
+---
+kind: Kernel.Import
+metadata:
+  name: SqlRepository
+  module: CanUseCrud
+source: ../
+---
+kind: Kernel.Import
+metadata:
+  name: Pipeline
+  module: CanUseCrud
+source: ../../pipeline
+---
+kind: Kernel.Import
+metadata:
+  name: Assert
+  module: CanUseCrud
+source: ../../assert
+---
+kind: Sql.Connection
+metadata:
+  name: Db
+  module: CanUseCrud
+driver: sqlite
+file: ":memory:"
+---
+kind: SqlRepository.Create
+metadata:
+  name: InsertUser
+  module: CanUseCrud
+connection: Db
+table: users
+---
+kind: SqlRepository.Read
+metadata:
+  name: GetUsers
+  module: CanUseCrud
+connection: Db
+table: users
+---
+kind: SqlRepository.Delete
+metadata:
+  name: DeleteUser
+  module: CanUseCrud
+connection: Db
+table: users
+---
+kind: Pipeline.Job
+metadata:
+  name: Run
+  module: CanUseCrud
+steps:
+  - name: Setup
+    inputs: {}
+    invoke:
+      kind: Sql.Exec
+      connection: Db
+      inputs:
+        sql: "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)"
+
+  - name: Insert
+    inputs:
+      data:
+        name: Alice
+    invoke:
+      kind: SqlRepository.Create
+      name: InsertUser
+
+  - name: Read
+    inputs:
+      filters: {}
+    invoke:
+      kind: SqlRepository.Read
+      name: GetUsers
+
+  - name: AssertRead
+    inputs:
+      rows: "${{ Read.outputs.rows }}"
+    invoke:
+      kind: Assert.Schema
+      schema:
+        type: object
+        properties:
+          rows:
+            type: array
+            minItems: 1
+            items:
+              type: object
+              properties:
+                name:
+                  const: Alice
+
+  - name: Delete
+    inputs:
+      filters:
+        name: Alice
+    invoke:
+      kind: SqlRepository.Delete
+      name: DeleteUser
+
+  - name: ReadAfterDelete
+    inputs:
+      filters: {}
+    invoke:
+      kind: SqlRepository.Read
+      name: GetUsers
+
+  - name: AssertEmpty
+    inputs:
+      rows: "${{ ReadAfterDelete.outputs.rows }}"
+    invoke:
+      kind: Assert.Schema
+      schema:
+        type: object
+        properties:
+          rows:
+            type: array
+            maxItems: 0

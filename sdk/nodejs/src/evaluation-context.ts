@@ -1,4 +1,4 @@
-import { evaluate } from "@marcbachmann/cel-js";
+import { celEnvironment } from "./cel-environment.js";
 import type { ModuleContext } from "./module-context.js";
 import { ResourceInstance } from "./resource-instance.js";
 import { ResourceManifest } from "./resource-manifest.js";
@@ -330,7 +330,7 @@ export class EvaluationContext {
    */
   evaluate(expression: string): unknown {
     try {
-      return evaluate(expression, this._context);
+      return celEnvironment.evaluate(expression, this._context);
     } catch (error) {
       const raw = error instanceof Error ? error.message : String(error);
       const safe = redactSecrets(raw, this._secretValues);

@@ -1,0 +1,172 @@
+kind: Kernel.Module
+metadata:
+  name: FeedbackApiRepo
+  version: 1.0.0
+  description: |
+    Feedback REST API using SqlRepository — no SQL beyond the schema migration.
+targets:
+  - SetupDb
+  - Server
+---
+kind: Kernel.Import
+metadata:
+  name: Http
+source: ../modules/http-server
+---
+kind: Kernel.Import
+metadata:
+  name: Sql
+source: ../modules/sql
+---
+kind: Kernel.Import
+metadata:
+  name: SqlRepository
+source: ../modules/sql-repository
+---
+kind: Kernel.Import
+metadata:
+  name: Pipeline
+source: ../modules/pipeline
+---
+kind: Sql.Connection
+metadata:
+  name: Db
+  module: FeedbackApiRepo
+driver: sqlite
+file: ./tmp/feedback-repo.db
+---
+kind: SqlRepository.Create
+metadata:
+  name: InsertFeedback
+  module: FeedbackApiRepo
+connection: Db
+table: feedback
+---
+kind: SqlRepository.Read
+metadata:
+  name: ListFeedback
+  module: FeedbackApiRepo
+connection: Db
+table: feedback
+---
+kind: SqlRepository.Read
+metadata:
+  name: GetFeedback
+  module: FeedbackApiRepo
+connection: Db
+table: feedback
+---
+kind: Pipeline.Job
+metadata:
+  name: SetupDb
+  module: FeedbackApiRepo
+steps:
+  - name: CreateTable
+    inputs: {}
+    invoke:
+      kind: Sql.Exec
+      connection: Db
+      inputs:
+        sql: |
+          CREATE TABLE IF NOT EXISTS feedback (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            text      TEXT    NOT NULL,
+            source    TEXT,
+            score     INTEGER NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+---
+kind: Http.Server
+metadata:
+  name: Server
+  module: FeedbackApiRepo
+baseUrl: http://localhost:8844
+port: 8844
+logger: false
+openapi:
+  info:
+    title: Feedback API (Repository)
+    version: 1.0.0
+mounts:
+  - path: /v1
+    type: Http.Api.FeedbackRoutes
+---
+kind: Http.Api
+metadata:
+  name: FeedbackRoutes
+  module: FeedbackApiRepo
+routes:
+  # POST /v1/feedback — insert a new entry
+  - request:
+      path: /feedback
+      method: POST
+      schema:
+        body:
+          type: object
+          properties:
+            text:
+              type: string
+              minLength: 1
+            source:
+              type: string
+          required: [text]
+    handler:
+      kind: SqlRepository.Create
+      name: InsertFeedback
+      inputs:
+        data:
+          text: "${{ request.body.text }}"
+          source: "${{ request.body.source }}"
+          score: "${{ size(request.body.text) }}"
+    response:
+      - status: 201
+        headers:
+          Content-Type: application/json
+        body:
+          ok: true
+          message: Feedback received
+
+  # GET /v1/feedback — list all entries
+  - request:
+      path: /feedback
+      method: GET
+    handler:
+      kind: SqlRepository.Read
+      name: ListFeedback
+      inputs:
+        filters: {}
+    response:
+      - status: 200
+        headers:
+          Content-Type: application/json
+        body: "${{ result.rows }}"
+
+  # GET /v1/feedback/{id} — fetch a single entry by id
+  - request:
+      path: /feedback/{id}
+      method: GET
+      schema:
+        params:
+          type: object
+          properties:
+            id:
+              type: integer
+          required: [id]
+    handler:
+      kind: SqlRepository.Read
+      name: GetFeedback
+      inputs:
+        filters:
+          id: "${{ request.params.id }}"
+    response:
+      - status: 200
+        when: "size(result.rows) > 0"
+        headers:
+          Content-Type: application/json
+        body: "${{ result.rows[0] }}"
+      - status: 404
+        headers:
+          Content-Type: application/json
+        body:
+          ok: false
+          message: Not found

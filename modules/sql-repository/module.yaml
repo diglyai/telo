@@ -1,0 +1,70 @@
+kind: Kernel.Module
+metadata:
+  name: SqlRepository
+  version: 0.1.0
+  description: Named CRUD handlers that generate SQL from domain operations
+---
+kind: Kernel.Definition
+metadata:
+  name: Read
+  module: SqlRepository
+capabilities: [invokable]
+schema:
+  type: object
+  required: [connection, table]
+  properties:
+    connection: { type: string }
+    table:      { type: string }
+resources:
+  - kind: Sql.Query
+    metadata:
+      name: "${{ self.name }}-query"
+    connection: "${{ self.connection }}"
+    inputs:
+      sql: "${{ 'SELECT * FROM ' + self.table + (keys(inputs.filters).size() > 0 ? ' WHERE ' + join(keys(inputs.filters).map(k, k + ' = ?'), ' AND ') : '') }}"
+      bindings: "${{ keys(inputs.filters).map(k, inputs.filters[k]) }}"
+invoke: "${{ self.name }}-query"
+
+---
+kind: Kernel.Definition
+metadata:
+  name: Create
+  module: SqlRepository
+capabilities: [invokable]
+schema:
+  type: object
+  required: [connection, table]
+  properties:
+    connection: { type: string }
+    table:      { type: string }
+resources:
+  - kind: Sql.Exec
+    metadata:
+      name: "${{ self.name }}-exec"
+    connection: "${{ self.connection }}"
+    inputs:
+      sql: "${{ 'INSERT INTO ' + self.table + ' (' + join(keys(inputs.data), ', ') + ') VALUES (' + join(keys(inputs.data).map(k, '?'), ', ') + ')' }}"
+      bindings: "${{ keys(inputs.data).map(k, inputs.data[k]) }}"
+invoke: "${{ self.name }}-exec"
+
+---
+kind: Kernel.Definition
+metadata:
+  name: Delete
+  module: SqlRepository
+capabilities: [invokable]
+schema:
+  type: object
+  required: [connection, table]
+  properties:
+    connection: { type: string }
+    table:      { type: string }
+resources:
+  - kind: Sql.Exec
+    metadata:
+      name: "${{ self.name }}-exec"
+    connection: "${{ self.connection }}"
+    inputs:
+      sql: "${{ 'DELETE FROM ' + self.table + ' WHERE ' + join(keys(inputs.filters).map(k, k + ' = ?'), ' AND ') }}"
+      bindings: "${{ keys(inputs.filters).map(k, inputs.filters[k]) }}"
+invoke: "${{ self.name }}-exec"

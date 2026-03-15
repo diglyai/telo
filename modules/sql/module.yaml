@@ -75,12 +75,15 @@ schema:
     transaction:
       type: string
       description: Sql.Transaction resource name
-    sql:
-      type: string
-      description: SQL query text; may contain ${{ }} templates
-    bindings:
-      type: array
-      description: Positional parameters bound to ? placeholders in the SQL string
+    inputs:
+      type: object
+      properties:
+        sql:
+          type: string
+          description: SQL query text; may contain ${{ }} templates
+        bindings:
+          type: array
+          description: Positional parameters bound to ? placeholders in the SQL string
 ---
 kind: Kernel.Definition
 metadata:
@@ -99,12 +102,15 @@ schema:
     transaction:
       type: string
       description: Sql.Transaction resource name
-    sql:
-      type: string
-      description: SQL statement text; may contain ${{ }} templates
-    bindings:
-      type: array
-      description: Positional parameters bound to ? placeholders in the SQL string
+    inputs:
+      type: object
+      properties:
+        sql:
+          type: string
+          description: SQL statement text; may contain ${{ }} templates
+        bindings:
+          type: array
+          description: Positional parameters bound to ? placeholders in the SQL string
 ---
 kind: Kernel.Definition
 metadata:
