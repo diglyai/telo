@@ -25,6 +25,10 @@ export const ResourceDefinitionSchema = Type.Object(
     capabilities: Type.Array(Type.String(), { minItems: 1 }),
     events: Type.Optional(Type.Array(Type.String())),
     controllers: Type.Optional(Type.Array(Type.String())),
+    // Template-mode fields (used when `controllers` is absent)
+    resources: Type.Optional(Type.Array(Type.Any())),
+    invoke: Type.Optional(Type.String()),
+    run: Type.Optional(Type.String()),
   },
   { additionalProperties: true },
 );

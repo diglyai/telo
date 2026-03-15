@@ -1,0 +1,150 @@
+##
+## Example: Resource template definitions (no controllers)
+##
+## Demonstrates how to define higher-order resources purely in YAML by bundling
+## lower-level resources.  The "App.SqliteOrm" kind wraps a Sql.Connection +
+## Sql.Query pair.  From the caller's perspective it behaves exactly like any
+## other invokable resource — no controller code required.
+##
+## The key idea: a Kernel.Definition without `controllers` acts as a template.
+## Each instance expands the `resources` array using the instance manifest as
+## `self`, initialises the children in a private child context, and delegates
+## invoke() / run() to the resource named by the `invoke` / `run` fields.
+##
+## Run with:  pnpm run telo ./examples/orm-template.yaml
+##
+
+kind: Kernel.Module
+metadata:
+  name: App
+  version: 1.0.0
+targets:
+  - SetupDb
+  - QueryDemo
+---
+kind: Kernel.Import
+metadata:
+  name: Sql
+source: ../modules/sql
+---
+kind: Kernel.Import
+metadata:
+  name: Pipeline
+source: ../modules/pipeline
+---
+kind: Kernel.Import
+metadata:
+  name: JavaScript
+source: ../modules/javascript
+
+##
+## Template definition — no `controllers` field.
+##
+## The kernel detects the absence of `controllers` and registers a built-in
+## template controller.  When an App.SqliteOrm instance is created, the
+## controller:
+##   1. Expands `resources` with `self` = the instance manifest, producing
+##      concrete child manifests (e.g. name "ItemsOrm-conn", "ItemsOrm-query").
+##   2. Registers and initialises the children in a private child context that
+##      is invisible to the rest of the module.
+##   3. Delegates invoke() to the resource named by the expanded `invoke` field.
+##
+---
+kind: Kernel.Definition
+metadata:
+  name: SqliteOrm
+  module: App
+capabilities:
+  - handler
+schema:
+  type: object
+  properties:
+    file:
+      type: string
+      description: SQLite file path or ':memory:'
+    sql:
+      type: string
+      description: SQL query or statement to execute
+    inputs:
+      type: object
+      description: Optional runtime parameters for the SQL statement
+resources:
+  - kind: Sql.Connection
+    metadata:
+      name: "${{ self.name }}-conn"
+    driver: sqlite
+    file: "${{ self.file }}"
+  - kind: Sql.Query
+    metadata:
+      name: "${{ self.name }}-query"
+    connection: "${{ self.name }}-conn"
+    sql: "${{ self.sql }}"
+    inputs: "${{ self.inputs }}"
+invoke: "${{ self.name }}-query"
+
+##
+## Two concrete instances — each gets its own private connection + query pair.
+##
+---
+kind: App.SqliteOrm
+metadata:
+  name: SetupOrm
+  module: App
+file: ./tmp/orm-demo.db
+sql: |
+  CREATE TABLE IF NOT EXISTS items (
+    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    label TEXT NOT NULL
+  )
+---
+kind: App.SqliteOrm
+metadata:
+  name: ItemsOrm
+  module: App
+file: ./tmp/orm-demo.db
+sql: "SELECT id, label FROM items ORDER BY id"
+
+##
+## Startup job: DDL via SetupOrm, then query via ItemsOrm.
+##
+---
+kind: Pipeline.Job
+metadata:
+  name: SetupDb
+  module: App
+steps:
+  - name: CreateTable
+    inputs: {}
+    invoke:
+      kind: App.SqliteOrm
+      name: SetupOrm
+---
+kind: Pipeline.Job
+metadata:
+  name: QueryDemo
+  module: App
+steps:
+  - name: ListItems
+    inputs: {}
+    invoke:
+      kind: App.SqliteOrm
+      name: ItemsOrm
+  - name: PrintResults
+    inputs:
+      rows: "${{ steps.ListItems.rows }}"
+    invoke:
+      kind: JavaScript.Script
+      name: PrintRows
+---
+kind: JavaScript.Script
+metadata:
+  name: PrintRows
+  module: App
+code: |
+  function main({ rows }) {
+    console.log('Items:', JSON.stringify(rows, null, 2));
+    return { count: rows.length };
+  }
+inputSchema:
+  rows:
+    type: array
