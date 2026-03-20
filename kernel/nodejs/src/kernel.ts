@@ -21,6 +21,7 @@ import * as path from "path";
 import { runnable } from "./capabilities/executable.js";
 import { invocable } from "./capabilities/invokable.js";
 import { service } from "./capabilities/listener.js";
+import { mount } from "./capabilities/mount.js";
 import { provider } from "./capabilities/provider.js";
 import { template } from "./capabilities/template.js";
 import { typeCapability } from "./capabilities/type.js";
@@ -154,6 +155,7 @@ export class Kernel implements IKernel {
     this.controllers.registerCapabilityDefinition(provider);
     this.controllers.registerCapabilityDefinition(invocable);
     this.controllers.registerCapabilityDefinition(service);
+    this.controllers.registerCapabilityDefinition(mount);
     this.controllers.registerCapabilityDefinition(typeCapability);
     this.controllers.registerCapabilityDefinition(runnable);
 
