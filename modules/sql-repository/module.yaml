@@ -8,13 +8,13 @@ kind: Kernel.Definition
 metadata:
   name: Read
   module: SqlRepository
-capabilities: [invokable]
+capabilities: [Invocable]
 schema:
   type: object
   required: [connection, table]
   properties:
     connection: { type: string }
-    table:      { type: string }
+    table: { type: string }
 resources:
   - kind: Sql.Query
     metadata:
@@ -30,13 +30,13 @@ kind: Kernel.Definition
 metadata:
   name: Create
   module: SqlRepository
-capabilities: [invokable]
+capabilities: [Invocable]
 schema:
   type: object
   required: [connection, table]
   properties:
     connection: { type: string }
-    table:      { type: string }
+    table: { type: string }
 resources:
   - kind: Sql.Exec
     metadata:
@@ -52,13 +52,13 @@ kind: Kernel.Definition
 metadata:
   name: Delete
   module: SqlRepository
-capabilities: [invokable]
+capabilities: [Invocable]
 schema:
   type: object
   required: [connection, table]
   properties:
     connection: { type: string }
-    table:      { type: string }
+    table: { type: string }
 resources:
   - kind: Sql.Exec
     metadata:

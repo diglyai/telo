@@ -9,7 +9,7 @@ metadata:
   name: Job
   module: Pipeline
 capabilities:
-  - executable
+  - Runnable
 controllers:
   - pkg:npm/@telorun/pipeline@>=1.1.0?local_path=./nodejs#job
 schema:

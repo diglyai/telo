@@ -3,7 +3,7 @@ metadata:
   name: Type
   module: Data
 capabilities:
-  - type
+  - Type
 controllers:
   - pkg:npm/@telorun/data@>=0.0.2?local_path=./nodejs#type
 schema:
@@ -25,7 +25,7 @@ metadata:
   name: ObjectType
   module: Data
 capabilities:
-  - type
+  - Type
 controllers:
   - pkg:npm/@telorun/data@>=0.0.2?local_path=./nodejs#type
 schema:

@@ -23,10 +23,9 @@ export function createTemplateController(definition: {
       let ephemeralTemplate: any = null;
 
       for (const template of definition.resources ?? []) {
-        const expandedName = ctx.moduleContext.expandWith(
-          template.metadata?.name ?? "",
-          { self },
-        ) as string;
+        const expandedName = ctx.moduleContext.expandWith(template.metadata?.name ?? "", {
+          self,
+        }) as string;
         const isTarget = expandedName === invokeTarget || expandedName === runTarget;
         if (isTarget) {
           ephemeralTemplate = template;
@@ -40,10 +39,7 @@ export function createTemplateController(definition: {
       // Registers an ephemeral manifest on ctx.moduleContext so it shares the same
       // resource scope (and can access connections, etc. via getInstance).
       // Tears down and removes the resource after fn() completes.
-      const withEphemeral = async (
-        expandedManifest: any,
-        fn: (name: string) => Promise<any>,
-      ) => {
+      const withEphemeral = async (expandedManifest: any, fn: (name: string) => Promise<any>) => {
         const uniqueName = `${expandedManifest.metadata?.name ?? "eph"}__${Math.random().toString(16).slice(2, 8)}`;
         const manifest = {
           ...expandedManifest,
@@ -85,7 +81,7 @@ export function createTemplateController(definition: {
             return withEphemeral(expanded, async (name) => {
               const entry = ctx.moduleContext.resourceInstances.get(name);
               if (!entry?.instance?.invoke) {
-                throw new Error(`Ephemeral resource '${name}' is not invokable`);
+                throw new Error(`Ephemeral resource '${name}' is not invocable`);
               }
               return entry.instance.invoke(inputs);
             });

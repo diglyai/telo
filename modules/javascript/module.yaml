@@ -8,7 +8,7 @@ metadata:
   name: "Script"
   module: "JavaScript"
 capabilities:
-  - executable
+  - Runnable
 controllers:
   - pkg:npm/@telorun/javascript@>=0.2.0?local_path=./nodejs#script
 schema:

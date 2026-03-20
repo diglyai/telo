@@ -3,7 +3,7 @@ metadata:
   name: Script
   module: Starlark
 capabilities:
-  - executable
+  - Runnable
 controllers:
   - pkg:npm/@telorun/starlark@>=1.1.0?local_path=./nodejs#script
 schema:

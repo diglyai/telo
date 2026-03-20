@@ -3,7 +3,7 @@ metadata:
   name: "Variables"
   module: "Config"
 capabilities:
-  - provider
+  - Provider
 controllers:
   - pkg:npm/@telorun/config@>=0.1.0?local_path=./nodejs#variables-controller
 schema:

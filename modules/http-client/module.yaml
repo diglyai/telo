@@ -8,7 +8,7 @@ metadata:
   name: "Client"
   module: "Http"
 capabilities:
-  - provider
+  - Provider
 controllers:
   - pkg:npm/@telorun/http-client@>=0.2.0?local_path=./nodejs#http-client
 schema:
@@ -37,7 +37,7 @@ metadata:
   name: "Request"
   module: "Http"
 capabilities:
-  - handler
+  - Invocable
 controllers:
   - pkg:npm/@telorun/http-client@>=0.2.0?local_path=./nodejs#http-request
 schema:

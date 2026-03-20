@@ -64,7 +64,7 @@ When a module uses a `Kernel.Import`, the Kernel maps the external module's expo
 
 ## 4. Enforcing Types on Resources
 
-`Invokable` resources (like `JavaScript.Script` or `Http.Request`) use `inputType` and `outputType` to declare the expected type. The value is either a **name reference** (string) or an **inline type definition**.
+`Invocable` resources (like `JavaScript.Script` or `Http.Request`) use `inputType` and `outputType` to declare the expected type. The value is either a **name reference** (string) or an **inline type definition**.
 
 ### Named Reference
 

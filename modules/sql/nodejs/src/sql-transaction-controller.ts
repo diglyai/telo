@@ -1,5 +1,5 @@
-import { randomUUID } from "crypto";
 import type { ResourceContext, ResourceInstance } from "@telorun/sdk";
+import { randomUUID } from "crypto";
 import type { SqlConnectionResource } from "./sql-connection-controller.js";
 import { currentTxId, deleteTx, getTx, setTx, txStorage } from "./transaction-store.js";
 
@@ -38,15 +38,15 @@ export class SqlTransactionResource implements ResourceInstance {
 
     // Flat nesting: if already inside a transaction, reuse it
     if (currentTxId()) {
-      const stepsInvokable = ctx.moduleContext.getInvokable(m.steps);
+      const stepsInvocable = ctx.moduleContext.getInvocable(m.steps);
       const expandedInputs = ctx.expandValue(m.inputs ?? {}, input ?? {});
-      return stepsInvokable.invoke(expandedInputs);
+      return stepsInvocable.invoke(expandedInputs);
     }
 
     const conn = ctx.moduleContext.getInstance(m.connection) as SqlConnectionResource;
     const txId = randomUUID();
     const expandedInputs = ctx.expandValue(m.inputs ?? {}, input ?? {});
-    const stepsInvokable = ctx.moduleContext.getInvokable(m.steps);
+    const stepsInvocable = ctx.moduleContext.getInvocable(m.steps);
 
     if (conn.driver === "postgres") {
       const pgClient = await conn.getPool().connect();
@@ -54,7 +54,7 @@ export class SqlTransactionResource implements ResourceInstance {
         await pgClient.query("BEGIN");
         setTx(txId, { client: pgClient, driver: "postgres" });
         try {
-          const result = await txStorage.run(txId, () => stepsInvokable.invoke(expandedInputs));
+          const result = await txStorage.run(txId, () => stepsInvocable.invoke(expandedInputs));
           await pgClient.query("COMMIT");
           return result;
         } catch (err) {
@@ -72,7 +72,7 @@ export class SqlTransactionResource implements ResourceInstance {
         db.exec("BEGIN");
         setTx(txId, { client: db, driver: "sqlite" });
         try {
-          const result = await stepsInvokable.invoke(expandedInputs);
+          const result = await stepsInvocable.invoke(expandedInputs);
           db.exec("COMMIT");
           return result;
         } catch (err) {

@@ -14,7 +14,7 @@ metadata:
   name: ModuleContext
   module: Assert
 capabilities:
-  - executable
+  - Runnable
 controllers:
   - pkg:npm/@telorun/assert@1.1.0?local_path=./nodejs#module-context
 schema:
@@ -35,7 +35,7 @@ metadata:
   name: Schema
   module: Assert
 capabilities:
-  - executable
+  - Runnable
 controllers:
   - pkg:npm/@telorun/assert@1.0.0?local_path=./nodejs#schema
 schema:
@@ -59,7 +59,7 @@ metadata:
   name: Events
   module: Assert
 capabilities:
-  - executable
+  - Runnable
 controllers:
   - pkg:npm/@telorun/assert@1.0.0?local_path=./nodejs#events
 schema:

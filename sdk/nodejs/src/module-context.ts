@@ -1,4 +1,4 @@
-import { Invokable } from "./capabilities/invokable.js";
+import { Invocable } from "./capabilities/invokable.js";
 import { EmitEvent, EvaluationContext, InstanceFactory } from "./evaluation-context.js";
 
 function collectSecretValues(secrets: Record<string, unknown>): Set<string> {
@@ -106,7 +106,9 @@ export class ModuleContext extends EvaluationContext {
     return entry?.instance;
   }
 
-  getInvokable<TInput = Record<string, any>, TOutput = any>(name: string): Invokable<TInput, TOutput> {
+  getInvocable<TInput = Record<string, any>, TOutput = any>(
+    name: string,
+  ): Invocable<TInput, TOutput> {
     const instance = this.getInstance(name);
 
     if (
@@ -117,7 +119,7 @@ export class ModuleContext extends EvaluationContext {
     ) {
       throw new Error(`Resource '${name}' does not have an invoke() method.`);
     }
-    return instance as Invokable<TInput, TOutput>;
+    return instance as Invocable<TInput, TOutput>;
   }
 
   /**

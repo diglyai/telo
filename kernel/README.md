@@ -216,9 +216,9 @@ kind: Kernel.Definition
 metadata:
   name: Server # becomes Http.Server when module namespace is Http
   module: Http
-capabilities: # required — one or more of: provider, listener, handler, executable, type, template, component
-  - listener
-  - provider
+capabilities: # required — one or more of: Provider, Service, Invocable, Runnable, Type, Template
+  - Service
+  - Provider
 schema: # JSON Schema — validated against each resource before create()
   type: object
   properties:

@@ -1,5 +1,5 @@
 import type { CapabilityDefinition } from "@telorun/sdk";
 
-export const listener: CapabilityDefinition = {
-  name: "listener",
+export const service: CapabilityDefinition = {
+  name: "Service",
 };

@@ -1,28 +1,32 @@
 import {
-  CapabilityDefinition,
-  ControllerContext,
-  Kernel as IKernel,
-  ModuleContext,
-  ResourceContext,
-  ResourceDefinition,
-  ResourceInstance,
-  ResourceManifest,
-  RuntimeError,
-  RuntimeEvent,
+    AliasResolver,
+    DefinitionRegistry,
+    DiagnosticSeverity,
+    StaticAnalyzer,
+    type AnalysisContext,
+} from "@telorun/analyzer";
+import {
+    CapabilityDefinition,
+    ControllerContext,
+    Kernel as IKernel,
+    ModuleContext,
+    ResourceContext,
+    ResourceDefinition,
+    ResourceInstance,
+    ResourceManifest,
+    RuntimeError,
+    RuntimeEvent,
 } from "@telorun/sdk";
 import * as path from "path";
-import { component } from "./capabilities/component.js";
-import { executable } from "./capabilities/executable.js";
-import { handler } from "./capabilities/handler.js";
-import { invokable } from "./capabilities/invokable.js";
-import { listener } from "./capabilities/listener.js";
+import { runnable } from "./capabilities/executable.js";
+import { invocable } from "./capabilities/invokable.js";
+import { service } from "./capabilities/listener.js";
 import { provider } from "./capabilities/provider.js";
 import { template } from "./capabilities/template.js";
 import { typeCapability } from "./capabilities/type.js";
 import { ControllerRegistry } from "./controller-registry.js";
 import { EventStream } from "./event-stream.js";
 import { EventBus } from "./events.js";
-import { DiagnosticSeverity, StaticAnalyzer, AliasResolver, DefinitionRegistry, type AnalysisContext } from "@telorun/analyzer";
 import { Loader } from "./loader.js";
 import { ResourceContextImpl } from "./resource-context.js";
 import { SchemaValidator } from "./schema-valiator.js";
@@ -148,17 +152,15 @@ export class Kernel implements IKernel {
     // Register built-in capabilities as TypeScript objects (no YAML needed)
     this.controllers.registerCapabilityDefinition(template);
     this.controllers.registerCapabilityDefinition(provider);
-    this.controllers.registerCapabilityDefinition(invokable);
-    this.controllers.registerCapabilityDefinition(component);
-    this.controllers.registerCapabilityDefinition(handler);
-    this.controllers.registerCapabilityDefinition(listener);
+    this.controllers.registerCapabilityDefinition(invocable);
+    this.controllers.registerCapabilityDefinition(service);
     this.controllers.registerCapabilityDefinition(typeCapability);
-    this.controllers.registerCapabilityDefinition(executable);
+    this.controllers.registerCapabilityDefinition(runnable);
 
     this.controllers.registerDefinition({
       kind: "Kernel.Definition",
       metadata: { name: "Definition", module: "Kernel" },
-      capabilities: ["template"],
+      capabilities: ["Template"],
       schema: { type: "object" },
     });
     this.controllers.registerController(
@@ -168,7 +170,7 @@ export class Kernel implements IKernel {
     this.controllers.registerDefinition({
       kind: "Kernel.Definition",
       metadata: { name: "Module", module: "Kernel" },
-      capabilities: ["template"],
+      capabilities: ["Template"],
       schema: { type: "object" },
     });
     this.controllers.registerController(
@@ -178,7 +180,7 @@ export class Kernel implements IKernel {
     this.controllers.registerDefinition({
       kind: "Kernel.Definition",
       metadata: { name: "Import", module: "Kernel" },
-      capabilities: ["template"],
+      capabilities: ["Template"],
       schema: { type: "object" },
     });
     this.controllers.registerController(
@@ -188,7 +190,7 @@ export class Kernel implements IKernel {
     this.controllers.registerDefinition({
       kind: "Kernel.Definition",
       metadata: { name: "Capability", module: "Kernel" },
-      capabilities: ["template"],
+      capabilities: ["Template"],
       schema: { type: "object" },
     });
     this.controllers.registerController(
@@ -216,7 +218,11 @@ export class Kernel implements IKernel {
     // Static analysis pre-flight: validates schemas and invocation context compatibility.
     // All errors are fatal — kernel does not start if analysis fails.
     const staticManifests = await this.loader.loadManifests(runtimeYamlPath);
-    const diagnostics = new StaticAnalyzer().analyze(staticManifests, {}, this.getAnalysisContext());
+    const diagnostics = new StaticAnalyzer().analyze(
+      staticManifests,
+      {},
+      this.getAnalysisContext(),
+    );
     const errors = diagnostics.filter((d) => d.severity === DiagnosticSeverity.Error);
     if (errors.length > 0) {
       const summary = errors.map((d) => d.message).join("\n");
@@ -439,7 +445,11 @@ export class Kernel implements IKernel {
     const instance = await controller.create(processedResource, ctx);
     if (!instance) return null;
 
-    const wrapped = this.wrapWithCapabilityLifecycles(instance, definition?.capabilities ?? [], ctx);
+    const wrapped = this.wrapWithCapabilityLifecycles(
+      instance,
+      definition?.capabilities ?? [],
+      ctx,
+    );
     return { instance: wrapped, ctx };
   }
 
