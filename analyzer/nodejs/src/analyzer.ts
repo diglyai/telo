@@ -68,11 +68,7 @@ export class StaticAnalyzer {
 
     // Validate each non-definition, non-system resource
     for (const m of manifests) {
-      if (
-        m.kind === "Kernel.Definition" ||
-        m.kind === "Kernel.Module" ||
-        m.kind === "Kernel.Import"
-      ) {
+      if (m.kind === "Kernel.Definition" || m.kind === "Kernel.Import") {
         continue;
       }
 

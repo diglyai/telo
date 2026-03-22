@@ -1,9 +1,48 @@
 import type { ResourceManifest } from "@telorun/sdk";
-import { isRefEntry, isScopeEntry } from "./reference-field-map.js";
+import { isRefEntry, isScopeEntry, type RefFieldEntry } from "./reference-field-map.js";
 import { DiagnosticSeverity, type AnalysisDiagnostic, type AnalysisContext } from "./types.js";
+import type { AliasResolver } from "./alias-resolver.js";
+import type { DefinitionRegistry } from "./definition-registry.js";
 
 const SOURCE = "telo-analyzer";
-const SYSTEM_KINDS = new Set(["Kernel.Definition", "Kernel.Module", "Kernel.Import"]);
+const SYSTEM_KINDS = new Set(["Kernel.Definition", "Kernel.Import"]);
+
+/**
+ * Checks whether `kind` satisfies the ref constraint in `entry`.
+ * Returns an empty array when valid, or mismatch error strings when not.
+ * Returns an empty array immediately when the ref identity is not registered
+ * (partial context — skip check rather than false-positive).
+ */
+function checkKind(
+  kind: string,
+  entry: RefFieldEntry,
+  registry: DefinitionRegistry,
+  aliases: AliasResolver,
+): string[] {
+  const resolved = aliases.resolveKind(kind) ?? kind;
+  const errors: string[] = [];
+  for (const refStr of entry.refs) {
+    const targetKind = registry.resolveRef(refStr);
+    if (!targetKind) return [];
+    const targetDef = registry.resolve(targetKind);
+    if (!targetDef) return [];
+    if (targetDef.kind === "Kernel.Abstract") {
+      const implementing = registry.getByExtends(targetKind);
+      const implementingKinds = new Set(
+        implementing.map((d) => `${d.metadata.module}.${d.metadata.name}`),
+      );
+      if (implementingKinds.has(resolved)) return [];
+      const options = [...implementingKinds].join(", ") || "none registered";
+      errors.push(
+        `'${kind}' does not implement '${targetKind}' (known implementations: ${options})`,
+      );
+    } else {
+      if (resolved === targetKind) return [];
+      errors.push(`'${kind}' (resolved: '${resolved}') does not match required '${targetKind}'`);
+    }
+  }
+  return errors;
+}
 
 /** Inline resource — has keys beyond kind/name/metadata. Phase 2 normalizes these before
  *  Phase 3 runs; until then we skip them rather than raise false errors. */
@@ -123,7 +162,36 @@ export function validateReferences(
       }
 
       for (const val of resolveFieldValues(r, fieldPath)) {
-        if (!val || typeof val !== "object") continue;
+        if (!val) continue;
+
+        // Name-only reference (plain string) — look up by name to validate.
+        if (typeof val === "string") {
+          const target =
+            byName.get(val) ?? visibleScopeManifests.find((m) => m.metadata?.name === val);
+          if (!target) {
+            diagnostics.push({
+              severity: DiagnosticSeverity.Error,
+              code: "UNRESOLVED_REFERENCE",
+              source: SOURCE,
+              message: `${resourceLabel}: reference at '${fieldPath}' → resource '${val}' not found`,
+              data: { resource: resourceData, path: fieldPath },
+            });
+            continue;
+          }
+          const kindErrors = checkKind(target.kind as string, entry, registry, aliases);
+          if (kindErrors.length > 0) {
+            diagnostics.push({
+              severity: DiagnosticSeverity.Error,
+              code: "REFERENCE_KIND_MISMATCH",
+              source: SOURCE,
+              message: `${resourceLabel}: reference at '${fieldPath}' → ${kindErrors.join("; ")}`,
+              data: { resource: resourceData, path: fieldPath },
+            });
+          }
+          continue;
+        }
+
+        if (typeof val !== "object") continue;
         const refVal = val as Record<string, unknown>;
 
         // Skip inline resources — Phase 2 normalization hasn't run yet.
@@ -141,51 +209,9 @@ export function validateReferences(
           continue;
         }
 
-        // 2. Kind check — at least one ref entry must accept this kind (anyOf semantics).
-        const refKindResolved = aliases.resolveKind(refVal.kind) ?? refVal.kind;
-        const kindErrors: string[] = [];
-        let kindValid = false;
-
-        for (const refStr of entry.refs) {
-          const targetKind = registry.resolveRef(refStr);
-          if (!targetKind) {
-            // Identity not registered — skip kind check (may be a partial IDE context).
-            kindValid = true;
-            break;
-          }
-          const targetDef = registry.resolve(targetKind);
-          if (!targetDef) {
-            kindValid = true; // unknown target in this context, skip
-            break;
-          }
-
-          if (targetDef.kind === "Kernel.Abstract") {
-            // Abstract target — the referenced resource's definition must extend targetKind.
-            const implementing = registry.getByExtends(targetKind);
-            const implementingKinds = new Set(
-              implementing.map((d) => `${d.metadata.module}.${d.metadata.name}`),
-            );
-            if (implementingKinds.has(refKindResolved)) {
-              kindValid = true;
-              break;
-            }
-            const options = [...implementingKinds].join(", ") || "none registered";
-            kindErrors.push(
-              `'${refVal.kind}' does not implement '${targetKind}' (known implementations: ${options})`,
-            );
-          } else {
-            // Concrete target — alias-resolved kind must equal the canonical target kind.
-            if (refKindResolved === targetKind) {
-              kindValid = true;
-              break;
-            }
-            kindErrors.push(
-              `'${refVal.kind}' (resolved: '${refKindResolved}') does not match required '${targetKind}'`,
-            );
-          }
-        }
-
-        if (!kindValid && kindErrors.length > 0) {
+        // 2. Kind check
+        const kindErrors = checkKind(refVal.kind, entry, registry, aliases);
+        if (kindErrors.length > 0) {
           diagnostics.push({
             severity: DiagnosticSeverity.Error,
             code: "REFERENCE_KIND_MISMATCH",

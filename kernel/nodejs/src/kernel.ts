@@ -2,6 +2,7 @@ import {
   AliasResolver,
   DefinitionRegistry,
   DiagnosticSeverity,
+  KERNEL_BUILTINS,
   StaticAnalyzer,
   buildDependencyGraph,
   formatCycle,
@@ -13,7 +14,6 @@ import {
 } from "@telorun/analyzer";
 import {
   ControllerContext,
-  isCompiledValue,
   Kernel as IKernel,
   ModuleContext,
   ResourceContext,
@@ -22,15 +22,9 @@ import {
   ResourceManifest,
   RuntimeError,
   RuntimeEvent,
+  isCompiledValue,
 } from "@telorun/sdk";
 import * as path from "path";
-import { invocable } from "./capabilities/invokable.js";
-import { service } from "./capabilities/listener.js";
-import { mount } from "./capabilities/mount.js";
-import { provider } from "./capabilities/provider.js";
-import { runnable } from "./capabilities/runnable.js";
-import { template } from "./capabilities/template.js";
-import { typeCapability } from "./capabilities/type.js";
 import { ControllerRegistry } from "./controller-registry.js";
 import { EventStream } from "./event-stream.js";
 import { EventBus } from "./events.js";
@@ -141,31 +135,13 @@ export class Kernel implements IKernel {
     // "not yet populated" from a completely unknown module name.
     this.rootContext.registerImport("Kernel", "Kernel", []); // built-ins, unrestricted
 
-    // Register built-in abstract definitions
-    this.controllers.registerDefinition(template);
-    this.controllers.registerDefinition(provider);
-    this.controllers.registerDefinition(invocable);
-    this.controllers.registerDefinition(service);
-    this.controllers.registerDefinition(mount);
-    this.controllers.registerDefinition(typeCapability);
-    this.controllers.registerDefinition(runnable);
+    // Register built-in definitions (abstracts + Kernel.Definition + Kernel.Module)
+    for (const def of KERNEL_BUILTINS) this.registerResourceDefinition(def);
 
-    this.controllers.registerDefinition({
-      kind: "Kernel.Definition",
-      metadata: { name: "Definition", module: "Kernel" },
-      extends: "Kernel.Template",
-      schema: { type: "object" },
-    });
     this.controllers.registerController(
       "Kernel.Definition",
       await import("./controllers/resource-definition/resource-definition-controller.js"),
     );
-    this.controllers.registerDefinition({
-      kind: "Kernel.Definition",
-      metadata: { name: "Module", module: "Kernel" },
-      extends: "Kernel.Template",
-      schema: { type: "object" },
-    });
     this.controllers.registerController(
       "Kernel.Module",
       await import("./controllers/module/module-controller.js"),
@@ -291,7 +267,11 @@ export class Kernel implements IKernel {
     }
 
     // Phase 4: dependency graph — cycle detection before any resource is initialized
-    const graph = buildDependencyGraph(this.staticManifests, this.analyzerDefs, this.analyzerAliases);
+    const graph = buildDependencyGraph(
+      this.staticManifests,
+      this.analyzerDefs,
+      this.analyzerAliases,
+    );
     if (graph.cycle) {
       throw new RuntimeError("ERR_CIRCULAR_DEPENDENCY", formatCycle(graph.cycle));
     }
@@ -477,7 +457,11 @@ export class Kernel implements IKernel {
 
     // Expand compile-time CEL fields before passing to the controller.
     const processedResource = compile.length
-      ? (evalContext.expandPaths(resource as Record<string, unknown>, compile, runtime) as ResourceManifest)
+      ? (evalContext.expandPaths(
+          resource as Record<string, unknown>,
+          compile,
+          runtime,
+        ) as ResourceManifest)
       : resource;
 
     const ctx = this.createResourceContext(evalContext, processedResource);
@@ -508,11 +492,9 @@ export class Kernel implements IKernel {
     resource: ResourceManifest,
     getInstance: (name: string) => ResourceInstance | undefined,
   ): void {
-    const resolvedKind =
-      this.analyzerAliases.resolveKind(resource.kind) ?? resource.kind;
+    const resolvedKind = this.analyzerAliases.resolveKind(resource.kind) ?? resource.kind;
     const fieldMap =
-      this.analyzerDefs.getFieldMap(resource.kind) ??
-      this.analyzerDefs.getFieldMap(resolvedKind);
+      this.analyzerDefs.getFieldMap(resource.kind) ?? this.analyzerDefs.getFieldMap(resolvedKind);
     if (!fieldMap) return;
 
     for (const [fieldPath, entry] of fieldMap) {

@@ -1,8 +1,13 @@
 import type { ResourceDefinition } from "@telorun/sdk";
 import { buildReferenceFieldMap, type ReferenceFieldMap } from "./reference-field-map.js";
+import { KERNEL_BUILTINS } from "./builtins.js";
 
 /** Pure kind → ResourceDefinition map. No controller loading, no lifecycle. */
 export class DefinitionRegistry {
+  constructor() {
+    for (const def of KERNEL_BUILTINS) this.register(def);
+  }
+
   private readonly defs = new Map<string, ResourceDefinition>();
   private readonly fieldMaps = new Map<string, ReferenceFieldMap>();
   /** Reverse inheritance index: parent kind → direct child kinds. */

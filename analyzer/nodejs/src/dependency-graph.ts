@@ -18,7 +18,7 @@ export interface DependencyGraph {
 }
 
 /** System resource kinds that are not runtime nodes in the dependency graph. */
-const SYSTEM_KINDS = new Set(["Kernel.Definition", "Kernel.Module", "Kernel.Import"]);
+const SYSTEM_KINDS = new Set(["Kernel.Definition", "Kernel.Import"]);
 
 const nodeKey = (kind: string, name: string) => `${kind}\0${name}`;
 

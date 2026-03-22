@@ -19,6 +19,7 @@ export { resolveScope } from "./scope-resolver.js";
 export { NodeAdapter, createNodeAdapter } from "./adapters/node-adapter.js";
 export { HttpAdapter } from "./adapters/http-adapter.js";
 export { RegistryAdapter } from "./adapters/registry-adapter.js";
+export { KERNEL_BUILTINS } from "./builtins.js";
 export { DiagnosticSeverity } from "./types.js";
 export type {
   AnalysisDiagnostic,

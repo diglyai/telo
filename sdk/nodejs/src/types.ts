@@ -82,7 +82,7 @@ export interface ControllerInstance<
     resource: TResource,
     ctx: ResourceContext,
   ): ResourceInstance<TInput, TOutput> | null | Promise<ResourceInstance<TInput, TOutput> | null>;
-  schema: any;
+  schema?: any;
   /** JSON Schema for invoke() inputs — used for runtime validation and static analysis. */
   inputSchema?: Record<string, any>;
   /** JSON Schema for invoke() outputs — used for documentation and static analysis. */
